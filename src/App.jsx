@@ -10,6 +10,25 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const pick = (arr) => arr[randInt(0, arr.length - 1)];
 const lerp = (a, b, t) => a + (b - a) * t;
 
+/* === CLOUD SYNC CONFIG ===
+ * GitHub Pages is static-only — no database, no server-side code.
+ * To enable cloud saves, set up a FREE Supabase project:
+ * 1. Go to https://supabase.com and create a project
+ * 2. In SQL Editor, run:
+ *    CREATE TABLE saves (
+ *      code TEXT PRIMARY KEY,
+ *      data JSONB NOT NULL,
+ *      updated_at TIMESTAMPTZ DEFAULT now()
+ *    );
+ *    ALTER TABLE saves ENABLE ROW LEVEL SECURITY;
+ *    CREATE POLICY "allow_all" ON saves FOR ALL USING (true) WITH CHECK (true);
+ * 3. Go to Settings > API and copy your Project URL and anon/public key below
+ */
+const SUPABASE_URL = "https://iydflctqkwnnnyqvzjog.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5ZGZsY3Rxa3dubm55cXZ6am9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODM3NDgsImV4cCI6MjA5MzA1OTc0OH0.-0vKfZihqCxgD835JYLbdvhmI5mjmhG1jznuTjtKizg";
+const _SYNC_OK=SUPABASE_URL!=="YOUR_SUPABASE_URL"&&SUPABASE_ANON_KEY!=="YOUR_SUPABASE_ANON_KEY";
+const BLOCKED_CODES=new Set(["0000","1111","2222","3333","4444","5555","6666","7777","8888","9999","0123","1234","2345","3456","4567","5678","6789","9876","8765","7654","6543","5432","4321","3210","0420","4200","0069","6969","1337","0666","6660"]);
+
 const CUR = {
   scrap:  { name: "Scrap",  icon: "⬡", color: "#4499ff", rarity: "COMMON", desc: "Salvage from wrecks. Buys basic repairs and munitions." },
   cores:  { name: "Cores",  icon: "◆", color: "#44ff88", rarity: "UNCOMMON", desc: "Unstable energy cores. Powers advanced weapons." },
@@ -248,12 +267,13 @@ export default function VoidStorm(){
   const fpsRef=useRef({frames:0,last:performance.now(),fps:0});
   const touchRef=useRef({active:false,startX:0,startY:0,curX:0,curY:0,id:null});
   const[historyHideForfeits,setHistoryHideForfeits]=useState(true);const[historyMode,setHistoryMode]=useState("waves");
+  const[syncCode,setSyncCode]=useState(null);const[syncStatus,setSyncStatus]=useState("none");const[syncCodeInput,setSyncCodeInput]=useState("");const[showShipPopup,setShowShipPopup]=useState(false);const[showBulletPopup,setShowBulletPopup]=useState(false);const[showBgPopup,setShowBgPopup]=useState(false);const[showSyncInfo,setShowSyncInfo]=useState(false);const syncCodeRef=useRef(null);const _cloudDebounce=useRef(null);
   const[tutStep,setTutStep]=useState(0);
   const[showTutPrompt,setShowTutPrompt]=useState(false);
   const tutRef=useRef(0);
   useEffect(()=>{tutRef.current=tutStep;try{if(tutStep>0)localStorage.setItem("vs4-tut",String(tutStep));else localStorage.removeItem("vs4-tut");}catch(e){}},[tutStep]);
   const phRef=useRef("menu");
-  useEffect(()=>{phRef.current=phase;setConfirmReset(false);setConfirmForfeit(false);if(_returnToPauseRef.current&&phase==="playing"){_returnToPauseRef.current=false;setPaused(true);pausedRef.current=true;}else{setPaused(false);pausedRef.current=false;}setShowStats(false);setMetaTab("ship");setAbInfoId(null);setShowAnalyser(false);setShowRegenAnalyser(false);setShowPainAnalyser(false);setShowPauseSettings(false);setDeathDmgPopup(false);setDeathRegenPopup(false);setDeathPainPopup(false);if(phase!=="playing")setPgMode(null);
+  useEffect(()=>{phRef.current=phase;setConfirmReset(false);setConfirmForfeit(false);if(_returnToPauseRef.current&&phase==="playing"){_returnToPauseRef.current=false;setPaused(true);pausedRef.current=true;}else{setPaused(false);pausedRef.current=false;}setShowStats(false);setMetaTab("ship");setAbInfoId(null);setShowAnalyser(false);setShowRegenAnalyser(false);setShowPainAnalyser(false);setShowPauseSettings(false);setDeathDmgPopup(false);setDeathRegenPopup(false);setDeathPainPopup(false);setShowShipPopup(false);setShowBulletPopup(false);setShowBgPopup(false);setShowSyncInfo(false);if(phase!=="playing")setPgMode(null);
     if((phase==="menu"||phase==="settings"||phase==="playground"||phase==="metashop"||phase==="practise"||phase==="history"||phase==="phantom_info"||phase==="hyperecho")&&!(_returnToPauseRef.current&&phase==="settings")){
       gsRef.current={player:{alive:false,x:GW/2,y:GH/2,size:13,hp:0,maxHp:1,shields:0,abilities:[]},
         enemies:[],pBullets:[],eBullets:[],pickups:[],particles:[],orbitals:[],
@@ -273,13 +293,30 @@ export default function VoidStorm(){
       else setShowTutPrompt(true);
       const savedTut=localStorage.getItem("vs4-tut");
       if(savedTut&&parseInt(savedTut)>0){setShowTutPrompt(true);}
+      const _sc=localStorage.getItem("vs4-sync-code");if(_sc){setSyncCode(_sc);syncCodeRef.current=_sc;setSyncStatus("synced");}
     }catch(e){}
   },[]);
   const saveMeta=useCallback(m=>{
-    try{
-      localStorage.setItem("vs4-meta",JSON.stringify(m));
-    }catch(e){}
+    try{localStorage.setItem("vs4-meta",JSON.stringify(m));}catch(e){}
+    if(syncCodeRef.current&&_SYNC_OK){
+      clearTimeout(_cloudDebounce.current);
+      _cloudDebounce.current=setTimeout(()=>{
+        const code=syncCodeRef.current;if(!code)return;
+        try{const h=localStorage.getItem("vs4-history")||"[]";const t=localStorage.getItem("vs4-tut")||"0";
+        fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code,data:{meta:m,history:JSON.parse(h),tut:t},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(e){}
+      },3000);
+    }
   },[]);
+  useEffect(()=>{syncCodeRef.current=syncCode;},[syncCode]);
+  useEffect(()=>{
+    if(!syncCode||!_SYNC_OK)return;
+    const id=setInterval(()=>{
+      const code=syncCodeRef.current;if(!code)return;
+      try{const m=metaRef.current;const h=localStorage.getItem("vs4-history")||"[]";const t=localStorage.getItem("vs4-tut")||"0";
+      fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code,data:{meta:m,history:JSON.parse(h),tut:t},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(e){}
+    },120000);
+    return()=>clearInterval(id);
+  },[syncCode]);
 
   const gml=useCallback(id=>meta.levels[id]||0,[meta]);
   const metaTier=meta.metaTier||1;
@@ -1431,11 +1468,17 @@ export default function VoidStorm(){
           Nice! That damage boost applies to every future run.<br/><br/>
           There's another type of permanent upgrade too — let's check it out.
         </TutPopup>}
-        {tutStep===11&&phase==="metashop"&&metaTab==="abilities"&&<TutPopup title="ABILITY SHARDS" btnText="FINISH TUTORIAL" onBtn={()=>setTutStep(0)}>
+        {tutStep===11&&phase==="metashop"&&metaTab==="abilities"&&<TutPopup title="ABILITY SHARDS" btnText="ONE MORE THING" onBtn={()=>{setTutStep(12);setPhase("settings");}}>
           Each ability has <b style={{color:"#44ddcc"}}>sub-upgrades</b> and a <b style={{color:"#ffcc44"}}>mastery</b>.<br/>
           You buy <b style={{color:"#44ddcc"}}>◈ Ability Shards</b> with Echoes, then spend shards to unlock upgrades.<br/><br/>
           These are permanent — once bought, they apply to every run where you pick that ability.<br/><br/>
-          You'll need more Echoes before you can afford one. <b style={{color:"#ccddee"}}>Good luck out there, pilot.</b>
+          You'll need more Echoes before you can afford one. Keep pushing deeper!
+        </TutPopup>}
+        {tutStep===12&&phase==="settings"&&<TutPopup title="CLOUD SYNC" btnText="FINISH TUTORIAL" onBtn={()=>setTutStep(0)}>
+          One last thing — you can <b style={{color:"#44ccaa"}}>sync your progress</b> across devices!<br/><br/>
+          In <b style={{color:"#ccddee"}}>Settings → Cloud Sync</b>, enter any <b style={{color:"#44ccaa"}}>4-digit code</b> to create your save file.<br/><br/>
+          Use the same code on another device to pick up where you left off. Your data saves automatically every 2 minutes and on every death.<br/><br/>
+          <b style={{color:"#ccddee"}}>Good luck out there, pilot.</b>
         </TutPopup>}
 
         {paused&&phase==="playing"&&!showWiki&&(
@@ -1504,7 +1547,8 @@ export default function VoidStorm(){
                 <span style={{fontSize:8,color:_isUnlocked?(_isOn?"#88ccaa":"#778899"):"#556677",display:"inline-block",width:48,textAlign:"left"}}>{!_isUnlocked?"🔒 ":""}Sprint{_isUnlocked?(_isOn?" ON":" OFF"):""}</span>
                 {_isUnlocked&&<div onClick={()=>setSprintInfo(true)} style={{width:13,height:13,borderRadius:"50%",border:"1px solid #44667788",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#667788",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#88aacc"} onMouseOut={e=>e.currentTarget.style.color="#667788"}>i</div>}
               </div>);})()}
-            <button onClick={()=>initGame()} style={{...bs2("#00e5ff"),marginTop:14,padding:"12px 40px",fontSize:16,zIndex:1,position:"relative"}} {...hv("#00e5ff")}>LAUNCH</button>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,zIndex:1,position:"relative"}}><div style={{width:8,height:8,borderRadius:"50%",background:syncCode?"#44ff88":"#ff4455",flexShrink:0}} /><span style={{fontSize:8,color:syncCode?"#88ccaa":"#cc6666"}}>{syncCode?"Progress synced":"Progress not synced"}</span></div>
+            <button onClick={()=>initGame()} style={{...bs2("#00e5ff"),marginTop:8,padding:"12px 40px",fontSize:16,zIndex:1,position:"relative"}} {...hv("#00e5ff")}>LAUNCH</button>
             {sprintInfo&&(()=>{const _isLvl=(meta.lab?.completed?.intro_sprint||0);const _isPct=_isLvl>0?[10,20,30,40,50][Math.min(_isLvl-1,4)]:0;const _isMax=meta.highWave||0;const _dur=Math.floor(_isMax*_isPct/100);const _seLvl=meta.lab?.completed?.sprint_efficiency||0;const _sePct=_seLvl>0?[40,50,60,70,80][Math.min(_seLvl-1,4)]:30;return(
               <div onClick={()=>setSprintInfo(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
                 <div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:"1px solid #44ccaa44",borderRadius:6,padding:"14px 16px",maxWidth:320,width:"100%"}}>
@@ -1763,45 +1807,44 @@ export default function VoidStorm(){
           <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",background:"#06060e",zIndex:10,overflow:"hidden"}}>
             <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:0}}><SubMenuBG/></div>
             <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 16px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}><h2 style={{color:"#ccddee",fontSize:17,letterSpacing:3,margin:0,zIndex:1,position:"relative"}}>SETTINGS</h2>
-            <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"16px 0 8px"}}>SHIP COLOUR</h3>
-            <div style={{marginBottom:10,pointerEvents:"none"}}><ShipDisplay onClick={()=>{}} size={64} /></div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,maxWidth:360}}>
-              {SHIP_COLORS.map(sc=>{
-                const sel=meta.shipColor===sc.id||(sc.id==="cyan"&&!meta.shipColor);
-                return(
-                  <button key={sc.id} onClick={()=>{setMeta(prev=>{const nx={...prev,shipColor:sc.id};saveMeta(nx);return nx;});}}
-                    style={{padding:"10px 6px",background:sel?"#141428":"#0a0a16",border:`2px solid ${sel?sc.color:sc.color+"33"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s"}}
-                    onMouseOver={e=>e.currentTarget.style.borderColor=sc.color} onMouseOut={e=>e.currentTarget.style.borderColor=sel?sc.color:sc.color+"33"}>
-                    <div style={{width:20,height:20,margin:"0 auto 6px",background:sc.color,borderRadius:"50%",boxShadow:`0 0 8px ${sc.glow}66`}} />
-                    <div style={{color:sel?sc.color:"#8899aa",fontSize:8,fontWeight:sel?"bold":"normal"}}>{sc.name}</div>
-                  </button>
-                );
-              })}
+            <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"16px 0 8px"}}>CLOUD SYNC</h3>
+            <div style={{display:"flex",gap:6,alignItems:"center",justifyContent:"center",maxWidth:300}}>
+              {!syncCode?<>
+                <input type="text" inputMode="numeric" maxLength={4} value={syncCodeInput} onChange={e=>setSyncCodeInput(e.target.value.replace(/\D/g,""))} placeholder="0000" style={{width:70,padding:"6px 8px",background:"#0a0a16",border:"1px solid #33445566",borderRadius:4,color:"#ccddee",fontSize:12,fontFamily:"monospace",textAlign:"center",letterSpacing:4,outline:"none"}} />
+                <button onClick={()=>{const c=syncCodeInput;if(c.length!==4){setSyncStatus("error");return;}if(BLOCKED_CODES.has(c)){setSyncStatus("blocked");return;}if(!_SYNC_OK){setSyncStatus("noconfig");return;}setSyncStatus("syncing");localStorage.setItem("vs4-sync-code",c);setSyncCode(c);syncCodeRef.current=c;fetch(SUPABASE_URL+"/rest/v1/saves?code=eq."+c+"&select=data",{headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY}}).then(r=>r.json()).then(rows=>{if(rows.length>0&&rows[0].data){const d=rows[0].data;if(d.meta){setMeta(d.meta);try{localStorage.setItem("vs4-meta",JSON.stringify(d.meta));}catch(e){}}if(d.history)try{localStorage.setItem("vs4-history",JSON.stringify(d.history));}catch(e){}if(d.tut)try{localStorage.setItem("vs4-tut",d.tut);}catch(e){}}setSyncStatus("synced");}).catch(()=>setSyncStatus("error"));}} style={{padding:"6px 14px",background:"#141428",border:"1px solid #44ccaa66",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:10,color:"#88ccaa",letterSpacing:1}}>SYNC</button>
+                <div onClick={()=>setShowSyncInfo(true)} style={{width:15,height:15,borderRadius:"50%",border:"1px solid #44ccaa44",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#44ccaa66",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#44ccaa"} onMouseOut={e=>e.currentTarget.style.color="#44ccaa66"}>?</div>
+              </>:<>
+                <span style={{color:"#44ccaa",fontSize:13,fontFamily:"monospace",letterSpacing:3}}>{syncCode}</span>
+                <button onClick={()=>{setSyncCode(null);syncCodeRef.current=null;setSyncStatus("none");setSyncCodeInput("");try{localStorage.removeItem("vs4-sync-code");}catch(e){}}} style={{padding:"6px 14px",background:"#141428",border:"1px solid #ff334466",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:10,color:"#cc6666",letterSpacing:1}}>DISCONNECT</button>
+                <div onClick={()=>setShowSyncInfo(true)} style={{width:15,height:15,borderRadius:"50%",border:"1px solid #44ccaa44",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#44ccaa66",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#44ccaa"} onMouseOut={e=>e.currentTarget.style.color="#44ccaa66"}>?</div>
+              </>}
             </div>
-            <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"20px 0 8px"}}>BULLET COLOUR</h3>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,maxWidth:360}}>
-              {BULLET_COLORS.map(bc=>{
-                const sel=meta.bulletColor===bc.id||(bc.id==="teal"&&(!meta.bulletColor||meta.bulletColor==="match"));
-                const dispCol=bc.color;
-                return(
-                  <button key={bc.id} onClick={()=>{setMeta(prev=>{const nx={...prev,bulletColor:bc.id};saveMeta(nx);return nx;});}}
-                    style={{padding:"8px 4px",background:sel?"#141428":"#0a0a16",border:`2px solid ${sel?dispCol:dispCol+"33"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s"}}
-                    onMouseOver={e=>e.currentTarget.style.borderColor=dispCol} onMouseOut={e=>e.currentTarget.style.borderColor=sel?dispCol:dispCol+"33"}>
-                    <div style={{width:14,height:14,margin:"0 auto 4px",background:dispCol,borderRadius:"50%",boxShadow:`0 0 6px ${dispCol}66`}} />
-                    <div style={{color:sel?dispCol:"#8899aa",fontSize:7,fontWeight:sel?"bold":"normal"}}>{bc.name}</div>
-                  </button>
-                );
-              })}
-            </div>
-            <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"20px 0 8px"}}>BACKGROUND</h3>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,maxWidth:400}}>
-              {BG_DESIGNS.map(bg=>{const sel=(meta.bgDesign||"void")===bg.id;return(
-                <button key={bg.id} onClick={()=>setMeta(prev=>{const nx={...prev,bgDesign:bg.id};saveMeta(nx);return nx;})}
-                  style={{padding:"8px 6px",background:sel?"#0a1a1a":"#08080f",border:`2px solid ${sel?"#44ddcc":"#22334433"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s",overflow:"hidden"}}
-                  onMouseOver={e=>!sel&&(e.currentTarget.style.borderColor="#44ddcc66")} onMouseOut={e=>!sel&&(e.currentTarget.style.borderColor="#22334433")}>
-                  <div style={{width:"100%",height:32,borderRadius:3,marginBottom:4,border:"1px solid #1a1a2e"}} ref={el=>{if(el)el.style.cssText=`width:100%;height:32px;border-radius:3px;margin-bottom:4px;border:1px solid #1a1a2e;${bg.css}`;}} />
-                  <div style={{color:sel?"#44ddcc":"#ccddee",fontSize:8,fontWeight:sel?"bold":"normal"}}>{bg.name}</div>
-                </button>);})}
+            {syncStatus==="error"&&<div style={{color:"#cc5555",fontSize:8,marginTop:4}}>Sync failed. Check your connection.</div>}
+            {syncStatus==="blocked"&&<div style={{color:"#cc8855",fontSize:8,marginTop:4}}>That code is too obvious. Try something less guessable.</div>}
+            {syncStatus==="noconfig"&&<div style={{color:"#cc8855",fontSize:8,marginTop:4}}>Cloud sync not configured. See SUPABASE_URL in code.</div>}
+            {syncStatus==="syncing"&&<div style={{color:"#44ccaa",fontSize:8,marginTop:4}}>Syncing...</div>}
+            {syncStatus==="synced"&&syncCode&&<div style={{color:"#44ccaa88",fontSize:8,marginTop:4}}>Connected · auto-saves every 2 min</div>}
+            {showSyncInfo&&(
+              <div onClick={()=>setShowSyncInfo(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+                <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:340,width:"100%"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div style={{color:"#44ccaa",fontSize:14,fontWeight:"bold",letterSpacing:2}}>CLOUD SYNC</div>
+                    <button onClick={()=>setShowSyncInfo(false)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+                  </div>
+                  <div style={{color:"#99aabb",fontSize:10,lineHeight:1.7}}>
+                    Your <b style={{color:"#ccddee"}}>4-digit code</b> is your account — no username or password needed. Just remember it.<br/><br/>
+                    Enter the same code on any device to <b style={{color:"#44ccaa"}}>load your progress</b>. All meta upgrades, ability shards, echoes, lab progress, and run history are synced.<br/><br/>
+                    Data saves <b style={{color:"#44ccaa"}}>automatically</b> every 2 minutes while playing and whenever you die or forfeit a run.<br/><br/>
+                    <span style={{color:"#cc8855",fontSize:9}}>The most recent save always wins — if you play on two devices at the same time, the last one to sync will overwrite the other.</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"20px 0 8px"}}>CUSTOMISATION</h3>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",maxWidth:380}}>
+              <button onClick={()=>setShowShipPopup(true)} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"center",transition:"all 0.2s"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}>Ship Colour</button>
+              <button onClick={()=>setShowBulletPopup(true)} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"center",transition:"all 0.2s"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}>Bullet Colour</button>
+              <button onClick={()=>setShowBgPopup(true)} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"center",transition:"all 0.2s"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}>Background</button>
             </div>
             <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"20px 0 8px"}}>MOBILE CONTROLS</h3>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",maxWidth:380}}>
@@ -1837,6 +1880,64 @@ export default function VoidStorm(){
             </div>
             {confirmReset&&<div style={{color:"#cc8888",fontSize:8,marginTop:4}}>This will erase all Echoes, meta upgrades, ability shards, and ability upgrades permanently.</div>}
             <button onClick={()=>{if(_returnToPauseRef.current){pausedRef.current=true;setPaused(true);setPhase("playing");}else{setPhase("menu");}}} style={{...bs2("#55667744"),marginTop:20,padding:"8px 24px",fontSize:11,borderWidth:1,color:"#8899aa"}}>← BACK</button>
+          {showShipPopup&&(
+            <div onClick={()=>setShowShipPopup(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+              <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <div style={{color:"#44ccaa",fontSize:15,fontWeight:"bold",letterSpacing:2}}>SHIP COLOUR</div>
+                  <button onClick={()=>setShowShipPopup(false)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+                </div>
+                <div style={{marginBottom:10,display:"flex",justifyContent:"center",pointerEvents:"none"}}><ShipDisplay onClick={()=>{}} size={64} /></div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
+                  {SHIP_COLORS.map(sc=>{const sel=meta.shipColor===sc.id||(sc.id==="cyan"&&!meta.shipColor);return(
+                    <button key={sc.id} onClick={()=>{setMeta(prev=>{const nx={...prev,shipColor:sc.id};saveMeta(nx);return nx;});}}
+                      style={{padding:"10px 6px",background:sel?"#141428":"#0a0a16",border:`2px solid ${sel?sc.color:sc.color+"33"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s"}}
+                      onMouseOver={e=>e.currentTarget.style.borderColor=sc.color} onMouseOut={e=>e.currentTarget.style.borderColor=sel?sc.color:sc.color+"33"}>
+                      <div style={{width:20,height:20,margin:"0 auto 6px",background:sc.color,borderRadius:"50%",boxShadow:`0 0 8px ${sc.glow}66`}} />
+                      <div style={{color:sel?sc.color:"#8899aa",fontSize:8,fontWeight:sel?"bold":"normal"}}>{sc.name}</div>
+                    </button>);})}
+                </div>
+              </div>
+            </div>
+          )}
+          {showBulletPopup&&(
+            <div onClick={()=>setShowBulletPopup(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+              <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <div style={{color:"#44ccaa",fontSize:15,fontWeight:"bold",letterSpacing:2}}>BULLET COLOUR</div>
+                  <button onClick={()=>setShowBulletPopup(false)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6}}>
+                  {BULLET_COLORS.map(bc=>{const sel=meta.bulletColor===bc.id||(bc.id==="teal"&&(!meta.bulletColor||meta.bulletColor==="match"));const dispCol=bc.color;return(
+                    <button key={bc.id} onClick={()=>{setMeta(prev=>{const nx={...prev,bulletColor:bc.id};saveMeta(nx);return nx;});}}
+                      style={{padding:"8px 4px",background:sel?"#141428":"#0a0a16",border:`2px solid ${sel?dispCol:dispCol+"33"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s"}}
+                      onMouseOver={e=>e.currentTarget.style.borderColor=dispCol} onMouseOut={e=>e.currentTarget.style.borderColor=sel?dispCol:dispCol+"33"}>
+                      <div style={{width:14,height:14,margin:"0 auto 4px",background:dispCol,borderRadius:"50%",boxShadow:`0 0 6px ${dispCol}66`}} />
+                      <div style={{color:sel?dispCol:"#8899aa",fontSize:7,fontWeight:sel?"bold":"normal"}}>{bc.name}</div>
+                    </button>);})}
+                </div>
+              </div>
+            </div>
+          )}
+          {showBgPopup&&(
+            <div onClick={()=>setShowBgPopup(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+              <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:400,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <div style={{color:"#44ccaa",fontSize:15,fontWeight:"bold",letterSpacing:2}}>BACKGROUND</div>
+                  <button onClick={()=>setShowBgPopup(false)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6}}>
+                  {BG_DESIGNS.map(bg=>{const sel=(meta.bgDesign||"void")===bg.id;return(
+                    <button key={bg.id} onClick={()=>setMeta(prev=>{const nx={...prev,bgDesign:bg.id};saveMeta(nx);return nx;})}
+                      style={{padding:"8px 6px",background:sel?"#0a1a1a":"#08080f",border:`2px solid ${sel?"#44ddcc":"#22334433"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s",overflow:"hidden"}}
+                      onMouseOver={e=>!sel&&(e.currentTarget.style.borderColor="#44ddcc66")} onMouseOut={e=>!sel&&(e.currentTarget.style.borderColor="#22334433")}>
+                      <div style={{width:"100%",height:32,borderRadius:3,marginBottom:4,border:"1px solid #1a1a2e"}} ref={el=>{if(el)el.style.cssText=`width:100%;height:32px;border-radius:3px;margin-bottom:4px;border:1px solid #1a1a2e;${bg.css}`;}} />
+                      <div style={{color:sel?"#44ddcc":"#ccddee",fontSize:8,fontWeight:sel?"bold":"normal"}}>{bg.name}</div>
+                    </button>);})}
+                </div>
+              </div>
+            </div>
+          )}
           </div></div>
         )}
 
