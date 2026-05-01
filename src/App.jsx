@@ -302,7 +302,7 @@ export default function VoidStorm(){
     if(syncCodeRef.current&&_SYNC_OK){
       clearTimeout(_cloudDebounce.current);
       _cloudDebounce.current=setTimeout(()=>{
-        const code=syncCodeRef.current;if(!code)return;
+        const code=syncCodeRef.current;if(!code||document.hidden)return;
         try{const h=localStorage.getItem("vs4-history")||"[]";const t=localStorage.getItem("vs4-tut")||"0";
         fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code,data:{meta:_ms,history:JSON.parse(h),tut:t},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(e){}
       },3000);
@@ -320,7 +320,7 @@ export default function VoidStorm(){
   useEffect(()=>{
     if(!syncCode||!_SYNC_OK)return;
     const id=setInterval(()=>{
-      const code=syncCodeRef.current;if(!code)return;
+      const code=syncCodeRef.current;if(!code||document.hidden)return;
       try{const _ts2=Date.now();const m={...metaRef.current,savedAt:_ts2};const h=localStorage.getItem("vs4-history")||"[]";const t=localStorage.getItem("vs4-tut")||"0";
       fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code,data:{meta:m,history:JSON.parse(h),tut:t},updated_at:new Date().toISOString()})}).catch(()=>{});
       try{localStorage.setItem("vs4-meta",JSON.stringify(m));}catch(e2){}}catch(e){}
@@ -1766,14 +1766,14 @@ export default function VoidStorm(){
                   </div>
                   {/* Chart area */}
                   <div style={{flex:1,position:"relative"}}>
-                    <div onMouseLeave={()=>setHistoryHover(null)} style={{display:"flex",alignItems:"flex-end",gap:_barGap,height:_chartH,borderBottom:"1px solid #22334466",borderLeft:"1px solid #22334466",padding:"0 2px",overflow:"hidden"}}>
+                    <div onMouseLeave={()=>setHistoryHover(null)} style={{display:"flex",alignItems:"flex-end",gap:_barGap,height:_chartH,borderBottom:"1px solid #22334466",borderLeft:"1px solid #22334466",padding:"0 2px",overflow:"hidden",width:"100%"}}>
                       {_filtered.map((r,i)=>{const _bVal=historyMode==="echoes"?(r.echoes||0):r.wave;const h=Math.max(4,(_chartH-10)*(_bVal/_maxW));return <div key={i}
                         onMouseEnter={()=>setHistoryHover(i)} onMouseLeave={()=>{}}
-                        style={{width:_barW,height:h,background:r.forfeited?"#cc885566":"#00e5ff55",borderTop:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderLeft:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderRight:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderBottom:"none",borderRadius:"2px 2px 0 0",cursor:"pointer",transition:"border 0.1s",flexShrink:0}} />})}
+                        style={{flex:"1 1 0",maxWidth:_barW,minWidth:2,height:h,background:r.forfeited?"#cc885566":"#00e5ff55",borderTop:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderLeft:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderRight:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderBottom:"none",borderRadius:"2px 2px 0 0",cursor:"pointer",transition:"border 0.1s"}} />})}
                     </div>
                     {/* Trendline overlay */}
-                    {_filtered.length>=3&&<svg style={{position:"absolute",top:0,left:0,width:"100%",height:_chartH,pointerEvents:"none"}} viewBox={`0 0 ${_filtered.length*_barW+(_filtered.length-1)*_barGap} ${_chartH}`} preserveAspectRatio="none">
-                      <polyline fill="none" stroke="#ffcc44" strokeWidth="2" strokeOpacity="0.5" strokeLinejoin="round" points={_trend.map((tw,i)=>{const x=i*(_barW+_barGap)+_barW/2;const y=_chartH-(_chartH-10)*(tw/_maxW);return `${x},${y}`;}).join(" ")} />
+                    {_filtered.length>=3&&<svg style={{position:"absolute",top:0,left:0,width:"100%",height:_chartH,pointerEvents:"none"}} viewBox={`0 0 1000 ${_chartH}`} preserveAspectRatio="none">
+                      <polyline fill="none" stroke="#ffcc44" strokeWidth="2" strokeOpacity="0.5" strokeLinejoin="round" points={_trend.map((tw,i)=>{const x=(i+0.5)/_filtered.length*1000;const y=_chartH-(_chartH-10)*(tw/_maxW);return `${x},${y}`;}).join(" ")} />
                     </svg>}
                     {/* Midline guide */}
                     <div style={{position:"absolute",top:_chartH/2,left:0,right:0,borderTop:"1px dashed #22334433",pointerEvents:"none"}} />
