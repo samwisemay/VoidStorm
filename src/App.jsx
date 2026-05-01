@@ -296,37 +296,32 @@ export default function VoidStorm(){
       const _sc=localStorage.getItem("vs4-sync-code");if(_sc){setSyncCode(_sc);syncCodeRef.current=_sc;setSyncStatus("synced");}
     }catch(e){}
   },[]);
+  const _cloudPush=useCallback((ms)=>{
+    const code=syncCodeRef.current;if(!code||!_SYNC_OK)return;
+    try{const h=localStorage.getItem("vs4-history")||"[]";const t=localStorage.getItem("vs4-tut")||"0";
+    fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code,data:{meta:ms,history:JSON.parse(h),tut:t},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(e){}
+  },[]);
+  const _cloudPull=useCallback(()=>{
+    const code=syncCodeRef.current;if(!code||!_SYNC_OK)return;
+    fetch(SUPABASE_URL+"/rest/v1/saves?code=eq."+code+"&select=data",{headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY}}).then(r=>r.json()).then(rows=>{if(rows.length>0&&rows[0].data&&rows[0].data.meta){const cd=rows[0].data;const cloudAt=cd.meta.savedAt||0;const localAt=metaRef.current.savedAt||0;if(cloudAt>localAt){setMeta(cd.meta);try{localStorage.setItem("vs4-meta",JSON.stringify(cd.meta));}catch(e){}if(cd.history)try{localStorage.setItem("vs4-history",JSON.stringify(cd.history));}catch(e){}if(cd.tut)try{localStorage.setItem("vs4-tut",cd.tut);}catch(e){}}}}).catch(()=>{});
+  },[]);
   const saveMeta=useCallback(m=>{
     const _ts=Date.now();const _ms={...m,savedAt:_ts};
     try{localStorage.setItem("vs4-meta",JSON.stringify(_ms));}catch(e){}
-    if(syncCodeRef.current&&_SYNC_OK){
-      clearTimeout(_cloudDebounce.current);
-      _cloudDebounce.current=setTimeout(()=>{
-        const code=syncCodeRef.current;if(!code||document.hidden)return;
-        try{const h=localStorage.getItem("vs4-history")||"[]";const t=localStorage.getItem("vs4-tut")||"0";
-        fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code,data:{meta:_ms,history:JSON.parse(h),tut:t},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(e){}
-      },3000);
-    }
-  },[]);
+    _cloudPush(_ms);
+  },[_cloudPush]);
   useEffect(()=>{syncCodeRef.current=syncCode;},[syncCode]);
   useEffect(()=>{
     if(!_SYNC_OK)return;
-    const _onVis=()=>{if(document.visibilityState==="visible"&&syncCodeRef.current){
-      fetch(SUPABASE_URL+"/rest/v1/saves?code=eq."+syncCodeRef.current+"&select=data",{headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY}}).then(r=>r.json()).then(rows=>{if(rows.length>0&&rows[0].data&&rows[0].data.meta){const cd=rows[0].data;const cloudAt=cd.meta.savedAt||0;const localAt=metaRef.current.savedAt||0;if(cloudAt>localAt){setMeta(cd.meta);try{localStorage.setItem("vs4-meta",JSON.stringify(cd.meta));}catch(e){}if(cd.history)try{localStorage.setItem("vs4-history",JSON.stringify(cd.history));}catch(e){}if(cd.tut)try{localStorage.setItem("vs4-tut",cd.tut);}catch(e){}}}}).catch(()=>{});
-    }};
+    const _onVis=()=>{if(document.visibilityState==="visible")_cloudPull();};
     document.addEventListener("visibilitychange",_onVis);
     return()=>document.removeEventListener("visibilitychange",_onVis);
-  },[]);
+  },[_cloudPull]);
   useEffect(()=>{
     if(!syncCode||!_SYNC_OK)return;
-    const id=setInterval(()=>{
-      const code=syncCodeRef.current;if(!code||document.hidden)return;
-      try{const _ts2=Date.now();const m={...metaRef.current,savedAt:_ts2};const h=localStorage.getItem("vs4-history")||"[]";const t=localStorage.getItem("vs4-tut")||"0";
-      fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code,data:{meta:m,history:JSON.parse(h),tut:t},updated_at:new Date().toISOString()})}).catch(()=>{});
-      try{localStorage.setItem("vs4-meta",JSON.stringify(m));}catch(e2){}}catch(e){}
-    },120000);
+    const id=setInterval(()=>{if(!document.hidden)_cloudPull();},30000);
     return()=>clearInterval(id);
-  },[syncCode]);
+  },[syncCode,_cloudPull]);
 
   const gml=useCallback(id=>meta.levels[id]||0,[meta]);
   const metaTier=meta.metaTier||1;
@@ -1766,10 +1761,10 @@ export default function VoidStorm(){
                   </div>
                   {/* Chart area */}
                   <div style={{flex:1,position:"relative"}}>
-                    <div onMouseLeave={()=>setHistoryHover(null)} style={{display:"flex",alignItems:"flex-end",gap:_barGap,height:_chartH,borderBottom:"1px solid #22334466",borderLeft:"1px solid #22334466",padding:"0 2px",overflow:"hidden",width:"100%"}}>
+                    <div onMouseLeave={()=>setHistoryHover(null)} style={{display:"grid",gridTemplateColumns:`repeat(${_filtered.length},1fr)`,alignItems:"end",height:_chartH,borderBottom:"1px solid #22334466",borderLeft:"1px solid #22334466",overflow:"hidden"}}>
                       {_filtered.map((r,i)=>{const _bVal=historyMode==="echoes"?(r.echoes||0):r.wave;const h=Math.max(4,(_chartH-10)*(_bVal/_maxW));return <div key={i}
                         onMouseEnter={()=>setHistoryHover(i)} onMouseLeave={()=>{}}
-                        style={{flex:"1 1 0",maxWidth:_barW,minWidth:2,height:h,background:r.forfeited?"#cc885566":"#00e5ff55",borderTop:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderLeft:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderRight:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderBottom:"none",borderRadius:"2px 2px 0 0",cursor:"pointer",transition:"border 0.1s"}} />})}
+                        style={{height:h,margin:"0 1px",background:r.forfeited?"#cc885566":"#00e5ff55",borderTop:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderLeft:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderRight:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderBottom:"none",borderRadius:"2px 2px 0 0",cursor:"pointer",transition:"border 0.1s"}} />})}
                     </div>
                     {/* Trendline overlay */}
                     {_filtered.length>=3&&<svg style={{position:"absolute",top:0,left:0,width:"100%",height:_chartH,pointerEvents:"none"}} viewBox={`0 0 1000 ${_chartH}`} preserveAspectRatio="none">
@@ -1920,6 +1915,7 @@ export default function VoidStorm(){
             </div>
             {confirmReset&&<div style={{color:"#cc8888",fontSize:8,marginTop:4}}>This will erase all Echoes, meta upgrades, ability shards, and ability upgrades permanently.</div>}
             <button onClick={()=>{if(_returnToPauseRef.current){pausedRef.current=true;setPaused(true);setPhase("playing");}else{setPhase("menu");}}} style={{...bs2("#55667744"),marginTop:20,padding:"8px 24px",fontSize:11,borderWidth:1,color:"#8899aa"}}>← BACK</button>
+            <div style={{color:"#334455",fontSize:7,marginTop:6,letterSpacing:1}}>Version 2.1.4</div>
           {showShipPopup&&(
             <div onClick={()=>setShowShipPopup(false)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
               <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
@@ -1930,7 +1926,7 @@ export default function VoidStorm(){
                 <div style={{marginBottom:10,display:"flex",justifyContent:"center",pointerEvents:"none"}}><ShipDisplay onClick={()=>{}} size={64} /></div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
                   {SHIP_COLORS.map(sc=>{const sel=meta.shipColor===sc.id||(sc.id==="cyan"&&!meta.shipColor);return(
-                    <button key={sc.id} onClick={()=>{setMeta(prev=>{const nx={...prev,shipColor:sc.id};saveMeta(nx);return nx;});}}
+                    <button key={sc.id} onClick={()=>{setMeta(prev=>{const nx={...prev,shipColor:sc.id};saveMeta(nx);return nx;});const _sc2=SHIP_COLORS.find(c=>c.id===sc.id)||SHIP_COLORS[0];if(gsRef.current)gsRef.current.shipCol=_sc2;}}
                       style={{padding:"10px 6px",background:sel?"#141428":"#0a0a16",border:`2px solid ${sel?sc.color:sc.color+"33"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s"}}
                       onMouseOver={e=>e.currentTarget.style.borderColor=sc.color} onMouseOut={e=>e.currentTarget.style.borderColor=sel?sc.color:sc.color+"33"}>
                       <div style={{width:20,height:20,margin:"0 auto 6px",background:sc.color,borderRadius:"50%",boxShadow:`0 0 8px ${sc.glow}66`}} />
@@ -1949,7 +1945,7 @@ export default function VoidStorm(){
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6}}>
                   {BULLET_COLORS.map(bc=>{const sel=meta.bulletColor===bc.id||(bc.id==="teal"&&(!meta.bulletColor||meta.bulletColor==="match"));const dispCol=bc.color;return(
-                    <button key={bc.id} onClick={()=>{setMeta(prev=>{const nx={...prev,bulletColor:bc.id};saveMeta(nx);return nx;});}}
+                    <button key={bc.id} onClick={()=>{setMeta(prev=>{const nx={...prev,bulletColor:bc.id};saveMeta(nx);return nx;});if(gsRef.current){const _bcId=bc.id;if(_bcId==="match")gsRef.current.bulCol="#44ddcc";else{const _bc2=BULLET_COLORS.find(c=>c.id===_bcId);gsRef.current.bulCol=_bc2?.color||"#44ddcc";}}}}
                       style={{padding:"8px 4px",background:sel?"#141428":"#0a0a16",border:`2px solid ${sel?dispCol:dispCol+"33"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s"}}
                       onMouseOver={e=>e.currentTarget.style.borderColor=dispCol} onMouseOut={e=>e.currentTarget.style.borderColor=sel?dispCol:dispCol+"33"}>
                       <div style={{width:14,height:14,margin:"0 auto 4px",background:dispCol,borderRadius:"50%",boxShadow:`0 0 6px ${dispCol}66`}} />
