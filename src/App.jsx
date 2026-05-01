@@ -310,6 +310,14 @@ export default function VoidStorm(){
   },[]);
   useEffect(()=>{syncCodeRef.current=syncCode;},[syncCode]);
   useEffect(()=>{
+    if(!_SYNC_OK)return;
+    const _onVis=()=>{if(document.visibilityState==="visible"&&syncCodeRef.current){
+      fetch(SUPABASE_URL+"/rest/v1/saves?code=eq."+syncCodeRef.current+"&select=data",{headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY}}).then(r=>r.json()).then(rows=>{if(rows.length>0&&rows[0].data&&rows[0].data.meta){const cd=rows[0].data;const cloudAt=cd.meta.savedAt||0;const localAt=metaRef.current.savedAt||0;if(cloudAt>localAt){setMeta(cd.meta);try{localStorage.setItem("vs4-meta",JSON.stringify(cd.meta));}catch(e){}if(cd.history)try{localStorage.setItem("vs4-history",JSON.stringify(cd.history));}catch(e){}if(cd.tut)try{localStorage.setItem("vs4-tut",cd.tut);}catch(e){}}}}).catch(()=>{});
+    }};
+    document.addEventListener("visibilitychange",_onVis);
+    return()=>document.removeEventListener("visibilitychange",_onVis);
+  },[]);
+  useEffect(()=>{
     if(!syncCode||!_SYNC_OK)return;
     const id=setInterval(()=>{
       const code=syncCodeRef.current;if(!code)return;
@@ -709,7 +717,8 @@ export default function VoidStorm(){
     if(has(gs,"homing")){const _hmDelay=hasAU(gs,"homing_sub1")?1000:1500;p.homingTimer+=dt;if(p.homingTimer>=_hmDelay&&gs.enemies.length>0){p.homingTimer=0;const _mCrit=hasAU(gs,"homing_sub2")&&Math.random()<0.15;gs.homingMissiles.push({x:p.x,y:p.y-10,vx:0,vy:-2,dmg:p.damage*0.4*(1+(p._kineticActive?p.kineticBonus:0))*(_mCrit?2.5:1),life:260,size:4,isCrit:_mCrit});}}
     if(has(gs,"gravity")){p.gravTimer+=dt;if(p.gravTimer>=8000){p.gravTimer=0;gs._gwCount=(gs._gwCount||0)+1;const isGold=hasAU(gs,"gravity_mastery")&&gs._gwCount%2===0;const cx=gs.enemies.length>0?gs.enemies.reduce((s,e)=>s+e.x,0)/gs.enemies.length:GW/2;const cy=gs.enemies.length>0?gs.enemies.reduce((s,e)=>s+e.y,0)/gs.enemies.length:GH*0.3;gs.gravWells.push({x:cx,y:cy,life:240,ml:240,r:110,golden:isGold});if(hasAU(gs,"gravity_sub2")){const _ga=rand(0,PI2);const _gd=110;const ox=cx+Math.cos(_ga)*_gd,oy=cy+Math.sin(_ga)*_gd;gs.gravWells.push({x:clamp(ox,30,GW-30),y:clamp(oy,30,GH*0.6),life:240,ml:240,r:70,golden:isGold,conjoined:true,parentX:cx,parentY:cy});}}}
 
-    if(has(gs,"void_regen")){const _vrWin=hasAU(gs,"void_regen_sub2")&&gs.waveKilled>0?2500:4000;if(gs.time-p.lastDmgTime>_vrWin){const vrCap=p.maxHp*(hasAU(gs,"void_regen_sub1")?0.9:0.6);const vrTarget=has(gs,"overcharge")?p.maxHp*(hasAU(gs,"overcharge_sub1")?1.4:1.2):vrCap;if(p.hp<vrTarget){const vrHeal=Math.min(vrTarget-p.hp,p.maxHp*0.02*dt*0.001);if(vrHeal>0){p.hp+=vrHeal;trackHeal(gs,"Void Regen",vrHeal);}else{p.hp=p.hp;}if(!gs._vrPlus)gs._vrPlus=[];gs._vrPlusT=(gs._vrPlusT||0)+dt;if(gs._vrPlusT>120){gs._vrPlusT=0;gs._vrPlus.push({ox:rand(-14,14),oy:rand(-6,10),vy:-rand(0.6,1.4),life:35,ml:35,sz:rand(2.5,4.5)});}gs._vrPlus.forEach(v=>{v.oy+=v.vy*dt*0.06;v.life-=dt*0.06;});gs._vrPlus=gs._vrPlus.filter(v=>v.life>0);}}}
+    if(has(gs,"void_regen")){const _vrWin=hasAU(gs,"void_regen_sub2")&&gs.waveKilled>0?2500:4000;if(gs.time-p.lastDmgTime>_vrWin){const vrCap=p.maxHp*(hasAU(gs,"void_regen_sub1")?0.9:0.6);const vrTarget=has(gs,"overcharge")?p.maxHp*(hasAU(gs,"overcharge_sub1")?1.4:1.2):vrCap;if(p.hp<vrTarget){const vrHeal=Math.min(vrTarget-p.hp,p.maxHp*0.02*dt*0.001);if(vrHeal>0){p.hp+=vrHeal;trackHeal(gs,"Void Regen",vrHeal);}else{p.hp=p.hp;}if(!gs._vrPlus)gs._vrPlus=[];gs._vrPlusT=(gs._vrPlusT||0)+dt;if(gs._vrPlusT>120){gs._vrPlusT=0;gs._vrPlus.push({ox:rand(-14,14),oy:rand(-6,10),vy:-rand(0.6,1.4),life:35,ml:35,sz:rand(2.5,4.5)});}}}}
+    if(gs._vrPlus&&gs._vrPlus.length>0){gs._vrPlus.forEach(v=>{v.oy+=v.vy*dt*0.06;v.life-=dt*0.06;});gs._vrPlus=gs._vrPlus.filter(v=>v.life>0);}
     gs.gravWells.forEach(gw=>{gw.life-=dt*0.06;gs.enemies.forEach(e=>{if(e.type==="boss")return;if(dist(e,gw)<gw.r){const a=ag(e,gw);e.x+=Math.cos(a)*1.4*dt*0.06;e.y+=Math.sin(a)*1.4*dt*0.06;if(gw.golden)e._inGoldenGW=true;}else if(gw.golden&&e._inGoldenGW){e._inGoldenGW=false;}});gs.eBullets.forEach(b=>{if(dist(b,gw)<gw.r){const a=ag(b,gw);b.vx+=Math.cos(a)*0.04*dt*0.06;b.vy+=Math.sin(a)*0.04*dt*0.06;if(hasAU(gs,"gravity_sub1")){if(!b._origSz)b._origSz=b.size;b.size=Math.max(b._origSz*0.68,b.size-b._origSz*0.04*dt*0.001);}}});});
     gs.gravWells=gs.gravWells.filter(g=>g.life>0);
     gs.novaRings.forEach(nr=>{nr.life-=dt*0.06;nr.r=lerp(0,nr.maxR,1-nr.life/nr.ml);});
@@ -982,7 +991,7 @@ export default function VoidStorm(){
     });
     if(has(gs,"orbitals")){const _iRr=hasAU(gs,"orbitals_mastery")?32:36;gs.orbitals.forEach(o=>{let ox,oy;if(o.layer===1){ox=gs.player.x+Math.cos(o.angle)*190;oy=gs.player.y+Math.sin(o.angle)*48;}else{ox=gs.player.x+Math.cos(o.angle)*_iRr;oy=gs.player.y+Math.sin(o.angle)*_iRr;}ctx.fillStyle="#00e5ff";ctx.globalAlpha=0.7;ctx.beginPath();ctx.arc(ox,oy,5,0,PI2);ctx.fill();ctx.globalAlpha=0.2;ctx.beginPath();ctx.arc(ox,oy,9,0,PI2);ctx.fill();ctx.globalAlpha=1;});}
     gs.drones.forEach(dr=>{ctx.fillStyle=scc;ctx.fillRect(dr.x-4,dr.y-4,8,8);ctx.strokeStyle=scc+"44";ctx.lineWidth=1;ctx.strokeRect(dr.x-6,dr.y-6,12,12);if(gs._droneRage){ctx.fillStyle="#ff4444";ctx.globalAlpha=0.5+Math.sin(gs.time*0.015)*0.2;for(let _fi=0;_fi<5;_fi++){const _fa=gs.time*0.007+_fi*1.3;ctx.beginPath();ctx.arc(dr.x+Math.sin(_fa)*6,dr.y-7-Math.abs(Math.sin(_fa*1.3))*8,2.5+Math.sin(_fa)*1,0,PI2);ctx.fill();}ctx.globalAlpha=1;}});if(gs._droneRage&&gs.enemies.includes(gs._droneRage)){const _dt=gs._droneRage;ctx.strokeStyle="#ff444466";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(_dt.x,_dt.y,_dt.size+4,0,PI2);ctx.stroke();ctx.strokeStyle="#ff222244";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(_dt.x-_dt.size*0.7,_dt.y);ctx.lineTo(_dt.x+_dt.size*0.7,_dt.y);ctx.stroke();ctx.beginPath();ctx.moveTo(_dt.x,_dt.y-_dt.size*0.7);ctx.lineTo(_dt.x,_dt.y+_dt.size*0.7);ctx.stroke();ctx.fillStyle="#ff333344";ctx.beginPath();ctx.arc(_dt.x,_dt.y,3,0,PI2);ctx.fill();ctx.globalAlpha=1;}
-    if(has(gs,"homing")&&gs.player.alive){const hx=lerp(gs._seekerX||gs.player.x,gs.player.x-20,0.04);const hy=lerp(gs._seekerY||gs.player.y,gs.player.y+18,0.04);gs._seekerX=hx;gs._seekerY=hy;ctx.fillStyle=scc;ctx.globalAlpha=0.6;ctx.beginPath();ctx.arc(hx,hy,5,0,PI2);ctx.fill();ctx.strokeStyle=scc+"44";ctx.lineWidth=1;ctx.beginPath();ctx.arc(hx,hy,7,0,PI2);ctx.stroke();ctx.globalAlpha=1;}
+    if(has(gs,"homing")&&gs.player.alive){const hx=lerp(gs._seekerX||gs.player.x,gs.player.x-20,0.04);const hy=lerp(gs._seekerY||gs.player.y,gs.player.y+18,0.04);gs._seekerX=hx;gs._seekerY=hy;ctx.fillStyle=scc;ctx.globalAlpha=0.85;ctx.beginPath();ctx.arc(hx,hy,5,0,PI2);ctx.fill();ctx.strokeStyle=scc+"44";ctx.lineWidth=1;ctx.beginPath();ctx.arc(hx,hy,7,0,PI2);ctx.stroke();ctx.globalAlpha=1;}
 
     const p=gs.player;
     if(p.alive){const blink=p.invTimer>0&&Math.floor(p.invTimer/40)%2===0;const sc=gs.shipCol||{color:"#00e5ff",glow:"#00e5ff"};if(!blink){
@@ -1089,6 +1098,7 @@ export default function VoidStorm(){
       if(wikiRef.current){setShowWiki(false);setShowStats(false);}
       else{setPaused(p=>!p);setShowStats(false);}
     }
+    if(k==="enter"&&phRef.current==="shop"){const gs=gsRef.current;if(gs&&!gs.isTutorial){cont();}}
   };window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[]);
 
   function buyShop(uid){const gs=gsRef.current;if(!gs)return;if(gs.isTutorial&&(tutRef.current===3||tutRef.current===4)&&uid!=="maxhp")return;const up=SHOP.find(u=>u.id===uid);if(up.wave>gs.wave)return;const lvl=gs.upgrades[uid]||0;if(lvl>=up.max)return;const cost=Math.ceil(up.base*Math.pow(1+lvl*up.scale,up.exp));if(gs[up.cur]<cost)return;gs[up.cur]-=cost;gs.upgrades[uid]=lvl+1;const _hpBefore=gs.player.hp;up.fn(gs.player);if(uid==="maxhp"){const _healed=gs.player.hp-_hpBefore;if(_healed>0)trackHeal(gs,"Hull Plating",_healed);if(gs.isTutorial&&tutRef.current<=4)setTutStep(45);}setShopData({scrap:gs.scrap,cores:gs.cores,plasma:gs.plasma,upgrades:{...gs.upgrades},wave:gs.wave});}
@@ -1492,7 +1502,7 @@ export default function VoidStorm(){
                 <div onClick={()=>setHeInfoId(heInfoId==="pause_echo"?null:"pause_echo")} style={{width:13,height:13,borderRadius:"50%",border:"1px solid #ffcc4466",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#ffcc4488",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#ffcc44"} onMouseOut={e=>e.currentTarget.style.color="#ffcc4488"}>?</div>
               </div>);})()}
             {heInfoId==="pause_echo"&&(()=>{const _mr2=metaRef.current;const _t2=_mr2.metaTier||1;const _phW2=_mr2.phantomHighWave||0;const _prW2=_mr2.practiseHighWave||0;const _phL2=(_mr2.lab?.completed?.phantom_enhance||0)*0.001;const _prL2=(_mr2.lab?.completed?.practise_enhance||0)*0.008;const _phV2=1+_phW2*(0.01+_phL2);const _prV2=1+_prW2*(0.006+_prL2);const _pMults=[{name:"Tier Bonus",color:"#bb99ff",val:_t2===3?2.5:_t2===2?1.5:1},{name:"Phantom",color:"#cc66cc",val:_t2>=2?_phV2:1},{name:"Practise",color:"#cc9966",val:_t2>=2?_prV2:1},{name:"Enforcer",color:"#ff5577",val:_t2>=2?1+(_mr2.enforcerKills||0)*0.025:1},{name:"Diffusion",color:"#44ddcc",val:1}];const _pTot=_pMults.reduce((a,m)=>a*m.val,1);return(
-              <div onClick={()=>setHeInfoId(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+              <div onClick={()=>setHeInfoId(null)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
                 <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #ffcc4433",borderRadius:6,padding:"16px 14px",maxWidth:340,width:"100%"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                     <div style={{color:"#ffcc44",fontSize:15,fontWeight:"bold",letterSpacing:2}}>HYPERECHO</div>
@@ -1552,7 +1562,7 @@ export default function VoidStorm(){
             <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,zIndex:1,position:"relative"}}><div style={{width:8,height:8,borderRadius:"50%",background:syncCode?"#44ff88":"#ff4455",flexShrink:0}} /><span style={{fontSize:8,color:syncCode?"#88ccaa":"#cc6666"}}>{syncCode?"Progress synced":"Progress not synced"}</span></div>
             <button onClick={()=>initGame()} style={{...bs2("#00e5ff"),marginTop:8,padding:"12px 40px",fontSize:16,zIndex:1,position:"relative"}} {...hv("#00e5ff")}>LAUNCH</button>
             {sprintInfo&&(()=>{const _isLvl=(meta.lab?.completed?.intro_sprint||0);const _isPct=_isLvl>0?[10,20,30,40,50][Math.min(_isLvl-1,4)]:0;const _isMax=meta.highWave||0;const _dur=Math.floor(_isMax*_isPct/100);const _seLvl=meta.lab?.completed?.sprint_efficiency||0;const _sePct=_seLvl>0?[40,50,60,70,80][Math.min(_seLvl-1,4)]:30;return(
-              <div onClick={()=>setSprintInfo(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+              <div onClick={()=>setSprintInfo(false)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
                 <div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:"1px solid #44ccaa44",borderRadius:6,padding:"14px 16px",maxWidth:320,width:"100%"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                     <div style={{color:"#44ccaa",fontSize:13,fontWeight:"bold"}}>INTRO SPRINT</div>
@@ -1716,7 +1726,7 @@ export default function VoidStorm(){
           const _maxW=_filtered.length>0?Math.max(..._filtered.map(r=>historyMode==="echoes"?(r.echoes||0):r.wave)):1;
           const _totalRuns=_hist.length;const _totalKills=_hist.reduce((s,r)=>s+(r.kills||0),0);const _totalEchoes=_hist.reduce((s,r)=>s+(r.echoes||0),0);
           const _chartH=300;const _chartW=GW-80;
-          const _barW=_filtered.length>0?Math.max(2,Math.min(24,Math.floor(_chartW/_filtered.length))):24;
+          const _barGap=_filtered.length>40?1:2;const _barW=_filtered.length>0?Math.max(2,Math.min(24,Math.floor((_chartW-(_filtered.length-1)*_barGap)/_filtered.length))):24;
           /* cumulative lifetime echoes from history order */
           const _cumEchoes=[];let _runCum=0;_hist.forEach(r=>{_runCum+=(r.echoes||0);_cumEchoes.push(_runCum);});
           /* trendline: simple moving average */
@@ -1756,14 +1766,14 @@ export default function VoidStorm(){
                   </div>
                   {/* Chart area */}
                   <div style={{flex:1,position:"relative"}}>
-                    <div onMouseLeave={()=>setHistoryHover(null)} style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",height:_chartH,borderBottom:"1px solid #22334466",borderLeft:"1px solid #22334466",padding:"0 2px"}}>
+                    <div onMouseLeave={()=>setHistoryHover(null)} style={{display:"flex",alignItems:"flex-end",gap:_barGap,height:_chartH,borderBottom:"1px solid #22334466",borderLeft:"1px solid #22334466",padding:"0 2px",overflow:"hidden"}}>
                       {_filtered.map((r,i)=>{const _bVal=historyMode==="echoes"?(r.echoes||0):r.wave;const h=Math.max(4,(_chartH-10)*(_bVal/_maxW));return <div key={i}
                         onMouseEnter={()=>setHistoryHover(i)} onMouseLeave={()=>{}}
                         style={{width:_barW,height:h,background:r.forfeited?"#cc885566":"#00e5ff55",borderTop:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderLeft:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderRight:historyHover===i?`1px solid ${r.forfeited?"#cc8855":"#00e5ff"}`:"1px solid transparent",borderBottom:"none",borderRadius:"2px 2px 0 0",cursor:"pointer",transition:"border 0.1s",flexShrink:0}} />})}
                     </div>
                     {/* Trendline overlay */}
-                    {_filtered.length>=3&&<svg style={{position:"absolute",top:0,left:0,width:"100%",height:_chartH,pointerEvents:"none"}} viewBox={`0 0 ${_filtered.length*_barW+(_filtered.length-1)*Math.max(0,_barW<=4?0:1)} ${_chartH}`} preserveAspectRatio="none">
-                      <polyline fill="none" stroke="#ffcc44" strokeWidth="2" strokeOpacity="0.5" strokeLinejoin="round" points={_trend.map((tw,i)=>{const x=i*(_barW+Math.max(0,_barW<=4?0:1))+_barW/2;const y=_chartH-(_chartH-10)*(tw/_maxW);return `${x},${y}`;}).join(" ")} />
+                    {_filtered.length>=3&&<svg style={{position:"absolute",top:0,left:0,width:"100%",height:_chartH,pointerEvents:"none"}} viewBox={`0 0 ${_filtered.length*_barW+(_filtered.length-1)*_barGap} ${_chartH}`} preserveAspectRatio="none">
+                      <polyline fill="none" stroke="#ffcc44" strokeWidth="2" strokeOpacity="0.5" strokeLinejoin="round" points={_trend.map((tw,i)=>{const x=i*(_barW+_barGap)+_barW/2;const y=_chartH-(_chartH-10)*(tw/_maxW);return `${x},${y}`;}).join(" ")} />
                     </svg>}
                     {/* Midline guide */}
                     <div style={{position:"absolute",top:_chartH/2,left:0,right:0,borderTop:"1px dashed #22334433",pointerEvents:"none"}} />
@@ -1825,7 +1835,7 @@ export default function VoidStorm(){
             {syncStatus==="blocked"&&<div style={{color:"#cc8855",fontSize:8,marginTop:4}}>That code is too obvious. Try something less guessable.</div>}
             {syncStatus==="noconfig"&&<div style={{color:"#cc8855",fontSize:8,marginTop:4}}>Cloud sync not configured. See SUPABASE_URL in code.</div>}
             {syncStatus==="syncing"&&<div style={{color:"#44ccaa",fontSize:8,marginTop:4}}>Syncing...</div>}
-            {syncStatus==="synced"&&syncCode&&<div style={{color:"#44ccaa88",fontSize:8,marginTop:4}}>Connected · auto-saves every 2 min</div>}
+            {syncStatus==="synced"&&syncCode&&<div style={{color:"#44ccaa88",fontSize:8,marginTop:4}}>Connected</div>}
             {syncStatus==="conflict"&&<div style={{color:"#ffcc44",fontSize:8,marginTop:4}}>Choose which save to keep below.</div>}
             {syncConflict&&(
               <div style={{marginTop:10,width:"100%",maxWidth:360}}>
@@ -1855,7 +1865,7 @@ export default function VoidStorm(){
               </div>
             )}
             {showSyncInfo&&(
-              <div onClick={()=>setShowSyncInfo(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+              <div onClick={()=>setShowSyncInfo(false)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
                 <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:340,width:"100%"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                     <div style={{color:"#44ccaa",fontSize:14,fontWeight:"bold",letterSpacing:2}}>CLOUD SYNC</div>
@@ -1864,17 +1874,17 @@ export default function VoidStorm(){
                   <div style={{color:"#99aabb",fontSize:10,lineHeight:1.7}}>
                     Your <b style={{color:"#ccddee"}}>4-digit code</b> is your account — no username or password needed. Just remember it.<br/><br/>
                     Enter the same code on any device to <b style={{color:"#44ccaa"}}>load your progress</b>. All meta upgrades, ability shards, echoes, lab progress, and run history are synced.<br/><br/>
-                    Data saves <b style={{color:"#44ccaa"}}>automatically</b> every 2 minutes while playing and whenever you die or forfeit a run.<br/><br/>
-                    <span style={{color:"#cc8855",fontSize:9}}>The most recent save always wins — if you play on two devices at the same time, the last one to sync will overwrite the other.</span>
+                    Data saves <b style={{color:"#44ccaa"}}>automatically</b> every 2 minutes while playing and whenever you die or forfeit a run. When you switch devices, your latest save is loaded automatically.<br/><br/>
+                    If both your device and the cloud have progress, you'll be asked to <b style={{color:"#ffcc44"}}>choose which save to keep</b> — nothing gets overwritten without your say-so.
                   </div>
                 </div>
               </div>
             )}
             <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"20px 0 8px"}}>CUSTOMISATION</h3>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",maxWidth:380}}>
-              <button onClick={()=>setShowShipPopup(true)} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"center",transition:"all 0.2s"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}>Ship Colour</button>
-              <button onClick={()=>setShowBulletPopup(true)} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"center",transition:"all 0.2s"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}>Bullet Colour</button>
-              <button onClick={()=>setShowBgPopup(true)} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"center",transition:"all 0.2s"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}>Background</button>
+              <button onClick={()=>setShowShipPopup(true)} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"space-between"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}><span>Ship Colour</span><span style={{color:"#44ccaa44",fontSize:11}}>›</span></button>
+              <button onClick={()=>setShowBulletPopup(true)} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"space-between"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}><span>Bullet Colour</span><span style={{color:"#44ccaa44",fontSize:11}}>›</span></button>
+              <button onClick={()=>setShowBgPopup(true)} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"space-between"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}><span>Background</span><span style={{color:"#44ccaa44",fontSize:11}}>›</span></button>
             </div>
             <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"20px 0 8px"}}>MOBILE CONTROLS</h3>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",maxWidth:380}}>
@@ -1911,7 +1921,7 @@ export default function VoidStorm(){
             {confirmReset&&<div style={{color:"#cc8888",fontSize:8,marginTop:4}}>This will erase all Echoes, meta upgrades, ability shards, and ability upgrades permanently.</div>}
             <button onClick={()=>{if(_returnToPauseRef.current){pausedRef.current=true;setPaused(true);setPhase("playing");}else{setPhase("menu");}}} style={{...bs2("#55667744"),marginTop:20,padding:"8px 24px",fontSize:11,borderWidth:1,color:"#8899aa"}}>← BACK</button>
           {showShipPopup&&(
-            <div onClick={()=>setShowShipPopup(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+            <div onClick={()=>setShowShipPopup(false)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
               <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                   <div style={{color:"#44ccaa",fontSize:15,fontWeight:"bold",letterSpacing:2}}>SHIP COLOUR</div>
@@ -1931,7 +1941,7 @@ export default function VoidStorm(){
             </div>
           )}
           {showBulletPopup&&(
-            <div onClick={()=>setShowBulletPopup(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+            <div onClick={()=>setShowBulletPopup(false)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
               <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                   <div style={{color:"#44ccaa",fontSize:15,fontWeight:"bold",letterSpacing:2}}>BULLET COLOUR</div>
@@ -1950,7 +1960,7 @@ export default function VoidStorm(){
             </div>
           )}
           {showBgPopup&&(
-            <div onClick={()=>setShowBgPopup(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+            <div onClick={()=>setShowBgPopup(false)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
               <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:400,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                   <div style={{color:"#44ccaa",fontSize:15,fontWeight:"bold",letterSpacing:2}}>BACKGROUND</div>
@@ -2203,7 +2213,7 @@ export default function VoidStorm(){
                 })}
                 {/* Ability info popup */}
                 {abInfoId&&(()=>{const ab=ABILITIES.find(a=>a.id===abInfoId);if(!ab)return null;return(
-                  <div onClick={()=>setAbInfoId(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+                  <div onClick={()=>setAbInfoId(null)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
                     <div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:"1px solid #44ddcc44",borderRadius:6,padding:"14px 16px",maxWidth:320,width:"100%"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                         <div style={{color:"#ccddee",fontSize:13,fontWeight:"bold",display:"inline-flex",alignItems:"center",gap:4}}><AbilityIcon id={ab.id} size={18} color="#ccddee" />{ab.name}</div>
