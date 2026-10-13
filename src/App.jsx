@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-const GW = 600, GH = 800;
+import { useState, useEffect, useRef, useCallback, Fragment } from "react";
+let GW = 600;const GH = 800;let _MOBILE=false;
 const PI2 = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
 const _vsRealRandom = Math.random;
@@ -42,10 +42,10 @@ const CUR = {
  bossShards: { name: "Boss Shards", icon: "◈", color: "#cc3333", rarity: "PERMANENT", desc: "Crystallised power from bosses. Unlocks custom ship designs.", sz:1.2 },
  overheat: { name: "Overheat", icon: "✹", color: "#ff6622", rarity: "PERMANENT", desc: "Thermal residue from flame kills. Pushes wave upgrades beyond their normal limits.", sz:1.3 },
 };
-const OH_ITEM={dmg:{ec:50000,oh:10500,l1:14000},rate:{ec:10000,oh:2250,l1:3100},maxhp:{ec:6500,oh:1300,l1:1700},magnet:{ec:7000,oh:1450,l1:1950},bsize:{ec:22000,oh:4000,l1:5400},speed:{ec:3500,oh:800,l1:1250},regen:{ec:15000,oh:3000,l1:4200},fortune:{ec:28000,oh:5200,l1:6500},acid:{ec:57000,oh:12000,l1:15500},velocity:{ec:36000,oh:7000,l1:9000},kinetic:{ec:250000,oh:33000,l1:44000},pklife:{ec:95000,oh:19000,l1:26000},crit:{ec:480000,oh:56000,l1:80000},dodge:{ec:1250000,oh:87000,l1:120000},voidsiphon:{ec:140000,oh:24000,l1:30500},overdrv:{ec:2500000,oh:160000,l1:230000},reactive:{ec:800000,oh:56000,l1:80000}};
+const OH_ITEM={dmg:{ec:50000,oh:7400,lv:[9800,34000,165000]},rate:{ec:10000,oh:1600,lv:[2150,7600,36000]},maxhp:{ec:6500,oh:900,lv:[1200,4200,20000]},magnet:{ec:7000,oh:1000,lv:[1350,4800,22500]},bsize:{ec:22000,oh:2800,lv:[3800,13000,62000]},speed:{ec:3500,oh:560,lv:[880,3100,14500]},regen:{ec:15000,oh:2100,lv:[2900,10250,49000]},fortune:{ec:28000,oh:3600,lv:[4550,16000,75000]},acid:{ec:57000,oh:8400,lv:[10800,38000,180000]},velocity:{ec:36000,oh:4900,lv:[6300,22000,105000]},kinetic:{ec:250000,oh:23000,lv:[31000,108000,510000]},pklife:{ec:95000,oh:13300,lv:[18000,64000,300000]},crit:{ec:480000,oh:39000,lv:[56000,195000,930000]},dodge:{ec:1250000,oh:61000,lv:[84000,295000,1400000]},voidsiphon:{ec:140000,oh:17000,lv:[21500,75000,355000]},overdrv:{ec:2500000,oh:112000,lv:[160000,560000,2700000]},reactive:{ec:800000,oh:39000,lv:[56000,195000,930000]}};
 const _ohR10=n=>Math.ceil(n/10)*10;
-const _ohFmt=n=>n>=1000000?(n/1000000).toFixed(n%1000000?1:0)+"M":n>=1000?(n/1000).toFixed(0)+"k":""+n;
-const OH_COSTS={unlock:10000,maxLvl:3,itemEc:id=>(OH_ITEM[id]?OH_ITEM[id].ec:100),itemOhCost:id=>_ohR10(OH_ITEM[id]?OH_ITEM[id].oh:5),lvlCost:(id,l)=>{const L1=OH_ITEM[id]?OH_ITEM[id].l1:10;return _ohR10([L1,L1*3.5,L1*3.5*4.75][Math.min(l,2)]);}};
+const _ohFmt=n=>n>=1000000?(n/1000000).toFixed(n%1000000?1:0).replace(/\.0$/,"")+"M":n>=1000?(n/1000).toFixed(n%1000?1:0).replace(/\.0$/,"")+"k":""+n;
+const OH_COSTS={unlock:10000,maxLvl:3,itemEc:id=>(OH_ITEM[id]?OH_ITEM[id].ec:100),itemOhCost:id=>_ohR10(OH_ITEM[id]?OH_ITEM[id].oh:5),lvlCost:(id,l)=>{const _lv=OH_ITEM[id]?OH_ITEM[id].lv:[10,40,190];return _lv[Math.min(l,2)];}};
 const OVERCHARGE_GROWTH=3;
 const BASE_HP = 12;
 function hpScale(w) { return 1 + w * 0.22 + Math.pow(w, 1.4) * 0.02 + (w > 10 ? Math.pow(w - 10, 2) * 0.12 : 0) + (w > 30 ? Math.pow(w - 30, 2) * 1.2 : 0); }
@@ -122,8 +122,7 @@ const LAB_UPGRADES=[
  levels:[{pct:8,waves:4},{pct:16,waves:7},{pct:24,waves:11},{pct:32,waves:16},{pct:40,waves:22}],minWave:8},
  {id:"cheaper_respec",name:"Cheaper Respec",desc:"Reduces the cost of respecing ability shards by echo shards.",
  levels:[{reduce:20,waves:5},{reduce:40,waves:8},{reduce:60,waves:11},{reduce:80,waves:15},{reduce:100,waves:20},{reduce:120,waves:26},{reduce:140,waves:33},{reduce:160,waves:41},{reduce:180,waves:50},{reduce:200,waves:62}],minWave:10},
- {id:"sprint_currency_lifespan",name:"Sprint Currency Lifespan",desc:"Increases how many waves currency drops survive during intro sprint before being exploded.",
- levels:[{waves:95},{waves:130},{waves:175},{waves:230}],minWave:21},
+ 
  {id:"phantom_enhance",name:"Phantom Enhance",desc:"Increases the Phantom echo multiplier.",tier:2,
  levels:[{waves:4},{waves:8},{waves:12},{waves:18},{waves:25},{waves:33},{waves:42},{waves:54},{waves:68},{waves:85},{waves:105},{waves:130},{waves:160},{waves:195},{waves:240},{waves:290},{waves:360},{waves:450},{waves:560},{waves:700}],minWave:25},
  {id:"practise_enhance",name:"Practise Enhance",desc:"Increases the Practise echo multiplier.",tier:2,
@@ -132,12 +131,14 @@ const LAB_UPGRADES=[
  levels:[{pct:10,waves:5},{pct:20,waves:10},{pct:30,waves:15},{pct:40,waves:22},{pct:50,waves:32},{pct:60,waves:50},{pct:70,waves:80},{pct:80,waves:130}],minWave:17},
  {id:"diffusion_multi",name:"Diffusion Enhance",desc:"Increases the per-diffuse echo bonus.",tier:2,
  levels:[{waves:6},{waves:11},{waves:16},{waves:22},{waves:28},{waves:35},{waves:43},{waves:52},{waves:62},{waves:74},{waves:87},{waves:102}],minWave:22},
- {id:"overheat_chance",name:"Overheat Chance",desc:"Increases the chance that flame-killed enemies drop overheat points.",tier:2,
+ {id:"overheat_chance",name:"Overheat Chance",desc:"Increases the chance that flame-killed enemies drop Overheat.",tier:2,
  levels:[{pct:30,waves:170},{pct:35,waves:240},{pct:40,waves:330},{pct:45,waves:440},{pct:50,waves:570}],minWave:35},
  {id:"overheat_bot_mult",name:"Overheat Bot Multiplier",desc:"Enemies that would have given overheat, if killed whilst inside the range of any bot, drops more overheat on death",tier:3,
  levels:[{waves:238},{waves:518},{waves:878},{waves:1318}],minWave:47},
  {id:"overheat_wave_cost",name:"Overheat Wave Cost",desc:"Decreases the cost of all wave upgrades when the level has reached an overheated upgrade level.",tier:3,
  levels:[{waves:150},{waves:238},{waves:338},{waves:450},{waves:588},{waves:750},{waves:938},{waves:1163},{waves:1425},{waves:1750}],minWave:55},
+ {id:"labplus_slots",name:"Lab+ Effect Quantity",desc:"Increases the number of lab slots that Lab+ boosts at the end of a qualifying run.",tier:3,
+ levels:[{waves:300},{waves:756}],minWave:50},
  ];
 const BG_DESIGNS=[
  {id:"void",name:"Void",css:"background:#06060e;"},
@@ -154,6 +155,10 @@ const BG_DESIGNS=[
  {id:"galaxy",name:"Galaxy",css:"background-color:#06040e;background-image:radial-gradient(ellipse 58% 78% at 50% 50%,#3a1862 0%,transparent 52%),radial-gradient(ellipse 38% 56% at 50% 50%,#5e2286 0%,transparent 42%),radial-gradient(circle at 50% 50%,#ff66aa2e,transparent 24%);background-size:100% 100%;background-position:center;"},
 ];
 const LAB_SLOT_COSTS=[250,1500,20000];
+function labValue(id,lvl){const lu=LAB_UPGRADES.find(l=>l.id===id);if(!lu)return "";const L=lvl>0?lu.levels[Math.min(lvl,lu.levels.length)-1]:null;
+ switch(id){case "boss_shard_drop":case "intro_sprint":case "diffusion_chance":return (L?L.pct:0)+"%";case "sprint_efficiency":return (L?L.pct:30)+"%";case "overheat_chance":return (L?L.pct:25)+"%";
+  case "cheaper_respec":return "-"+(L?L.reduce:0)+"⬢";case "phantom_enhance":case "practise_enhance":return "+"+(lvl*0.001).toFixed(3);case "diffusion_multi":return "+"+(lvl*0.009).toFixed(3);
+  case "overheat_bot_mult":return "+"+lvl+" ✹";case "overheat_wave_cost":return "-"+lvl+"%";case "labplus_slots":return [1,2,3][Math.min(lvl,2)]+(lvl===0?" slot":" slots");default:return "";}}
 const AB_DESCS={orbitals_sub1:"Increase the number of electrons by 2.",orbitals_sub2:"Hitting an enemy with any electron deals 30% damage, once per enemy. Marked enemies burn blue and take double flame damage.",orbitals_mastery:"Gain another layer of 4 electrons, that travel in an elliptical orbit.",chain_sub1:"Chain lightning now targets 4 enemies.",chain_sub2:"The original target of the chain lightning gets electrocuted and it receives 60% of damage.",chain_mastery:"Echo Clone, Seeker Swarm and Combat Drone now apply a green chain lightning: it targets 4 enemies for every 3rd successful hit, dealing 25% damage on arc and 40% damage on electrocution.",homing_sub1:"Fires missiles every second.",homing_sub2:"Missiles now have a 15% chance to be critical, dealing 2.5x damage.",homing_mastery:"Missiles activate a burning bomb on hit with a radius of 6 that applies burn that does 10% dmg/s for 5 seconds.",slowfield_sub1:"Increase radius to 18.",slowfield_sub2:"The field effects the max pickup range, causing it to expand to 1.25x what it usually is, before contracting to its regular size, repeating continuously over 6s cycles.",slowfield_mastery:"Slows down bomber enemies that enter your Temporal Drag at the same rate that bullets are slowed down, and any bombers killed in the Temporal Drag will only release half the amount of bullets.",mirror_sub1:"Make the clone have the same fire rate as your main ship.",mirror_sub2:"Currency drops can be picked up by the clone if it directly collides with them.",mirror_mastery:"Every 12 seconds, the clone unleashes a lasso, that winds up for 2 seconds before launching at the most dense group of enemies and moves them away from you, of a radius of 10 and lasts for 4 seconds. Captured enemies cannot attack.",drone_sub1:"If you take HP damage from an enemy, your drone gets mad at it, firing at 2x firing rate. It will solely target that enemy until it is dead.",drone_sub2:"Adds 3% to its damage percentage compared to your main weapon for every other ability you own.",drone_mastery:"Gives you a gift after every wave equal to half of all the pickups you failed to pick up during the wave, rounded up to the nearest integer. Does not activate during intro sprint.",gravity_sub1:"Bullets that are in the gravity well get smaller by 4% every second, for a maximum of 32% size reduction.",gravity_sub2:"The vortex gets a second, conjoined vortex with a radius of 7 that has its own gravitational pull.",gravity_mastery:"Every other time a vortex is activated, it turns golden, and any enemies killed in those golden vortexes drop double the currency. Does not affect boss shard drops.",overcharge_sub1:"Max overcharge amount is increased to 140% of max health.",overcharge_sub2:"Plasma pickups now heal 6 HP instead of 3.",overcharge_mastery:"Overcharge now persists between waves, with a limit of 110% of max health.",blackhole_sub1:"Increase bullets removed to 50%.",blackhole_sub2:"Sniper bullets will be removed first, and any snipers about to fire will have their attack fail.",blackhole_mastery:"Ability will be triggered on shield loss as well as HP damage.",void_regen_sub1:"Increase the max that can be regenerated to 90% of max health (without Overcharge active).",void_regen_sub2:"If you kill at least 1 enemy whilst waiting for void regen to start, the windup time is reduced to 3 seconds.",void_regen_mastery:"Taking no damage for an entire wave grants a golden shield with invincibility frames. Golden shields persist between waves but when lost are lost forever. Maximum of 5 golden shields.",ricochet_sub1:"Bullets that ricochet receive a random small angle offset.",ricochet_sub2:"Bullets can hit one more wall before being destroyed.",ricochet_mastery:"When a ricocheted bullet hits an enemy, it performs a rage slice with a length of 12, dealing 200% damage to the first enemy it hits and 120% damage to all others.",nova_sub1:"Landmines slowly rise up to about the middle of the screen.",nova_sub2:"Landmines deal 4x damage to any bosses that are damaged by the landmine.",nova_mastery:"Landmines persist after waves instead of being cleared."};
 function metaMax(id,tier){const up=META.find(u=>u.id===id);return up?up.max*tier:0;}
 function metaCost(up,lvl,tier){const t1Max=up.max;let _c;if(tier===1||lvl<t1Max)_c=Math.ceil(up.base*(1+lvl*0.85));else{const t2Start=up.base*55*0.5;_c=Math.ceil(t2Start*(1+(lvl-t1Max)*1.5));}if(tier===3&&(up.id==="m_shield"||up.id==="m_start"))_c=Math.ceil(_c*3.5);return _c;}
@@ -216,7 +221,7 @@ function drawShape(ctx,type,x,y,s,col,time,extra){
  ctx.globalAlpha=1;ctx.restore();break;}
  case"bomber":{ctx.beginPath();ctx.arc(x,y,s*0.7,0,PI2);ctx.fill();const _bp=0.5+Math.sin((time||0)*0.01)*0.3;ctx.fillStyle="#06060e";ctx.globalAlpha=0.4;ctx.beginPath();ctx.arc(x,y,s*0.3,0,PI2);ctx.fill();ctx.globalAlpha=1;ctx.fillStyle=col;ctx.strokeStyle=extra?._cardMode?col:"#ffee88";ctx.lineWidth=2;ctx.globalAlpha=_bp;ctx.beginPath();ctx.arc(x,y,s+(time?Math.sin(time*0.01)*3:0),0,PI2);ctx.stroke();if(!extra?._cardMode){ctx.globalAlpha=0.25;ctx.lineWidth=1;ctx.setLineDash([3,5]);ctx.beginPath();ctx.arc(x,y,s*1.4,0,PI2);ctx.stroke();ctx.setLineDash([]);}ctx.globalAlpha=1;break;}
  case"sniper":{ctx.fillRect(x-2,y-s,4,s*2);ctx.fillRect(x-s*0.5,y-2,s,4);ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.globalAlpha=0.4;ctx.beginPath();ctx.arc(x,y,s*0.55,0,PI2);ctx.stroke();ctx.globalAlpha=0.6;ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,s*0.15,0,PI2);ctx.fill();ctx.globalAlpha=1;}
- if(extra?.telegraphing||extra?._sniperLineActive){const _sa0=extra.aimAngle||0;let _lCol="#ff66ffaa";if(extra?.telegraphing&&(extra.teleTimer||0)<1000&&(extra.teleTimer||0)>=200){_lCol="#ffcc44cc";}else if(extra?.telegraphing&&(extra.teleTimer||0)<200){_lCol="#ff3344dd";}else if(extra?._sniperLineActive){_lCol="#ff3344dd";}ctx.strokeStyle=_lCol;ctx.lineWidth=extra?._sniperLineActive?2.5:2;ctx.setLineDash([4,4]);const _sOff=extra?._dx?.snipeSpread?[-0.12,0,0.12]:[0];for(let _soi=0;_soi<_sOff.length;_soi++){const _sa=_sa0+_sOff[_soi];const _cos=Math.cos(_sa),_sin=Math.sin(_sa);let _endX=x,_endY=y;for(let _step=0;_step<2000;_step+=2){_endX+=_cos*2;_endY+=_sin*2;if(_endX<0||_endX>600||_endY<0||_endY>800)break;}ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(_endX,_endY);ctx.stroke();}ctx.setLineDash([]);}
+ if(extra?.telegraphing||extra?._sniperLineActive){const _sa0=extra.aimAngle||0;let _lCol="#ff66ffaa";if(extra?.telegraphing&&(extra.teleTimer||0)<1000&&(extra.teleTimer||0)>=200){_lCol="#ffcc44cc";}else if(extra?.telegraphing&&(extra.teleTimer||0)<200){_lCol="#ff3344dd";}else if(extra?._sniperLineActive){_lCol="#ff3344dd";}ctx.strokeStyle=_lCol;ctx.lineWidth=extra?._sniperLineActive?2.5:2;ctx.setLineDash([4,4]);const _sOff=extra?._dx?.snipeSpread?[-0.12,0,0.12]:[0];for(let _soi=0;_soi<_sOff.length;_soi++){const _sa=_sa0+_sOff[_soi];const _cos=Math.cos(_sa),_sin=Math.sin(_sa);let _endX=x,_endY=y;for(let _step=0;_step<2000;_step+=2){_endX+=_cos*2;_endY+=_sin*2;if(_endX<0||_endX>GW||_endY<0||_endY>GH)break;}ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(_endX,_endY);ctx.stroke();}ctx.setLineDash([]);}
  break;
  case"splitter":{
  const _isChild=extra&&extra.size&&extra.size<=10;
@@ -243,7 +248,7 @@ function drawShape(ctx,type,x,y,s,col,time,extra){
  ctx.globalAlpha=1;ctx.restore();break;}
  case"boss":{ctx.shadowColor=col;ctx.shadowBlur=12;const p=1+(time?Math.sin(time*0.004)*0.06:0);const z=s*p;ctx.beginPath();ctx.moveTo(x,y-z);ctx.lineTo(x-z*1.1,y+z*0.5);ctx.lineTo(x-z*0.35,y+z*0.25);ctx.lineTo(x,y+z*0.8);ctx.lineTo(x+z*0.35,y+z*0.25);ctx.lineTo(x+z*1.1,y+z*0.5);ctx.closePath();ctx.fill();ctx.shadowBlur=0;break;}
  case"wraith":{const wa=extra?.phaseCD>0?0.25:0.75+Math.sin((time||0)*0.006)*0.2;ctx.globalAlpha=wa;ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x+s*0.7,y);ctx.lineTo(x,y+s);ctx.lineTo(x-s*0.7,y);ctx.closePath();ctx.stroke();ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,s*0.2,0,PI2);ctx.fill();ctx.globalAlpha=1;break;}
- case"siren":{ctx.shadowColor=col;ctx.shadowBlur=8;ctx.beginPath();for(let i=0;i<6;i++){const a=(PI2/6)*i-Math.PI/2;const r=i%2===0?s:s*0.3;ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);}ctx.closePath();ctx.fill();ctx.shadowBlur=0;const _sit=(time||0)*0.005;ctx.strokeStyle=col;ctx.lineWidth=1;ctx.globalAlpha=0.2+Math.sin(_sit)*0.1;ctx.beginPath();ctx.arc(x,y,s*0.6,_sit,_sit+Math.PI*0.8);ctx.stroke();ctx.globalAlpha=0.15;ctx.beginPath();ctx.arc(x,y,s*0.9,_sit+Math.PI,_sit+Math.PI*1.6);ctx.stroke();ctx.globalAlpha=1;break;}
+ case"siren":{ctx.globalAlpha=0.32;ctx.beginPath();for(let i=0;i<6;i++){const a=(PI2/6)*i-Math.PI/2;const r=(i%2===0?s:s*0.3)*1.45;ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);}ctx.closePath();ctx.fill();ctx.globalAlpha=1;ctx.beginPath();for(let i=0;i<6;i++){const a=(PI2/6)*i-Math.PI/2;const r=i%2===0?s:s*0.3;ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);}ctx.closePath();ctx.fill();const _sit=(time||0)*0.005;ctx.strokeStyle=col;ctx.lineWidth=1;ctx.globalAlpha=0.2+Math.sin(_sit)*0.1;ctx.beginPath();ctx.arc(x,y,s*0.6,_sit,_sit+Math.PI*0.8);ctx.stroke();ctx.globalAlpha=0.15;ctx.beginPath();ctx.arc(x,y,s*0.9,_sit+Math.PI,_sit+Math.PI*1.6);ctx.stroke();ctx.globalAlpha=1;break;}
  case"fortress":{ctx.fillRect(x-s*0.6,y-s*0.6,s*1.2,s*1.2);ctx.strokeStyle=extra?._cardMode?"#ddbbff":"#ffffff";ctx.lineWidth=3;ctx.globalAlpha=0.7;const sa=extra?.shieldAngle||0;if(!extra?._dx?.shieldOff&&(!(extra?._dx?.shieldFlicker)||((time||0)%1600)<800)){const _fhw=0.8*(extra?._dx?.shieldArcM||1);ctx.beginPath();ctx.arc(x,y,s*1.15,sa-_fhw,sa+_fhw);ctx.stroke();if(extra?._dx?.shieldDouble){ctx.beginPath();ctx.arc(x,y,s*1.15,sa+Math.PI-_fhw,sa+Math.PI+_fhw);ctx.stroke();}}ctx.globalAlpha=1;break;}
  case"reaper":{ctx.save();ctx.translate(x,y);ctx.rotate((extra?.rotOff||0)+(time||0)*(extra?.rotSpd||0.002));ctx.beginPath();ctx.arc(0,0,s*0.9,0,PI2);ctx.fill();ctx.fillStyle="#06060e";ctx.beginPath();ctx.arc(s*0.35,0,s*0.7,0,PI2);ctx.fill();ctx.fillStyle=col;ctx.beginPath();ctx.arc(-s*0.2,0,s*0.22,0,PI2);ctx.fill();ctx.restore();break;}
  default: ctx.beginPath();ctx.arc(x,y,s,0,PI2);ctx.fill();
@@ -268,6 +273,31 @@ function drawAbIcon(ctx,id,cx,cy,sz,col){
  default:{ctx.beginPath();ctx.arc(0,0,s*0.5,0,PI2);ctx.stroke();}
  }
  ctx.restore();
+}
+function drawMenuIcon(cx,id,S,col){
+ cx.clearRect(0,0,S,S);cx.save();
+ cx.strokeStyle=col;cx.fillStyle=col;cx.lineJoin="round";cx.lineCap="round";
+ const C=S/2,P=S/100,LW=Math.max(2,S*0.085);cx.lineWidth=LW;
+ const ring=(x,y,r)=>{cx.beginPath();cx.arc(x,y,r,0,6.2832);cx.stroke();};
+ const disc=(x,y,r)=>{cx.beginPath();cx.arc(x,y,r,0,6.2832);cx.fill();};
+ const ln=(a,b,c,d)=>{cx.beginPath();cx.moveTo(a,b);cx.lineTo(c,d);cx.stroke();};
+ const rr=(x,y,w,h,r)=>{cx.beginPath();cx.moveTo(x+r,y);cx.lineTo(x+w-r,y);cx.arcTo(x+w,y,x+w,y+r,r);cx.lineTo(x+w,y+h-r);cx.arcTo(x+w,y+h,x+w-r,y+h,r);cx.lineTo(x+r,y+h);cx.arcTo(x,y+h,x,y+h-r,r);cx.lineTo(x,y+r);cx.arcTo(x,y,x+r,y,r);cx.closePath();cx.stroke();};
+ switch(id){
+  case "META":{cx.lineWidth=LW*1.15;for(let i=0;i<2;i++){const y=C+16*P-i*22*P;cx.beginPath();cx.moveTo(C-24*P,y);cx.lineTo(C,y-20*P);cx.lineTo(C+24*P,y);cx.stroke();}break;}
+  case "PATHS":{disc(C,C+28*P,5.5*P);ln(C,C+26*P,C,C+6*P);disc(C-22*P,C-22*P,5*P);disc(C+22*P,C-22*P,5*P);disc(C,C-30*P,5*P);ln(C,C+6*P,C-22*P,C-20*P);ln(C,C+6*P,C+22*P,C-20*P);ln(C,C+6*P,C,C-28*P);break;}
+  case "HYPERECHO":{disc(C,C,5*P);ring(C,C,15*P);cx.globalAlpha=0.6;ring(C,C,26*P);cx.globalAlpha=0.28;ring(C,C,37*P);cx.globalAlpha=1;break;}
+  case "DEALER":{const cw=28*P,ch=42*P;cx.save();cx.translate(C+8*P,C);cx.rotate(0.22);rr(-cw/2,-ch/2,cw,ch,4*P);cx.restore();cx.save();cx.translate(C-8*P,C-2*P);cx.rotate(-0.13);rr(-cw/2,-ch/2,cw,ch,4*P);disc(0,0,4*P);cx.restore();break;}
+  case "PLAYGROUND":{ring(C,C,25*P);disc(C,C,4*P);ln(C,C-37*P,C,C-17*P);ln(C,C+17*P,C,C+37*P);ln(C-37*P,C,C-17*P,C);ln(C+17*P,C,C+37*P,C);break;}
+  case "PRACTISE":{ring(C,C,24*P);ring(C,C,13*P);disc(C,C,4.5*P);cx.lineWidth=LW*0.9;ln(C+30*P,C-30*P,C+6*P,C-6*P);ln(C+30*P,C-30*P,C+18*P,C-30*P);ln(C+30*P,C-30*P,C+30*P,C-18*P);cx.lineWidth=LW;break;}
+  case "PHANTOM":{cx.beginPath();cx.arc(C,C-4*P,23*P,Math.PI,0,false);const n=4,x0=C+23*P,y0=C+20*P;cx.lineTo(x0,y0);for(let i=0;i<n;i++){const x=x0-(i+1)*(46*P/n);const y=y0+((i%2===0)?-9*P:0);cx.lineTo(x,y);}cx.closePath();cx.stroke();disc(C-8*P,C-6*P,3.4*P);disc(C+8*P,C-6*P,3.4*P);break;}
+  case "CARGO":{rr(C-30*P,C-22*P,60*P,32*P,4*P);ln(C-30*P,C-8*P,C+30*P,C-8*P);ln(C-14*P,C-22*P,C-14*P,C+10*P);ln(C+14*P,C-22*P,C+14*P,C+10*P);disc(C-16*P,C+20*P,6*P);disc(C+16*P,C+20*P,6*P);ln(C-30*P,C+10*P,C-30*P,C+16*P);ln(C+30*P,C+10*P,C+30*P,C+16*P);break;}
+  case "CODEX":{cx.beginPath();cx.moveTo(C,C-20*P);cx.quadraticCurveTo(C-16*P,C-28*P,C-32*P,C-22*P);cx.lineTo(C-32*P,C+22*P);cx.quadraticCurveTo(C-16*P,C+16*P,C,C+24*P);cx.quadraticCurveTo(C+16*P,C+16*P,C+32*P,C+22*P);cx.lineTo(C+32*P,C-22*P);cx.quadraticCurveTo(C+16*P,C-28*P,C,C-20*P);cx.closePath();cx.stroke();ln(C,C-20*P,C,C+24*P);cx.lineWidth=LW*0.7;ln(C-24*P,C-10*P,C-8*P,C-13*P);ln(C-24*P,C-1*P,C-8*P,C-4*P);ln(C-24*P,C+8*P,C-8*P,C+5*P);ln(C+8*P,C-13*P,C+24*P,C-10*P);ln(C+8*P,C-4*P,C+24*P,C-1*P);ln(C+8*P,C+5*P,C+24*P,C+8*P);cx.lineWidth=LW;break;}
+  case "HISTORY":{ring(C,C,27*P);ln(C,C-2*P,C,C-16*P);ln(C,C-2*P,C+12*P,C+7*P);break;}
+  case "LEADERBOARD":{rr(C-30*P,C+2*P,17*P,26*P,2*P);rr(C-8*P,C-16*P,17*P,44*P,2*P);rr(C+14*P,C-6*P,17*P,34*P,2*P);break;}
+  case "SANDBOX":{cx.beginPath();cx.moveTo(C-9*P,C-25*P);cx.lineTo(C-9*P,C-5*P);cx.lineTo(C-22*P,C+21*P);cx.lineTo(C+22*P,C+21*P);cx.lineTo(C+9*P,C-5*P);cx.lineTo(C+9*P,C-25*P);cx.stroke();ln(C-14*P,C-25*P,C+14*P,C-25*P);cx.globalAlpha=0.5;cx.beginPath();cx.moveTo(C-15*P,C+10*P);cx.lineTo(C+15*P,C+10*P);cx.lineTo(C+22*P,C+21*P);cx.lineTo(C-22*P,C+21*P);cx.closePath();cx.fill();cx.globalAlpha=1;break;}
+  case "SETTINGS":{const teeth=8,r1=15*P,r2=25*P;cx.beginPath();for(let i=0;i<teeth*2;i++){const a=i*Math.PI/teeth;const r=(i%2)?r1:r2;const x=C+Math.cos(a)*r,y=C+Math.sin(a)*r;i?cx.lineTo(x,y):cx.moveTo(x,y);}cx.closePath();cx.stroke();ring(C,C,7*P);break;}
+ }
+ cx.restore();
 }
 function drawUpgIcon(cx,id,S,col){
  cx.clearRect(0,0,S,S);cx.save();
@@ -326,9 +356,9 @@ const PATH_UPG={
   {id:"dl_s3",name:"Dealer Path Upgrade 2",cost:300,parent:"dl_s2",icon:"III",desc:"Increase your maximum active card slots to 3."},
  ],
  bots:[
-  {id:"bt_jam",name:"Bots Path Upgrade 1",cost:200,parent:null,icon:"✕",desc:"Snipers cannot fire while within range of any active bot."},
-  {id:"bt_spd",name:"Bots Path Upgrade 2",cost:500,parent:"bt_jam",icon:"≫",desc:"While a moving bot is in the bottom 40% of the screen it travels at 2× speed, so bots spend more time guarding the top."},
-  {id:"bt_field",name:"Bots Path Upgrade 3",cost:600,parent:"bt_jam",icon:"◎",desc:"While you are inside an active bot, that bot's field is 30% larger."},
+  {id:"bt_jam",name:"Bots Path Upgrade 1",cost:120,parent:null,icon:"✕",desc:"Snipers cannot fire while within range of any active bot."},
+  {id:"bt_spd",name:"Bots Path Upgrade 2",cost:300,parent:"bt_jam",icon:"≫",desc:"While a moving bot is in the bottom 40% of the screen it travels at 2× speed, so bots spend more time guarding the top."},
+  {id:"bt_field",name:"Bots Path Upgrade 3",cost:360,parent:"bt_jam",icon:"◎",desc:"While you are inside an active bot, that bot's field is 30% larger."},
  ],
  intro_sprint:[
   {id:"sp_stop",name:"Intro Sprint Path Upgrade 1",cost:60,parent:null,icon:"■",desc:"Press Space at any time to end the intro sprint early, at the end of the current wave."},
@@ -348,19 +378,19 @@ const PATH_UPG={
  ],
  enforcer:[
   {id:"ef_shield",name:"Enforcer Path Upgrade 1",cost:150,parent:null,icon:"⬡",desc:"Once per enforcer attempt, press Space to raise a shield that blocks a single bullet, lasting until it blocks a bullet or 2.5 seconds elapse."},
-  {id:"ef_drone",name:"Enforcer Path Upgrade 2",cost:30,parent:null,enemy:"drone",desc:"Unlock the Drone enforcer."},
-  {id:"ef_weaver",name:"Enforcer Path Upgrade 3",cost:30,parent:"ef_drone",enemy:"weaver",desc:"Unlock the Weaver enforcer."},
-  {id:"ef_sniper",name:"Enforcer Path Upgrade 4",cost:30,parent:"ef_weaver",enemy:"sniper",desc:"Unlock the Sniper enforcer."},
-  {id:"ef_splitter",name:"Enforcer Path Upgrade 5",cost:30,parent:"ef_weaver",enemy:"splitter",desc:"Unlock the Splitter enforcer."},
-  {id:"ef_orbiter",name:"Enforcer Path Upgrade 6",cost:30,parent:"ef_weaver",enemy:"orbiter",desc:"Unlock the Orbiter enforcer."},
-  {id:"ef_bomber",name:"Enforcer Path Upgrade 7",cost:30,parent:"ef_drone",enemy:"bomber",desc:"Unlock the Bomber enforcer."},
-  {id:"ef_tank",name:"Enforcer Path Upgrade 8",cost:30,parent:"ef_bomber",enemy:"tank",desc:"Unlock the Tank enforcer."},
-  {id:"ef_pulse",name:"Enforcer Path Upgrade 9",cost:30,parent:"ef_bomber",enemy:"pulse",desc:"Unlock the Pulse enforcer."},
-  {id:"ef_charger",name:"Enforcer Path Upgrade 10",cost:30,parent:"ef_bomber",enemy:"charger",desc:"Unlock the Charger enforcer."},
-  {id:"ef_sprayer",name:"Enforcer Path Upgrade 11",cost:30,parent:"ef_drone",enemy:"sprayer",desc:"Unlock the Sprayer enforcer."},
-  {id:"ef_wraith",name:"Enforcer Path Upgrade 12",cost:30,parent:"ef_sprayer",enemy:"wraith",desc:"Unlock the Wraith enforcer."},
-  {id:"ef_siren",name:"Enforcer Path Upgrade 13",cost:30,parent:"ef_sprayer",enemy:"siren",desc:"Unlock the Siren enforcer."},
-  {id:"ef_fortress",name:"Enforcer Path Upgrade 14",cost:30,parent:"ef_sprayer",enemy:"fortress",desc:"Unlock the Fortress enforcer."},
+  {id:"ef_drone",name:"Enforcer Path Upgrade 2",cost:40,parent:null,enemy:"drone",desc:"Unlock the Drone enforcer."},
+  {id:"ef_weaver",name:"Enforcer Path Upgrade 3",cost:40,parent:"ef_drone",enemy:"weaver",desc:"Unlock the Weaver enforcer."},
+  {id:"ef_sniper",name:"Enforcer Path Upgrade 4",cost:40,parent:"ef_weaver",enemy:"sniper",desc:"Unlock the Sniper enforcer."},
+  {id:"ef_splitter",name:"Enforcer Path Upgrade 5",cost:40,parent:"ef_weaver",enemy:"splitter",desc:"Unlock the Splitter enforcer."},
+  {id:"ef_orbiter",name:"Enforcer Path Upgrade 6",cost:40,parent:"ef_weaver",enemy:"orbiter",desc:"Unlock the Orbiter enforcer."},
+  {id:"ef_bomber",name:"Enforcer Path Upgrade 7",cost:40,parent:"ef_drone",enemy:"bomber",desc:"Unlock the Bomber enforcer."},
+  {id:"ef_tank",name:"Enforcer Path Upgrade 8",cost:40,parent:"ef_bomber",enemy:"tank",desc:"Unlock the Tank enforcer."},
+  {id:"ef_pulse",name:"Enforcer Path Upgrade 9",cost:40,parent:"ef_bomber",enemy:"pulse",desc:"Unlock the Pulse enforcer."},
+  {id:"ef_charger",name:"Enforcer Path Upgrade 10",cost:40,parent:"ef_bomber",enemy:"charger",desc:"Unlock the Charger enforcer."},
+  {id:"ef_sprayer",name:"Enforcer Path Upgrade 11",cost:40,parent:"ef_drone",enemy:"sprayer",desc:"Unlock the Sprayer enforcer."},
+  {id:"ef_wraith",name:"Enforcer Path Upgrade 12",cost:40,parent:"ef_sprayer",enemy:"wraith",desc:"Unlock the Wraith enforcer."},
+  {id:"ef_siren",name:"Enforcer Path Upgrade 13",cost:40,parent:"ef_sprayer",enemy:"siren",desc:"Unlock the Siren enforcer."},
+  {id:"ef_fortress",name:"Enforcer Path Upgrade 14",cost:40,parent:"ef_sprayer",enemy:"fortress",desc:"Unlock the Fortress enforcer."},
   {id:"ef_reaper",name:"Enforcer Path Upgrade 15",cost:60,parent:"ef_drone",enemy:"reaper",desc:"Unlock the Reaper enforcer."},
   {id:"ef_boss",name:"Enforcer Path Upgrade 16",cost:100,parent:"ef_reaper",enemy:"boss",desc:"Unlock the Boss enforcer."},
  ],
@@ -383,8 +413,11 @@ const DEALER_FX={
 };
 const BOT_UNLOCK=[1000,7000,25000,90000];
 function botUpCost(n){return Math.round(1250*Math.pow(1+n*0.15,1.6)/50)*50;}
+function labPlusCostSprint(n){return Math.round(10000*Math.pow(1+n*0.15,1.6)/500)*500;}
+function labPlusCostThresh(n){return Math.round(20000*Math.pow(1+n*0.15,1.6)/1000)*1000;}
+function labPlusCostWaves(n){return Math.round(50000*Math.pow(1+n*0.15,1.6)/2500)*2500;}
 const BOTS=[
- {id:"health",name:"Health Bot",col:"#55dd77",desc:"Each enemy killed inside adds to a wave-long HP multiplier, up to 4×. Max HP, overcharge and current HP scale together. Resets each wave.",custom:{label:"HP / kill",base:0.006,per:0.004,fmt:v=>"+"+v.toFixed(3)}},
+ {id:"health",name:"Health Bot",col:"#55dd77",desc:"Each enemy killed inside adds to a wave-long HP multiplier, up to 4×. Max HP, overcharge and current HP scale together. Resets each wave. Healing from this bot appears as \"Health Bot\" in your wave regen stats.",custom:{label:"HP / kill",base:0.006,per:0.004,fmt:v=>"+"+v.toFixed(3)}},
  {id:"distraction",name:"Distraction Bot",col:"#dd66dd",desc:"Enemies inside have a chance per attack to fire directly away from you instead of toward you.",custom:{label:"Misfire Chance",base:20,per:4,fmt:v=>Math.round(v)+"%"}},
  {id:"mimic",name:"Mimic Bot",col:"#5599ee",desc:"Enemies inside have a chance per attack to fire one straight shot instead of their normal attack.",custom:{label:"Mimic Chance",base:15,per:4,fmt:v=>Math.round(v)+"%"}},
  {id:"bounce",name:"Bounce Bot",col:"#eebb44",desc:"Player bullets bounce off the inner wall and gain a 20% pierce chance. Enemies inside take amplified damage from all sources.",custom:{label:"Damage",base:1.1,per:0.015,fmt:v=>v.toFixed(3)+"x"}},
@@ -427,7 +460,50 @@ export default function VoidStorm(){
  const[deathData,setDeathData]=useState(null);
  const[abChoices,setAbChoices]=useState([]);
  const[tutSel,setTutSel]=useState({mode:null,ab:null,bot:null,enemy:null,fx:null});
+ const[_autoMob]=useState(()=>{try{const w=window,sc=w.screen||{};const _coarse=!!(w.matchMedia&&w.matchMedia("(pointer:coarse)").matches);const _small=Math.min(sc.width||w.innerWidth,sc.height||w.innerHeight)<=820;const _portrait=w.innerHeight>w.innerWidth*1.1;return (_coarse&&_small)||_portrait;}catch(e){return false;}});
+ const[_uiMode,_setUiModeRaw]=useState(()=>{try{const v=localStorage.getItem("vs4-uimode");if(v==="auto"||v==="desktop"||v==="mobile")return v;}catch(e){}return "auto";});
+ const _setUiMode=(v)=>{_setUiModeRaw(v);try{localStorage.setItem("vs4-uimode",v);}catch(e){}};
+ const _devMob=_uiMode==="auto"?_autoMob:_uiMode==="mobile";
  const[meta,setMeta]=useState({echoes:0,levels:{},shipColor:"cyan",showMagnetRange:true,showBorder:true,mobileControls:"reactive"});
+ if(phase!=="playing"){GW=_devMob?450:600;}
+ _MOBILE=!!_devMob;
+ const _mf=(px)=>_devMob?(px<16?Math.round(px*1.4):px+6):px;
+ const _mob=!!_devMob;const _mv=(d,m)=>_mob?m:d;
+ const _gp=(c,r)=>({background:`radial-gradient(145% 155% at 24% 22%,${c}c8 0%,${c}78 28%,${c}32 48%,${c}14 62%,transparent 84%),#020204`,border:`1px solid ${c}dd`,borderRadius:r||14,boxShadow:`0 6px 16px ${c}40`});
+ const _gpDim=(c,r)=>({background:"#ffffff0e",border:`1px solid ${c}55`,borderRadius:r||14});
+const _gpBuy=(c,r)=>({background:"#0c0c1a",border:`1px solid ${c}99`,borderRadius:r||12,boxShadow:`0 0 8px ${c}22`});
+ const _gpMax=(r)=>({background:"#14120a",border:"1px solid #ffcc4455",borderRadius:r||12,boxShadow:"0 0 10px #ffcc4418"});
+ const _gBtn=(c,big)=>({...(big?_gp(c,16):_gpDim(c,12)),color:"#fff",fontFamily:"inherit",cursor:"pointer",fontWeight:"bold",letterSpacing:big?2:0.5,fontSize:big?15:11,padding:big?"14px 16px":"10px 12px",display:"flex",alignItems:"center",justifyContent:"center",gap:8});
+ const _gHead=(title,col,onBack,right)=><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexShrink:0,padding:"0 2px"}}><button onClick={onBack} style={{background:"#ffffff14",border:"1px solid #ffffff2e",borderRadius:20,padding:"8px 13px",color:"#d8dfff",fontSize:10,fontWeight:"bold",fontFamily:"inherit",cursor:"pointer",flexShrink:0}}>‹ BACK</button><span style={{color:col||"#f2f4ff",fontSize:14,fontWeight:"bold",letterSpacing:2,textAlign:"center",flex:1,textShadow:`0 0 10px ${col||"#fff"}66`}}>{title}</span><div style={{minWidth:70,display:"flex",justifyContent:"flex-end"}}>{right||null}</div></div>;
+ const ShopWrap=({onClose,col,title,children})=>_mob?<div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(2,2,10,0.84)",backdropFilter:"blur(3px)",zIndex:40,display:"flex",alignItems:"center",justifyContent:"center",padding:12}}><div onClick={e=>e.stopPropagation()} style={{background:"#08080f",border:`1px solid ${(col||"#8899aa")}66`,borderRadius:18,boxShadow:"0 0 30px #00000099",padding:"10px 6px 8px",width:"100%",maxWidth:436,maxHeight:"88%",display:"flex",flexDirection:"column",minHeight:0}}><div style={{display:"flex",justifyContent:"center",alignItems:"center",padding:"2px 10px 6px",flexShrink:0}}><span style={{color:col||"#fff",fontSize:13,fontWeight:"bold",letterSpacing:2}}>{title}</span></div><div className="vs-scroll" style={{flex:1,minHeight:0,overflow:"auto"}}>{children}</div></div></div>:<>{children}</>;
+ const _DispMode=(compact)=>{const _locked=!!_returnToPauseRef.current;const _opts=[["auto","AUTO",_autoMob?"Phone layout":"Desktop layout"],["desktop","DESKTOP","Wide 3:4 field"],["mobile","MOBILE","Tall 9:16 field"]];
+  return <div style={{width:"100%",maxWidth:_mv(380,"none"),boxSizing:"border-box",background:"#0c0c1a",border:"1px solid #44ccaa55",borderRadius:_mv(6,14),padding:compact?"9px 10px":_mv("10px 12px","13px 14px"),opacity:_locked?0.55:1}}>
+   {!compact&&<div style={{color:"#99a3bb",fontSize:_mv(_mf(8),10.5),lineHeight:1.45,marginBottom:8,textAlign:_mv("center","left")}}>Choose the phone or desktop layout. <b style={{color:"#ccddee"}}>Auto</b> checks your screen every time the game starts.</div>}
+   <div style={{display:"flex",gap:6}}>{_opts.map(([v,l,d])=>{const sel=_uiMode===v;return <button key={v} disabled={_locked} onClick={()=>{if(!_locked)_setUiMode(v);}} style={{flex:1,minWidth:0,padding:compact?"8px 2px":_mv("7px 4px","11px 2px"),background:sel?"#44ccaa":"#14141f",border:"1px solid "+(sel?"#44ccaa":"#ffffff1f"),borderRadius:_mv(4,9),cursor:_locked?"default":"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}><span style={{color:sel?"#04121a":"#e6e8f6",fontSize:_mv(_mf(9),compact?11:12),fontWeight:"bold",letterSpacing:1}}>{l}</span>{!compact&&<span style={{color:sel?"#04121acc":"#8899aa",fontSize:_mv(_mf(7),9.5)}}>{d}</span>}</button>;})}</div>
+   {_locked&&<div style={{color:"#ddaa66",fontSize:_mv(_mf(8),10.5),marginTop:7,textAlign:"center"}}>Leave your current run to change the layout.</div>}
+  </div>;};
+ const _mPop=(col,onClose,children)=><div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(2,2,10,0.86)",backdropFilter:"blur(3px)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:14,animation:"popupBgEnter 150ms ease-out both"}}><div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:`1px solid ${col}66`,borderRadius:20,padding:"16px 14px 14px",width:"100%",maxWidth:430,maxHeight:"94%",overflow:"hidden",display:"flex",flexDirection:"column",gap:8,boxSizing:"border-box",animation:"popupEnter 220ms cubic-bezier(0.22,1,0.36,1) both"}}>{children}</div></div>;
+ const _mPopHead=(icon,title,col,sub,right)=><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:2}}>{icon&&<div style={{width:42,height:42,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{icon}</div>}<div style={{flex:1,minWidth:0}}><div style={{color:col,fontSize:16,fontWeight:"bold",letterSpacing:0.5,lineHeight:1.2}}>{title}</div>{sub&&<div style={{color:"#b8bfd4",fontSize:10.5,lineHeight:1.4,marginTop:3}}>{sub}</div>}</div>{right}</div>;
+ const _mAct=(state,top,bot,onClick,col)=>{const _st={width:100,height:56,flexShrink:0,borderRadius:12,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,fontFamily:"inherit",boxSizing:"border-box",padding:"0 4px"};
+  if(state==="owned")return <div style={{..._st,background:"#1a1608",border:"1px solid #ffcc4477"}}><span style={{color:"#ffcc44",fontSize:12,fontWeight:"bold",letterSpacing:1}}>{top||"OWNED"}</span>{bot&&<span style={{color:"#d8c890",fontSize:10}}>{bot}</span>}</div>;
+  const _on=state==="buy";return <button onClick={_on?onClick:undefined} disabled={!_on} style={{..._st,background:_on?"#14141f":"#0a0a12",border:`1px solid ${_on?col:"#ffffff1c"}`,cursor:_on?"pointer":"default"}}><span style={{color:_on?"#fff":"#7a8399",fontSize:12,fontWeight:"bold",whiteSpace:"nowrap"}}>{top}</span>{bot&&<span style={{color:_on?"#e6e8f6":"#6a7389",fontSize:10,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>{bot}</span>}</button>;};
+ const _mRow=(key,title,titleCol,desc,act,owned)=><div key={key} style={{minHeight:78,boxSizing:"border-box",background:owned?"#12100a":"#0a0a14",border:`1px solid ${owned?"#ffcc4440":"#ffffff14"}`,borderRadius:12,padding:"10px 10px 10px 12px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}><div style={{flex:1,minWidth:0}}><div style={{color:titleCol,fontSize:10,letterSpacing:1.5,fontWeight:"bold"}}>{title}</div><div style={{color:"#d8dcea",fontSize:11,lineHeight:1.4,marginTop:3}}>{desc}</div></div>{act}</div>;
+ const _mClose=(fn)=><button onClick={fn} style={{background:"#14141f",border:"1px solid #ffffff22",borderRadius:12,padding:"13px",color:"#c8cce6",fontSize:12,fontWeight:"bold",letterSpacing:1,fontFamily:"inherit",cursor:"pointer",flexShrink:0}}>CLOSE</button>;
+ const _mTile=(state)=>({background:state==="max"?"#12100a":"#0a0a14",border:`1px solid ${state==="max"?"#ffcc4466":state==="buy"?"#44ddcc88":"#ffffff18"}`,borderRadius:12});
+ useEffect(()=>{if(!_devMob)return;const de=document.documentElement,bd=document.body;const prev=[de.style.overflow,bd.style.overflow,de.style.overscrollBehavior,bd.style.overscrollBehavior];de.style.overflow="hidden";bd.style.overflow="hidden";de.style.overscrollBehavior="none";bd.style.overscrollBehavior="none";return()=>{de.style.overflow=prev[0];bd.style.overflow=prev[1];de.style.overscrollBehavior=prev[2];bd.style.overscrollBehavior=prev[3];};},[_devMob]);
+ const MobHud=()=>{const[,_tk]=useState(0);useEffect(()=>{const _id=setInterval(()=>_tk(x=>x+1),300);return()=>clearInterval(_id);},[]);
+  const g=gsRef.current;if(!g||!g.player)return null;const pu=meta.pathsUpg||{};
+  const _spId=(g._inSprint&&pu.sp_stop)?"sp_stop":(g._isEnforcer&&pu.ef_shield&&!g._efShieldUsed)?"ef_shield":(g.isCargo&&pu.cg_rev)?"cg_rev":(g.isNewMode&&pu.ph_wave&&!g._phWaveUsed)?"ph_wave":null;
+  const _vals=g.isCargo?[]:[g.scrap,g.cores,g.plasma].concat(meta.overheatUnlocked?[g._overheatPoints||0]:[]);
+  const _dig=_vals.reduce((m,v)=>Math.max(m,String(Math.floor(v||0)).length),0);
+  const _right=_dig?Math.round(14+_dig*7.3+12+6+10):12;
+  const _fire=(key)=>{window.dispatchEvent(new KeyboardEvent("keydown",{key}));window.dispatchEvent(new KeyboardEvent("keyup",{key}));setTimeout(()=>_tk(x=>x+1),60);};
+  const _btn={width:56,height:48,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"inherit",backdropFilter:"blur(4px)"};
+  return <div style={{position:"absolute",top:10,right:_right,display:"flex",flexDirection:"column",gap:8,zIndex:12}} onTouchStart={e=>e.stopPropagation()} onTouchMove={e=>e.stopPropagation()} onTouchEnd={e=>e.stopPropagation()}>
+   <button onClick={()=>_fire("p")} style={{..._btn,background:"#000000bb",border:"1.5px solid #ffffff55",color:"#fff",fontSize:20,fontWeight:"bold"}}>{"❙❙"}</button>
+   {_spId&&<button onClick={()=>_fire(" ")} style={{..._btn,background:"#00e5ff2a",border:"1.5px solid #00e5ffaa",boxShadow:"0 0 12px #00e5ff44"}}><canvas width={90} height={90} style={{width:30,height:30}} ref={el=>{if(el){const c2=el.getContext("2d");c2.setTransform(3,0,0,3,0,0);c2.clearRect(0,0,30,30);drawUpgIcon(c2,_spId,30,"#00e5ff");}}} /></button>}
+  </div>;};
+ const _gShell=(children,extra)=><div style={{position:"absolute",inset:0,zIndex:10,overflow:"hidden",background:"#04040a",...(extra||{})}}><MenuBG/><div style={{position:"relative",zIndex:1,height:"100%",display:"flex",flexDirection:"column",padding:"10px 10px 12px",boxSizing:"border-box",gap:7}}>{children}</div></div>;
  const metaRef=useRef(meta);const _lastSavedAtRef=useRef(0);
  useEffect(()=>{metaRef.current=meta;},[meta]);
  const shipCol=useCallback(()=>{const sc=SHIP_COLORS.find(c=>c.id===(meta.shipColor||"cyan"));return sc||SHIP_COLORS[0];},[meta.shipColor]);
@@ -442,7 +518,7 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  const[paused,setPaused]=useState(false);
  const[showStats,setShowStats]=useState(false);
  const[metaTab,setMetaTab]=useState("ship");const[labConfirm,setLabConfirm]=useState(null);
- const[abInfoId,setAbInfoId]=useState(null);const[_abCol,_setAbCol]=useState({});const[heInfoId,setHeInfoId]=useState(null);const[sprintInfo,setSprintInfo]=useState(false);const[_botInfo,_setBotInfo]=useState(null);const[autoDealerInfo,setAutoDealerInfo]=useState(false);
+ const[abInfoId,setAbInfoId]=useState(null);const[_abCol,_setAbCol]=useState({});const[heInfoId,setHeInfoId]=useState(null);const[sprintInfo,setSprintInfo]=useState(false);const[_botInfo,_setBotInfo]=useState(null);const[_ohSel,_setOhSel]=useState(null);const[_botSel,_setBotSel]=useState(null);const[autoDealerInfo,setAutoDealerInfo]=useState(false);
  const[showAnalyser,setShowAnalyser]=useState(false);const[showRegenAnalyser,setShowRegenAnalyser]=useState(false);const[showPainAnalyser,setShowPainAnalyser]=useState(false);const[confirmRespec,setConfirmRespec]=useState(false);const[deathDmgPopup,setDeathDmgPopup]=useState(false);const[deathRegenPopup,setDeathRegenPopup]=useState(false);const[deathPainPopup,setDeathPainPopup]=useState(false);
  const[showPauseSettings,setShowPauseSettings]=useState(false);const[showPauseLabs,setShowPauseLabs]=useState(false);const[showPauseCards,setShowPauseCards]=useState(false);const[_dealerOffers,_setDealerOffers]=useState(null);const[_dealerNew,_setDealerNew]=useState(false);const[_dealerAuto,_setDealerAuto]=useState(false);const[_dealerBurn,_setDealerBurn]=useState(null);
  const pausedRef=useRef(false);const _returnToPauseRef=useRef(false);
@@ -454,12 +530,12 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  const fpsRef=useRef({frames:0,last:performance.now(),fps:0});
  const touchRef=useRef({active:false,startX:0,startY:0,curX:0,curY:0,id:null});
  const[historyHideForfeits,setHistoryHideForfeits]=useState(true);const[historyMode,setHistoryMode]=useState("waves");
- const[syncCode,setSyncCode]=useState(null);const[syncStatus,setSyncStatus]=useState("none");const[syncCodeInput,setSyncCodeInput]=useState("");const[showShipPopup,setShowShipPopup]=useState(false);const[showBulletPopup,setShowBulletPopup]=useState(false);const[showBgPopup,setShowBgPopup]=useState(false);const[showSyncInfo,setShowSyncInfo]=useState(false);const[syncConflict,setSyncConflict]=useState(null);const[showDesignPopup,setShowDesignPopup]=useState(false);const[showChangelog,setShowChangelog]=useState(false);const[_showAdvInfo,_setShowAdvInfo]=useState(false);const[clExpanded,setClExpanded]=useState({v301:true});const syncCodeRef=useRef(null);const _lbTapRef=useRef({t:0,i:-1});const _cloudDebounce=useRef(null);const _sessionIdRef=useRef((()=>{try{let _d=localStorage.getItem("vs4-device-id");if(!_d){_d=_vsRealRandom().toString(36).slice(2,10)+Date.now().toString(36);localStorage.setItem("vs4-device-id",_d);}return _d;}catch(_e){return _vsRealRandom().toString(36).slice(2,10)+Date.now().toString(36);}})());const[sessionTakeover,setSessionTakeover]=useState(()=>{try{return !!sessionStorage.getItem("vs4-takeover");}catch(e){return false;}});const[_takeoverLocked,_setTakeoverLocked]=useState(false);const[confirmDisconnect,setConfirmDisconnect]=useState(false);const[usernameInput,setUsernameInput]=useState("");const[showLockInfo,setShowLockInfo]=useState(false);const[confirmLock,setConfirmLock]=useState(false);const[showLockWarning,setShowLockWarning]=useState(false);const[leaderboardData,setLeaderboardData]=useState([]);const[lbSort,setLbSort]=useState("echoes");const _devicesRef=useRef({});const[_online,_setOnline]=useState(typeof navigator!=="undefined"?navigator.onLine!==false:true);const[showShipStats,setShowShipStats]=useState(false);const[_modeUnlock,_setModeUnlock]=useState(null);const[_admHist,_setAdmHist]=useState(null);const[_admHistName,_setAdmHistName]=useState(null);const[_delTimer,_setDelTimer]=useState(10);useEffect(()=>{if(!confirmReset)return;_setDelTimer(10);const _iv=setInterval(()=>{_setDelTimer(t=>t<=1?0:t-1);},1000);return ()=>clearInterval(_iv);},[confirmReset]);
+ const[syncCode,setSyncCode]=useState(null);const[syncStatus,setSyncStatus]=useState("none");const[syncCodeInput,setSyncCodeInput]=useState("");const[showShipPopup,setShowShipPopup]=useState(false);const[showBulletPopup,setShowBulletPopup]=useState(false);const[showBgPopup,setShowBgPopup]=useState(false);const[showSyncInfo,setShowSyncInfo]=useState(false);const[syncConflict,setSyncConflict]=useState(null);const[showDesignPopup,setShowDesignPopup]=useState(false);const[showChangelog,setShowChangelog]=useState(false);const[_showAdvInfo,_setShowAdvInfo]=useState(false);const[clExpanded,setClExpanded]=useState({v31:true});const syncCodeRef=useRef(null);const _lbTapRef=useRef({t:0,i:-1});const _cloudDebounce=useRef(null);const _sessionIdRef=useRef((()=>{try{let _d=localStorage.getItem("vs4-device-id");if(!_d){_d=_vsRealRandom().toString(36).slice(2,10)+Date.now().toString(36);localStorage.setItem("vs4-device-id",_d);}return _d;}catch(_e){return _vsRealRandom().toString(36).slice(2,10)+Date.now().toString(36);}})());const[sessionTakeover,setSessionTakeover]=useState(()=>{try{return !!sessionStorage.getItem("vs4-takeover");}catch(e){return false;}});const[_takeoverLocked,_setTakeoverLocked]=useState(false);const[confirmDisconnect,setConfirmDisconnect]=useState(false);const[usernameInput,setUsernameInput]=useState("");const[showLockInfo,setShowLockInfo]=useState(false);const[confirmLock,setConfirmLock]=useState(false);const[showLockWarning,setShowLockWarning]=useState(false);const[leaderboardData,setLeaderboardData]=useState([]);const[lbSort,setLbSort]=useState("echoes");const _devicesRef=useRef({});const[_online,_setOnline]=useState(typeof navigator!=="undefined"?navigator.onLine!==false:true);const[showShipStats,setShowShipStats]=useState(false);const[_modeUnlock,_setModeUnlock]=useState(null);const[_admHist,_setAdmHist]=useState(null);const[_admHistName,_setAdmHistName]=useState(null);const[_delTimer,_setDelTimer]=useState(10);useEffect(()=>{if(!confirmReset)return;_setDelTimer(10);const _iv=setInterval(()=>{_setDelTimer(t=>t<=1?0:t-1);},1000);return ()=>clearInterval(_iv);},[confirmReset]);
   const[_transStage,_setTransStage]=useState("idle");
   const[_transFrom,_setTransFrom]=useState(null);
   const[_transTo,_setTransTo]=useState(null);
   const[_popupClosing,_setPopupClosing]=useState(false);
-  const[_launching,_setLaunching]=useState(false);const[_pendingAbPick,_setPendingAbPick]=useState(false);
+  const[_launching,_setLaunching]=useState(false);const[_mobPathCat,_setMobPathCat]=useState("phantom");const[_pickTier,_setPickTier]=useState(1);const[_pathsInfo,_setPathsInfo]=useState(false);const _wikiScrollRef=useRef(null);const[_setSec,_setSetSec]=useState(null);const[_pendingAbPick,_setPendingAbPick]=useState(false);
   const[_enforcerDeath,_setEnforcerDeath]=useState(null);const[_cargoDeath,_setCargoDeath]=useState(null);const[_sideLockPopup,_setSideLockPopup]=useState(null);
   const[_metaTabFrom,_setMetaTabFrom]=useState(null);
   const _transTimerRef=useRef(null);
@@ -469,7 +545,7 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
   const _getExitAnim=(fromPh,toPh)=>{if(fromPh==="menu"){const e=_PHASE_ENTRY[toPh]||"down";return "transOut"+_capDir(_OPP[e]);}const me=_PHASE_ENTRY[fromPh]||"down";return "transOut"+_capDir(me);};
   const _getEnterAnim=(toPh,fromPh)=>{if(toPh==="menu"){const e=_PHASE_ENTRY[fromPh]||"down";return "transIn"+_capDir(_OPP[e]);}const me=_PHASE_ENTRY[toPh]||"down";return "transIn"+_capDir(me);};
   const _phaseClass=p=>{if(_transStage==="exiting"&&_transFrom===p)return "vs-exit";return "vs-enter";};
-  const goToFast=(newPhase)=>{if(newPhase===phase)return;if(_transTimerRef.current)clearTimeout(_transTimerRef.current);_setTransFrom(phase);_setTransTo(newPhase);setPhase(newPhase);_setTransStage("entering");_transTimerRef.current=setTimeout(()=>{_setTransStage("idle");_setTransFrom(null);_setTransTo(null);},320);};const goTo=(newPhase)=>{if(newPhase===phase||_transStage!=="idle"){setPhase(newPhase);return;}_setTransFrom(phase);_setTransTo(newPhase);_setTransStage("exiting");_transTimerRef.current=setTimeout(()=>{setPhase(newPhase);_setTransStage("entering");_transTimerRef.current=setTimeout(()=>{_setTransStage("idle");_setTransFrom(null);_setTransTo(null);},320);},220);};
+  const goToFast=(newPhase)=>{if(newPhase===phase)return;if(newPhase==="settings")_setSetSec(null);if(_transTimerRef.current)clearTimeout(_transTimerRef.current);_setTransFrom(phase);_setTransTo(newPhase);setPhase(newPhase);_setTransStage("entering");_transTimerRef.current=setTimeout(()=>{_setTransStage("idle");_setTransFrom(null);_setTransTo(null);},320);};const goTo=(newPhase)=>{if(_mob){goToFast(newPhase);return;}if(newPhase===phase||_transStage!=="idle"){setPhase(newPhase);return;}_setTransFrom(phase);_setTransTo(newPhase);_setTransStage("exiting");_transTimerRef.current=setTimeout(()=>{setPhase(newPhase);_setTransStage("entering");_transTimerRef.current=setTimeout(()=>{_setTransStage("idle");_setTransFrom(null);_setTransTo(null);},320);},220);};
   const closePopup=(setter)=>{_setPopupClosing(true);setTimeout(()=>{setter(false);_setPopupClosing(false);},170);};const closeWiki=()=>{_setWikiClosing(true);setTimeout(()=>{setShowWiki(false);_setWikiClosing(false);},200);};
  const[tutStep,setTutStep]=useState(0);
  const[showTutPrompt,setShowTutPrompt]=useState(false);
@@ -582,55 +658,74 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  upgrades:{},usedAbIds:[],deathCause:"",newEnemyNotif:null,_labNotifs:[],dmgTrack:{},waveDmg:{},_diffuseCount:0,_diffuseMult:1,_sprintLabWaves:0,_overheatPoints:0,
  stars:makeStars(120),screenShake:0,flashTimer:0,time:0,_pAb:0,shipCol:shipCol(),bulCol:bulletCol(),showMagnetRange:meta.showMagnetRange!==false,
  abUp:{...(meta.abUpgrades||{})},_totalScrap:0,_totalCores:0,_totalPlasma:0,
+ _sprintBonusActive:metaRef.current.lab?._pendingSprintBonus||0,
  };
  gs._pAb=gml("m_start");
  gsRef.current=gs;
+ if(metaRef.current.lab?._pendingSprintBonus){setMeta(prev=>({...prev,lab:{...(prev.lab||{}),_pendingSprintBonus:0}}));}
  {const _dc=metaRef.current._dealerActive||[];gs._dealerCards=_dc.slice();gs._dealerMods=_buildDealerMods(_dc);_setDealerOffers(null);if(_dc.length){setMeta(prev=>{const nx={...prev,_dealerActive:[],_dealerPlayed:true};saveMeta(nx);return nx;});}}
  if(gs._pAb>0){setPhase("playing");_setPendingAbPick(true);}
  else if(gs.wave>0){setShopData({scrap:gs.scrap,cores:gs.cores,plasma:gs.plasma,upgrades:{...gs.upgrades},wave:gs.wave});setPhase("shop");}
  else{const _sLvl2=metaRef.current.lab?.completed?.intro_sprint||0;const _sPct2=_sLvl2>0?[10,20,30,40,50][Math.min(_sLvl2-1,4)]:0;const _sMax2=metaRef.current.highWave||0;const _sThr2=Math.floor(_sMax2*_sPct2/100);const _doSprint2=_sPct2>0&&!metaRef.current.introSprintOff&&_sThr2>0;setPhase("playing");startWave(gs,_doSprint2);}
  },[gml]);
  function _dealerEmptySlot(k){
- return <div key={"empty_"+k} style={{width:128,border:"2px dashed #6633aa66",borderRadius:6,padding:6,display:"flex",flexDirection:"column",alignItems:"center",boxSizing:"border-box"}}><div style={{width:"100%",aspectRatio:"384 / 534",border:"2px dashed #6633aa55",borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",boxSizing:"border-box"}}><span style={{color:"#6644aa",fontSize:9,letterSpacing:2}}>EMPTY</span></div><div style={{marginTop:5,width:"100%"}}><div style={{color:"#6644aa",fontSize:8,lineHeight:1.3,minHeight:32,display:"flex",alignItems:"center"}}>Empty card slot</div><div style={{fontSize:8,lineHeight:1.3,marginTop:2,minHeight:32}} /></div></div>;
+ return <div key={"empty_"+k} style={{width:_mv(128,116),border:_mv("2px dashed #6633aa66","3px dashed #cfa8ff"),borderRadius:6,padding:6,display:"flex",flexDirection:"column",alignItems:"center",boxSizing:"border-box"}}><div style={{width:"100%",aspectRatio:"384 / 534",border:_mv("2px dashed #6633aa55","2px dashed #cfa8ffaa"),borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",boxSizing:"border-box"}}><span style={{color:"#6644aa",fontSize:_mf(9),letterSpacing:2}}>EMPTY</span></div><div style={{marginTop:5,width:"100%"}}><div style={{color:"#6644aa",fontSize:_mf(8),lineHeight:1.3,minHeight:32,display:"flex",alignItems:"center"}}>Empty card slot</div><div style={{fontSize:_mf(8),lineHeight:1.3,marginTop:2,minHeight:32}} /></div></div>;
  }
  function _dealerCardBack(){
  return <div style={{width:"100%",height:"100%",borderRadius:6,boxSizing:"border-box",background:"radial-gradient(circle at 50% 38%,#3a1d6e,#1a0c36 68%,#0c0520)",border:"2px solid #7744bb",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden"}}>
  <div style={{position:"absolute",inset:5,border:"1px solid rgba(153,85,221,0.4)",borderRadius:4}}/>
  <div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(45deg,transparent 0,transparent 7px,rgba(153,85,221,0.07) 7px,rgba(153,85,221,0.07) 8px)"}}/>
  <div style={{width:52,height:52,transform:"rotate(45deg)",border:"2px solid #bb88ee",background:"rgba(40,18,80,0.55)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 16px #9955dd66"}}>
- <span style={{transform:"rotate(-45deg)",color:"#e6c8ff",fontSize:22,textShadow:"0 0 10px #bb88ee"}}>✦</span>
+ <span style={{transform:"rotate(-45deg)",color:"#e6c8ff",fontSize:_mf(22),textShadow:"0 0 10px #bb88ee"}}>✦</span>
  </div>
  </div>;
  }
  function _dealerCardEl(card,ckey,mode){
  const cap=t=>t.charAt(0).toUpperCase()+t.slice(1);
- const _inner=<div style={{width:128,background:"#160a30",border:"1px solid #6633aa55",borderRadius:6,padding:6,display:"flex",flexDirection:"column",alignItems:"center",backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden",boxSizing:"border-box"}}>
+ const _inner=<div style={{width:_mv(128,116),background:"#160a30",border:"1px solid #6633aa55",borderRadius:6,padding:6,display:"flex",flexDirection:"column",alignItems:"center",backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden",boxSizing:"border-box"}}>
  <canvas width={384} height={534} style={{width:"100%",height:"auto",borderRadius:4,display:"block"}} ref={el=>{if(el){const cx=el.getContext("2d");if(cx)drawDealerCard(cx,card,el.width,el.height);}}} />
  <div style={{marginTop:5,width:"100%"}}>
- <div style={{color:"#7dffc0",fontSize:8,lineHeight:1.3,minHeight:32}}>− {cap(card.nerf.enemy)}: {card.nerf.label}</div>
- <div style={{color:"#ff9a8a",fontSize:8,lineHeight:1.3,marginTop:2,minHeight:32}}>+ {cap(card.buff.enemy)}: {card.buff.label}</div>
+ <div style={{color:"#7dffc0",fontSize:_mf(8),lineHeight:1.3,minHeight:32,...(_mob?{height:44,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical"}:{})}}>− {cap(card.nerf.enemy)}: {card.nerf.label}</div>
+ <div style={{color:"#ff9a8a",fontSize:_mf(8),lineHeight:1.3,marginTop:2,minHeight:32,...(_mob?{height:44,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical"}:{})}}>+ {cap(card.buff.enemy)}: {card.buff.label}</div>
  </div>
  </div>;
  if(mode==="offer"&&_dealerNew){
  const _dl=(250+ckey*240)+"ms";
- return <div key={mode+"_"+ckey} style={{width:128,perspective:820}}>
+ return <div key={mode+"_"+ckey} style={{width:_mv(128,116),perspective:820}}>
  <div style={{position:"relative",transformStyle:"preserve-3d",WebkitTransformStyle:"preserve-3d",animation:`dealerFlip 700ms cubic-bezier(0.32,0.72,0.35,1.04) ${_dl} both`}}>
  <div style={{backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden",animation:`dealerFaceFront 700ms linear ${_dl} both`}}>{_inner}</div>
  <div style={{position:"absolute",inset:0,backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden",transform:"rotateY(180deg)",animation:`dealerFaceBack 700ms linear ${_dl} both`}}>{_dealerCardBack()}</div>
  </div>
  </div>;
  }
- return <div key={mode+"_"+ckey} style={{width:128,opacity:mode==="locked"?0.5:1}}>{_inner}</div>;
+ return <div key={mode+"_"+ckey} style={{width:_mv(128,116),opacity:mode==="locked"?0.5:1}}>{_inner}</div>;
  }
- function _genDealerOffers(){
+ function _genDealerOffers(_activeOverride){
  const _R=_vsRealRandom;
  let _hist=[];try{_hist=JSON.parse(localStorage.getItem("vs4-history")||"[]");}catch(e){_hist=[];}
  const _keys=Object.keys(DEALER_FX);
  const _killers=[];
  _hist.slice(-14).forEach(h=>{const c=(h&&h.cause)?String(h.cause).toLowerCase().split(" ")[0]:"";if(DEALER_FX[c]&&!_killers.includes(c))_killers.push(c);});
  const _pool=_killers.length?_killers:_keys;
- const _actUsed=new Set();(metaRef.current._dealerActive||[]).forEach(c=>{if(c&&c.nerf)_actUsed.add(c.nerf.enemy);if(c&&c.buff)_actUsed.add(c.buff.enemy);});const _npRaw=_pool.filter(e=>!_actUsed.has(e));const _npAlt=_keys.filter(e=>!_actUsed.has(e));const _npF=(_npRaw.length?_npRaw:(_npAlt.length?_npAlt:_keys));const _bpF=(_keys.filter(e=>!_actUsed.has(e)).length?_keys.filter(e=>!_actUsed.has(e)):_keys);const _mk=(_usedN,_usedB)=>{const _avn=_npF.filter(e=>!_usedN.has(e));const _avn2=_npAlt.filter(e=>!_usedN.has(e));const _avn3=_keys.filter(e=>!_usedN.has(e));const _srcn=_avn.length?_avn:(_avn2.length?_avn2:(_avn3.length?_avn3:_npF));const ne=_srcn[Math.floor(_R()*_srcn.length)];_usedN.add(ne);const nset=DEALER_FX[ne].nerfs;const nfx=nset[Math.floor(_R()*nset.length)];const _avb=_bpF.filter(e=>e!==ne&&!_usedB.has(e));const _avb2=_keys.filter(e=>e!==ne&&!_usedB.has(e));const _srcb=_avb.length?_avb:(_avb2.length?_avb2:(_bpF.filter(e=>e!==ne).length?_bpF.filter(e=>e!==ne):_bpF));let be=_srcb[Math.floor(_R()*_srcb.length)];_usedB.add(be);const bset=DEALER_FX[be].buffs;const bfx=bset[Math.floor(_R()*bset.length)];return {nerf:{enemy:ne,label:nfx.label,mod:nfx.mod},buff:{enemy:be,label:bfx.label,mod:bfx.mod}};};
- const _usedN=new Set(),_usedB=new Set();_setDealerOffers([_mk(_usedN,_usedB),_mk(_usedN,_usedB),_mk(_usedN,_usedB)]);_setDealerNew(true);
+ const _actUsed=new Set();(_activeOverride||metaRef.current._dealerActive||[]).forEach(c=>{if(c&&c.nerf)_actUsed.add(c.nerf.enemy);if(c&&c.buff)_actUsed.add(c.buff.enemy);});
+ const _npRaw=_pool.filter(e=>!_actUsed.has(e));
+ const _npAlt=_keys.filter(e=>!_actUsed.has(e));
+ const _shuf=(a)=>{const s=[...a];for(let i=s.length-1;i>0;i--){const j=Math.floor(_R()*(i+1));const tmp=s[i];s[i]=s[j];s[j]=tmp;}return s;};
+ const _nerfCand=[..._shuf(_npRaw),..._shuf(_npAlt.filter(e=>!_npRaw.includes(e))),..._keys];
+ const _nerfPick=[];for(const e of _nerfCand){if(_nerfPick.length>=3)break;if(!_nerfPick.includes(e))_nerfPick.push(e);}
+ const _bpF=_keys.filter(e=>!_actUsed.has(e));
+ const _buffCand=[..._shuf(_bpF),..._keys];
+ const _buffUsed=[];
+ const _buffPick=_nerfPick.map(ne=>{
+  for(const e of _buffCand){if(e!==ne&&!_buffUsed.includes(e)){_buffUsed.push(e);return e;}}
+  const _fb=_keys.find(e=>e!==ne)||ne;_buffUsed.push(_fb);return _fb;
+ });
+ const _offers=_nerfPick.map((ne,i)=>{
+  const nset=DEALER_FX[ne].nerfs;const nfx=nset[Math.floor(_R()*nset.length)];
+  const be=_buffPick[i];const bset=DEALER_FX[be].buffs;const bfx=bset[Math.floor(_R()*bset.length)];
+  return {nerf:{enemy:ne,label:nfx.label,mod:nfx.mod},buff:{enemy:be,label:bfx.label,mod:bfx.mod}};
+ });
+ _setDealerOffers(_offers);_setDealerNew(true);
  }
  function _pickDealerCard(card,ci){
  const slots=metaRef.current._dealerSlots||1;
@@ -639,9 +734,10 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  _setDealerBurn(ci==null?-1:ci);
  setTimeout(()=>{
   const _slots=metaRef.current._dealerSlots||1;const _act=metaRef.current._dealerActive||[];
+  const _freshActive=[...(_act||[]),card];
   if(_act.length<_slots){setMeta(prev=>{const nx={...prev,_dealerActive:[...(prev._dealerActive||[]),card]};saveMeta(nx);return nx;});}
-  const _newLen=Math.min(_slots,_act.length+1);
-  if(_newLen<_slots){_genDealerOffers();}else{_setDealerOffers(null);}
+  const _newLen=Math.min(_slots,_freshActive.length);
+  if(_newLen<_slots){_genDealerOffers(_freshActive);}else{_setDealerOffers(null);}
   _setDealerBurn(null);
  },780);
  }
@@ -1065,7 +1161,7 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  gs.stars.forEach(s=>{s.y=((s.y-_cdY*0.4)%GH+GH)%GH;});
  }
  gs._lastCamY=gs._camY;
- gs.cargoDistance+=gs.cargoSpeedMPS*dt*0.001;while(gs.cargoDistance>=(gs._pkgCrossings+1)*500){gs._pkgCrossings++;const _pmult=1+(gs._pkgCrossings-1)*0.5;const _paliveC=gs.train.segs.filter(_s=>_s.alive).length;const _pgain=_paliveC*_pmult;gs.cargoPackages=(gs.cargoPackages||0)+_pgain;gs._pkgPopup={amt:_pgain,mult:_pmult,life:1600};}if(gs._pkgPopup){gs._pkgPopup.life-=dt;if(gs._pkgPopup.life<=0)gs._pkgPopup=null;}
+ gs.cargoDistance+=gs.cargoSpeedMPS*dt*0.001;while(gs.cargoDistance>=(gs._pkgCrossings+1)*500){gs._pkgCrossings++;const _pmult=1+(gs._pkgCrossings-1)*1;const _paliveC=gs.train.segs.filter(_s=>_s.alive).length;const _pgain=_paliveC*_pmult;gs.cargoPackages=(gs.cargoPackages||0)+_pgain;gs._pkgPopup={amt:_pgain,mult:_pmult,life:1600};}if(gs._pkgPopup){gs._pkgPopup.life-=dt;if(gs._pkgPopup.life<=0)gs._pkgPopup=null;}
  gs.train.worldY-=gs.cargoSpeedMPS*dt*0.001;if(metaRef.current.pathsUpg?.cg_regen){gs.train.segs.forEach((sg,si)=>{if(!sg.alive)return;const _selfOk=(gs.time-(sg._lastHit||-1e9))>5000;const _aheadOk=si===0||((gs.time-(((gs.train.segs[si-1]||{})._lastHit)||-1e9))>5000);if(_selfOk&&_aheadOk&&sg.hp<sg.maxHp){sg.hp=Math.min(sg.maxHp,sg.hp+sg.maxHp*0.02*dt*0.001);}});}
  if(gs.spawnQueue.length===0)startCargoNextWave(gs);
  for(let i=gs.cargoTelegraphs.length-1;i>=0;i--){
@@ -1317,12 +1413,12 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  cx=t.x;cy=t.y;});
  kills.sort((a,b)=>b.idx-a.idx).forEach(k=>killE(gs,k.e,k.idx));
  }
- function killE(gs,e,idx){if(e._eliteReinf){const _othersAlive=gs.enemies.some(en=>en!==e&&!en._eliteReinf&&en.hp>0);if(_othersAlive){e.hp=Math.max(1,e.maxHp*0.05);return;}}if(e._killed)return;e._killed=true;{const _hb=_activeBot(gs,"health");if(_hb&&dist(e,_hb)<_hb.rPx){const _hp=gs.player;if(gs._hbBaseMaxHp==null)gs._hbBaseMaxHp=_hp.maxHp;gs._hbMult=Math.min(4,(gs._hbMult||1)+_hb.cust);_hp.maxHp=gs._hbBaseMaxHp*gs._hbMult;const _hcap=_hp.maxHp*(has(gs,"overcharge")?(hasAU(gs,"overcharge_sub1")?1.4:1.2):1);const _hb0=_hp.hp;_hp.hp=Math.min(_hp.hp+gs._hbBaseMaxHp*_hb.cust,_hcap);const _hg=_hp.hp-_hb0;if(_hg>0)trackHeal(gs,"Health Bot",_hg);gs._hbFlash=180;}}if(metaRef.current.overheatUnlocked&&(e.burnTimer>0||e._burnKilled)){const _ohcLvl=metaRef.current.lab?.completed?.overheat_chance||0;const _ohcPct=_ohcLvl>0?[30,35,40,45,50][Math.min(_ohcLvl-1,4)]:25;if(Math.random()*100<_ohcPct){let _ohGain=1;const _obmL=metaRef.current.lab?.completed?.overheat_bot_mult||0;if(_obmL>0&&_enemyInBot(gs,e))_ohGain+=_obmL;gs._overheatPoints=(gs._overheatPoints||0)+_ohGain;if(!gs.isCargo&&!gs.isPlayground&&!gs.isNewMode&&!gs.isPractise&&!gs.isTutorial&&!metaRef.current.overheatBorderOff)gs._overheatBorderTimer=800;}}if(e.type==="boss"&&!gs._isEnforcer){const _bsLvl=metaRef.current.lab?.completed?.boss_shard_drop||0;const _bsPct=_bsLvl*8;if(_bsPct>0&&Math.random()*100<_bsPct){gs.pickups.push({x:e.x,y:e.y,type:"bossShards",value:1,life:600,vx:rand(-1,1),vy:rand(-3,-1),size:12,color:"#cc3333",icon:"◈",_waveCreated:gs.wave});}}
+ function killE(gs,e,idx){if(e._eliteReinf){const _othersAlive=gs.enemies.some(en=>en!==e&&!en._eliteReinf&&en.hp>0);if(_othersAlive){e.hp=Math.max(1,e.maxHp*0.05);return;}}if(e._killed)return;e._killed=true;{const _hb=_activeBot(gs,"health");if(_hb&&dist(e,_hb)<_hb.rPx){const _hp=gs.player;if(gs._hbBaseMaxHp==null)gs._hbBaseMaxHp=_hp.maxHp;gs._hbMult=Math.min(4,(gs._hbMult||1)+_hb.cust);const _hbOldMax=_hp.maxHp;_hp.maxHp=gs._hbBaseMaxHp*gs._hbMult;const _hcap=_hp.maxHp*(has(gs,"overcharge")?(hasAU(gs,"overcharge_sub1")?1.4:1.2):1);const _hbScale=_hbOldMax>0?_hp.maxHp/_hbOldMax:1;const _hb0=_hp.hp;_hp.hp=Math.min(_hp.hp*_hbScale,_hcap);const _hg=_hp.hp-_hb0;if(_hg>0)trackHeal(gs,"Health Bot",_hg);gs._hbFlash=180;}}if(metaRef.current.overheatUnlocked&&(e.burnTimer>0||e._burnKilled)){const _ohcLvl=metaRef.current.lab?.completed?.overheat_chance||0;const _ohcPct=_ohcLvl>0?[30,35,40,45,50][Math.min(_ohcLvl-1,4)]:25;if(Math.random()*100<_ohcPct){let _ohGain=1;const _obmL=metaRef.current.lab?.completed?.overheat_bot_mult||0;if(_obmL>0&&_enemyInBot(gs,e))_ohGain+=_obmL;gs._overheatPoints=(gs._overheatPoints||0)+_ohGain;if(!gs.isCargo&&!gs.isPlayground&&!gs.isNewMode&&!gs.isPractise&&!gs.isTutorial&&!metaRef.current.overheatBorderOff)gs._overheatBorderTimer=800;}}if(e.type==="boss"&&!gs._isEnforcer){const _bsLvl=metaRef.current.lab?.completed?.boss_shard_drop||0;const _bsPct=_bsLvl*8;if(_bsPct>0&&Math.random()*100<_bsPct){gs.pickups.push({x:e.x,y:e.y,type:"bossShards",value:1,life:600,vx:rand(-1,1),vy:rand(-3,-1),size:12,color:"#cc3333",icon:"◈",_waveCreated:gs.wave});}}
  const _isSplitterChild=e.type==="splitter"&&e.size<=10;
  if(!e._eliteReinf)gs.kills++;if(!_isSplitterChild&&!e._eliteReinf)gs.waveKilled++;
  if(e.burnTimer>0||e._burnKilled){const _fc2=e._orbHit?["#1144cc","#2266dd","#4488ee","#66aaff","#88ccff","#bbddff"]:["#cc2200","#ff4411","#ff6622","#ff8833","#ffaa33","#ffcc44"];const _fN=e.type==="boss"?30:16;for(let _fi=0;_fi<_fN;_fi++){const _fa=rand(0,PI2);const _fspd=rand(0.3,1.5);gs.particles.push({x:e.x+rand(-e.size*0.5,e.size*0.5),y:e.y+rand(-e.size*0.5,e.size*0.5),vx:Math.cos(_fa)*_fspd,vy:-rand(0.8,2.5),life:rand(30,60),ml:60,color:_fc2[Math.floor(rand(0,_fc2.length))],size:rand(2,5)});}}else{sp(gs,e.x,e.y,e.color,e.type==="boss"?22:8,e.type==="boss"?5:3);}
  if(!e._eliteReinf)spawnPk(gs,e);
- if(e.type==="bomber"){const _sfR2=has(gs,"slowfield")?(hasAU(gs,"slowfield_sub1")?180:90):0;const _halfB=hasAU(gs,"slowfield_mastery")&&dist(e,gs.player)<_sfR2;const _bCount=Math.max(1,Math.round((_halfB?4:8)*(gs._dealerMods?.bomber?.bombM||1)));for(let k=0;k<_bCount;k++){const ra=(PI2/_bCount)*k;gs.eBullets.push({x:e.x,y:e.y,vx:Math.cos(ra)*2.5,vy:Math.sin(ra)*2.5,size:5,dmg:(12+gs.wave*1.5)*(e.dM||1.3),src:"bomber"});}}
+ if(e.type==="bomber"){const _sfR2=has(gs,"slowfield")?(hasAU(gs,"slowfield_sub1")?180:90):0;const _halfB=hasAU(gs,"slowfield_mastery")&&dist(e,gs.player)<_sfR2;const _bCount=Math.max(1,Math.round((_halfB?4:8)*(gs._dealerMods?.bomber?.bombM||1)));for(let k=0;k<_bCount;k++){const ra=(PI2/_bCount)*k;gs.eBullets.push({x:e.x,y:e.y,vx:Math.cos(ra)*2.5,vy:Math.sin(ra)*2.5,size:5,dmg:(12+gs.wave*1.5)*(e.dM||1),src:"bomber"});}}
  if(e.type==="splitter"&&e.size>10&&!(gs._dealerMods?.splitter?.noSplit)){
  const _spm=gs._dealerMods?.splitter;for(let i=0;i<(_spm?.splitN??2);i++){const ch=e.maxHp*0.3;gs.enemies.push({type:"splitter",x:e.x+rand(-12,12),y:e.y+rand(-8,8),hp:ch,maxHp:ch,size:10,speed:e.speed*1.3,color:"#88ffdd",fireTimer:rand(0,2000),fireRate:_spm?.childRapid?900:2200,bulletSpeed:2.5,pattern:_spm?.childNoFire?"none":"aimed",dM:0.5,scrapDrop:gs.isCargo?0:1,coreDrop:0,plasmaDrop:0,sineOff:rand(0,PI2),sineAmp:rand(20,40),entering:false,targetY:e.y,burnDmg:0,burnTimer:0,telegraphing:false,aimAngle:0,teleTimer:0,_cargo:e._cargo});gs.enemiesLeft++;}
  }
@@ -1389,7 +1485,7 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  if(gs._bots&&gs._bots.length){if(gs._hbFlash>0)gs._hbFlash-=dt;for(const b of gs._bots){const per=b.inactMs+b.actMs;b.cycle+=dt;if(b.cycle>=per)b.cycle-=per;b.active=b.cycle>=b.inactMs;if(b._baseRPx==null)b._baseRPx=b.rPx;b.rPx=(b.active&&metaRef.current.pathsUpg?.bt_field&&dist(gs.player,b)<b._baseRPx)?b._baseRPx*1.3:b._baseRPx;if(!b.active){const _bspd=(metaRef.current.pathsUpg?.bt_spd&&b.y>GH*0.6)?2:1;b.x+=b.vx*dt*0.06*_bspd;b.y+=b.vy*dt*0.06*_bspd;if(b.x<b.rPx){b.x=b.rPx;b.vx=Math.abs(b.vx);}else if(b.x>GW-b.rPx){b.x=GW-b.rPx;b.vx=-Math.abs(b.vx);}if(b.y<b.rPx+30){b.y=b.rPx+30;b.vy=Math.abs(b.vy);}else if(b.y>GH-b.rPx){b.y=GH-b.rPx;b.vy=-Math.abs(b.vy);}b.curR=lerp(b.curR,8,0.2*dt*0.06);}else{b.curR=lerp(b.curR,b.rPx,0.18*dt*0.06);}}gs.enemies.forEach(e=>{e._botDmgM=1;});const _bbot=_activeBot(gs,"bounce");if(_bbot){gs.enemies.forEach(e=>{if(dist(e,_bbot)<_bbot.rPx&&!e._eliteReinf)e._botDmgM=_bbot.cust;});}}
  gs.gravWells.forEach(gw=>{gw.life-=dt*0.06;gs.enemies.forEach(e=>{if(e.type==="boss"||e._eliteReinf||_enemyInBot(gs,e))return;if(dist(e,gw)<gw.r){const a=ag(e,gw);e.x+=Math.cos(a)*1.4*dt*0.06;e.y+=Math.sin(a)*1.4*dt*0.06;if(gw.golden)e._inGoldenGW=true;}else if(gw.golden&&e._inGoldenGW){e._inGoldenGW=false;}});gs.eBullets.forEach(b=>{if(dist(b,gw)<gw.r){const a=ag(b,gw);b.vx+=Math.cos(a)*0.04*dt*0.06;b.vy+=Math.sin(a)*0.04*dt*0.06;if(hasAU(gs,"gravity_sub1")){if(!b._origSz)b._origSz=b.size;b.size=Math.max(b._origSz*0.68,b.size-b._origSz*0.04*dt*0.001);}}});});
  gs.gravWells=gs.gravWells.filter(g=>g.life>0);
- gs.novaRings.forEach(nr=>{nr.life-=dt*0.06;nr.r=lerp(0,nr.maxR,1-nr.life/nr.ml);});
+ gs.novaRings.forEach(nr=>{nr.life-=dt*0.06;nr.r=lerp(0,nr.maxR,Math.min(1,(1-nr.life/nr.ml)*2.2));});
  gs.novaRings=gs.novaRings.filter(nr=>nr.life>0);
  if(has(gs,"orbitals")){gs.orbitals.forEach(o=>{const _iR=hasAU(gs,"orbitals_mastery")?32:36;if(o.layer===1){const _raw=Math.abs(Math.cos(o.angle));const _spdM=0.35+_raw*_raw*0.65;o.angle+=0.003*dt*_spdM;}else{o.angle+=0.004*dt;}let ox,oy;if(o.layer===1){ox=p.x+Math.cos(o.angle)*190;oy=p.y+Math.sin(o.angle)*48;}else{ox=p.x+Math.cos(o.angle)*_iR;oy=p.y+Math.sin(o.angle)*_iR;}gs.eBullets=gs.eBullets.filter(b=>dist(b,{x:ox,y:oy})>8);
  if(hasAU(gs,"orbitals_sub2")){gs.enemies.forEach(e=>{if(!e._orbHit&&dist(e,{x:ox,y:oy})<e.size+6){e._orbHit=true;const _odM=(e._botDmgM||1);const _odB=p.damage*0.3*(gs._inSprint&&metaRef.current.pathsUpg?.sp_dmg?1.25:1);const od=_odB*_odM;e.hp-=od;trackBounce(gs,"Orbital Electrons",_odB,_odM);sp(gs,e.x,e.y,"#00e5ff",6,2);if(metaRef.current.showHitText!==false)gs.hitTexts.push({x:e.x+rand(-6,6),y:e.y-e.size,text:Math.round(od),life:22,ml:22,col:"#00e5ff"});if(e.hp<=0){const idx=gs.enemies.indexOf(e);if(idx>=0)killE(gs,e,idx);}}});}});}
@@ -1466,7 +1562,7 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  e.y-=e.speed*0.5*dt*0.06;
  if(e.y>GH*0.85)e.y-=e.speed*1.0*dt*0.06;
  }
- if(e.burnTimer>0){e.burnTimer-=dt;const _bMul=e._orbHit?2:1;const burnTick=e.burnDmg*dt*0.001*_bMul;const _bdmB=(e._botDmgM||1);e.hp-=burnTick*_bdmB;trackBounce(gs,"Flame Burn",burnTick,_bdmB);if(e.hp<=0&&!e._burnKilled){e._burnKilled=true;sp(gs,e.x,e.y,e.color||"#ff5544",12,4);sp(gs,e.x,e.y,e._orbHit?"#3388ff":"#ff6622",8,3);}}
+ if(e.burnTimer>0){e.burnTimer-=dt;const _bMul=e._orbHit?2:1;const burnTick=e.burnDmg*dt*0.001*_bMul;const _bdmB=(e._botDmgM||1);e.hp-=burnTick*_bdmB;trackBounce(gs,"Flame Burn",burnTick,_bdmB);e._burnPopT=(e._burnPopT||0)+dt;if(e._burnPopT>=220){const _burnShow=Math.round(e.burnDmg*_bMul*_bdmB*0.22);if(metaRef.current.showHitText!==false&&_burnShow>=1)gs.hitTexts.push({x:e.x+rand(-8,8),y:e.y-e.size,text:_burnShow,life:24,ml:24,col:e._orbHit?"#66aaff":"#ff6622"});e._burnPopT=0;}if(e.hp<=0&&!e._burnKilled){e._burnKilled=true;sp(gs,e.x,e.y,e.color||"#ff5544",12,4);sp(gs,e.x,e.y,e._orbHit?"#3388ff":"#ff6622",8,3);}}
  if(e._elecTimer>0)e._elecTimer-=dt;
  if(!e.entering&&e.type!=="sniper"&&(e.type!=="wraith"||e._isEnforcer)&&!e._lassoed){e.fireTimer-=dt;if(e.fireTimer<=0&&e.pattern!=="none"){e.fireTimer=e.fireRate||2000;if(e.type==="boss")fireBoss(gs,e);else fireEB(gs,e);}}
  if(e._elite&&!e._eliteReinf&&!e._eliteCalled&&e._eliteCallTimer!==undefined){e._eliteCallTimer-=dt;if(e._eliteCallTimer<=0){e._eliteCalled=true;e._eliteTriggerNow=true;}}
@@ -1510,6 +1606,26 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  gs.pickups.forEach(pk=>{pk.life-=dt*0.06;pk.x+=pk.vx*dt*0.06;pk.y+=pk.vy*dt*0.06;pk.vx*=0.98;pk.vy*=0.98;if(!pk.golden&&pk.type!=="bossShards"){gs.gravWells.forEach(gw=>{if(!pk.golden&&gw.golden&&dist(pk,gw)<gw.r){pk.golden=true;pk.value=Math.ceil(pk.value*2);}});}const d=dist(pk,p);const _emr=p.magnetRange*(gs._magnetMult||1);if(d<_emr){const a=ag(pk,p);const pl=Math.max(3,(_emr-d)*0.1);pk.x+=Math.cos(a)*pl*dt*0.06;pk.y+=Math.sin(a)*pl*dt*0.06;}});
  gs.particles.forEach(pt=>{pt.x+=pt.vx*dt*0.06;pt.y+=pt.vy*dt*0.06;pt.life-=dt*0.06;pt.vx*=0.96;pt.vy*=0.96;});
  gs.pBullets=gs.pBullets.filter(b=>b.x>-10&&b.x<GW+10&&b.y>-10&&b.y<GH+10&&b.pierce>=0);
+ if(gs.isCargo){
+ const _tCx=gs.train.screenX;const _tCy0=gs.train.worldY-gs._camY;const _carriagesAlive=gs.train.segs.slice(1).some(s=>s.alive);
+ for(let _bi=gs.eBullets.length-1;_bi>=0;_bi--){
+ const _b=gs.eBullets[_bi];let _hit=false;
+ for(let _si=0;_si<gs.train.segs.length;_si++){
+ const _seg=gs.train.segs[_si];if(!_seg.alive)continue;
+ if(_si===0&&_carriagesAlive)continue;
+ const _segPy=_tCy0+_seg.offsetY;
+ if(Math.abs(_b.x-_tCx)<_seg.w/2+_b.size&&Math.abs(_b.y-_segPy)<_seg.h/2+_b.size){
+ const _vulnMult=gs._vulnTimer>0?2:1;
+ const _bDmg=Math.max(2,(_b.dmg||5)*0.4)*_vulnMult;
+ _seg.hp-=_bDmg;
+ if(_seg.hp<=0){_seg.alive=false;_seg.hp=0;sp(gs,_tCx,_segPy,"#ff8844",20,5);gs.screenShake=6;}
+ sp(gs,_b.x,_b.y,"#ff4466",4,2);
+ gs.eBullets.splice(_bi,1);_hit=true;break;
+ }
+ }
+ if(_hit)continue;
+ }
+ }
  gs.eBullets=gs.eBullets.filter(b=>b.x>-20&&b.x<GW+20&&b.y>-20&&b.y<GH+20);
  gs.particles=gs.particles.filter(pt=>pt.life>0);if(has(gs,"drone")&&hasAU(gs,"drone_mastery")&&!gs._inSprint){gs.pickups.forEach(pk=>{if(pk.life<=0&&!pk._counted){pk._counted=true;if(!gs._missed)gs._missed={};gs._missed[pk.type]=(gs._missed[pk.type]||0)+pk.value;}});}gs.pickups=gs.pickups.filter(pk=>pk.life>0);
  if(gs.eBullets.length>600){const _px=p.x,_py=p.y;gs.eBullets.sort((a,b)=>((a.x-_px)**2+(a.y-_py)**2)-((b.x-_px)**2+(b.y-_py)**2));gs.eBullets.length=600;}
@@ -1544,27 +1660,7 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  e.hp-=_sdPri*(e._botDmgM||1);trackBounce(gs,"Rage Slice",_sdPri,(e._botDmgM||1));if(metaRef.current.showHitText!==false)gs.hitTexts.push({x:e.x+rand(-6,6),y:e.y-e.size,text:Math.round(_sdPri),life:24,ml:24,col:"#ff4466"});sp(gs,e.x,e.y,"#ff4466",4,3);
  let _rsFirst=true;gs.enemies.forEach((se,si)=>{if(se!==e){const _sx=e.x+Math.cos(_sa)*60,_sy=e.y+Math.sin(_sa)*60;if(dist(se,{x:_sx,y:_sy})<60+se.size){const _rsd=_rsFirst?_sdPri:_sdSec;_rsFirst=false;se.hp-=_rsd*(se._botDmgM||1);trackBounce(gs,"Rage Slice",_rsd,(se._botDmgM||1));if(metaRef.current.showHitText!==false)gs.hitTexts.push({x:se.x+rand(-6,6),y:se.y-se.size,text:Math.round(_rsd),life:24,ml:24,col:"#ff4466"});sp(gs,se.x,se.y,"#ff4466",8,4);if(se.hp<=0)killE(gs,se,si);}}});}
  if(e.hp<=0){if((p.voidsiphonFlat||0)>0&&b.src==="main"&&b.isCrit){const healAmt=p.voidsiphonFlat;const _vsCap=p.maxHp*(has(gs,"overcharge")?(hasAU(gs,"overcharge_sub1")?1.4:1.2):1);const _vsH=Math.min(_vsCap-p.hp,healAmt);if(_vsH>0){p.hp+=_vsH;trackHeal(gs,"Void Siphon",_vsH);}sp(gs,p.x,p.y,"#44ff88",6,2);if(metaRef.current.showHitText!==false)gs.hitTexts.push({x:p.x,y:p.y-20,text:"+"+Math.round(healAmt),life:30,ml:30,col:"#44ff88"});}killE(gs,e,j);}if(b.pierce<0){gs.pBullets.splice(i,1);break;}}}}
- if(gs.isCargo){
- const _tCx=gs.train.screenX;const _tCy0=gs.train.worldY-gs._camY;const _carriagesAlive=gs.train.segs.slice(1).some(s=>s.alive);
- for(let _bi=gs.eBullets.length-1;_bi>=0;_bi--){
- const _b=gs.eBullets[_bi];let _hit=false;
- for(let _si=0;_si<gs.train.segs.length;_si++){
- const _seg=gs.train.segs[_si];if(!_seg.alive)continue;
- if(_si===0&&_carriagesAlive)continue;
- const _segPy=_tCy0+_seg.offsetY;
- if(Math.abs(_b.x-_tCx)<_seg.w/2+_b.size&&Math.abs(_b.y-_segPy)<_seg.h/2+_b.size){
- const _vulnMult=gs._vulnTimer>0?2:1;
- const _bDmg=Math.max(2,(_b.dmg||5)*0.4)*_vulnMult;
- _seg.hp-=_bDmg;
- if(_seg.hp<=0){_seg.alive=false;_seg.hp=0;sp(gs,_tCx,_segPy,"#ff8844",20,5);gs.screenShake=6;}
- sp(gs,_b.x,_b.y,"#ff4466",4,2);
- gs.eBullets.splice(_bi,1);_hit=true;break;
- }
- }
- if(_hit)continue;
- }
- }
- if(p.invTimer<=0&&p.phaseActive<=0){
+  if(p.invTimer<=0&&p.phaseActive<=0){
  for(let i=gs.eBullets.length-1;i>=0;i--){if(dist(gs.eBullets[i],p)<gs.eBullets[i].size+p.size){
  const bul=gs.eBullets[i];const bdRaw=bul.dmg||(8+gs.wave*1.5);const bd=gs._isEnforcer?p.hp+100:bdRaw*(1-(p.dmgReduction||0));const bSrc=bul.src||"unknown";gs.eBullets.splice(i,1);const _pHP=p.hp;if(gs._efShieldActive){gs._efShieldActive=false;sp(gs,p.x,p.y,"#ff5577",12,4);gs.screenShake=2;continue;}
  if(bul._fromReinf&&!gs.isCargo&&(p.goldenShields>0||p.shields>0)){if(p.goldenShields>0)p.goldenShields--;else p.shields--;sp(gs,p.x,p.y,"#ff8866",4,2);}
@@ -1584,13 +1680,43 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  gs.pickups.splice(i,1);}}
  if(has(gs,"mirror")&&hasAU(gs,"mirror_sub2")){const mx=GW-p.x;for(let i=gs.pickups.length-1;i>=0;i--){if(dist(gs.pickups[i],{x:mx,y:p.y})<18){const pk=gs.pickups[i];gs[pk.type]=(gs[pk.type]||0)+pk.value;if(pk.type==="scrap")gs._totalScrap=(gs._totalScrap||0)+pk.value;if(pk.type==="cores")gs._totalCores=(gs._totalCores||0)+pk.value;if(pk.type==="plasma")gs._totalPlasma=(gs._totalPlasma||0)+pk.value;if(has(gs,"overcharge")){const cap=p.maxHp*(hasAU(gs,"overcharge_sub1")?1.4:1.2);p.hp=Math.min(cap,p.hp+3);}gs.pickups.splice(i,1);}}}
  const _otherAliveForReinf=gs.enemies.some(en=>!en._eliteReinf&&en.hp>0);
- for(let _bk=gs.enemies.length-1;_bk>=0;_bk--){const _bke=gs.enemies[_bk];if(_bke.hp<=0&&!_bke._killed)killE(gs,_bke,_bk);}const pLen=gs.enemies.length;gs.enemies=gs.enemies.filter(e=>{if(e._eliteReinf&&e.hp<=0&&_otherAliveForReinf){e.hp=Math.max(1,e.maxHp*0.05);}const _yOk=gs.isCargo?(e.y>-2500&&e.y<GH+2500):(e.y<GH+200);const keep=_yOk&&e.x>-200&&e.x<GW+200&&e.hp>0;if(!keep){const _isSC=e.type==="splitter"&&e.size<=10;if(!_isSC&&!e._eliteReinf)gs.waveKilled++;}return keep;});
+ for(let _bk=gs.enemies.length-1;_bk>=0;_bk--){const _bke=gs.enemies[_bk];if(_bke.hp<=0&&!_bke._killed)killE(gs,_bke,_bk);}const pLen=gs.enemies.length;gs.enemies=gs.enemies.filter(e=>{if(e._eliteReinf&&e.hp<=0&&_otherAliveForReinf){e.hp=Math.max(1,e.maxHp*0.05);}const _yOk=gs.isCargo?(e._cargo?true:(e.y>-2500&&e.y<GH+2500)):(e.y<GH+200);const keep=_yOk&&e.x>-200&&e.x<GW+200&&e.hp>0;if(!keep){const _isSC=e.type==="splitter"&&e.size<=10;if(!_isSC&&!e._eliteReinf)gs.waveKilled++;}return keep;});
  const rem=pLen-gs.enemies.length;if(rem>0)gs.enemiesLeft=Math.max(0,gs.enemiesLeft-rem);
  if(p.hp<=0&&!gs.isTutorial){p.alive=false;sp(gs,p.x,p.y,"#00e5ff",22,5);gs.screenShake=16;
  if(gs.isCargo){setTimeout(()=>setPhase("menu"),800);}
  else if(gs.isPlayground||gs.isNewMode){if(gs.isNewMode)setMeta(prev=>{const nx={...prev,phantomHighWave:Math.max(prev.phantomHighWave||0,Math.max(0,gs.wave-1))};saveMeta(nx);return nx;});if(gs._isEnforcer){const _enfSurv=Math.round(60-Math.max(0,gs._enfTimer));const _enfET=gs._pgEnemy||"unknown";setMeta(prev=>{const _eb={...(prev.enforcerBest||{})};_eb[_enfET]=Math.max(_eb[_enfET]||0,_enfSurv);const nx={...prev,enforcerBest:_eb};saveMeta(nx);return nx;});setTimeout(()=>{_setEnforcerDeath({enemy:_enfET,survived:_enfSurv,defeated:false});setPhase("menu");},800);}else{setTimeout(()=>setPhase("menu"),800);}}
- else{const _rawEe=Math.max(0,Math.floor(gs.wave*1.5+gs.kills*0.38+Math.pow(gs.wave,2.8)*0.065+Math.pow(gs.wave,1.8)*0.4)-(gs.kills===0&&gs.wave<=1?1:0));const _heTier=metaRef.current.metaTier||1;const _heTV=_heTier===3?2.5:_heTier===2?1.5:1;const _hePh=_heTier>=2?(1+(metaRef.current.phantomHighWave||0)*(0.01+(metaRef.current.lab?.completed?.phantom_enhance||0)*0.001)):1;const _hePr=_heTier>=2?(1+(metaRef.current.practiseHighWave||0)*(0.006+(metaRef.current.lab?.completed?.practise_enhance||0)*0.001)):1;const _heEnf=_heTier>=2?1+(metaRef.current.enforcerKills||0)*0.025:1;const _heDes=_heTier>=2?1+((metaRef.current.ownedDesigns||[]).length)*0.004:1;const _heMult=_heTV*_hePh*_hePr*_heEnf*_heDes;const ee=Math.floor(_rawEe*_heMult*((gs._diffuseMult||1)+((metaRef.current.pathsUpg?.pr_diff&&(metaRef.current.practiseHighWave||0)>0&&(metaRef.current.practiseHighWave||0)%5===0)?0.045:0)));setDeathData({wave:gs.wave,kills:gs.kills,echoesEarned:ee,cause:gs.deathCause||"Unknown"});
- setMeta(prev=>{const _ohDeath=gs._overheatPoints||0;const nx={...prev,echoes:prev.echoes+ee,overheat:(prev.overheat||0)+_ohDeath,highWave:Math.max(prev.highWave||0,gs.wave),totalEchoesEarned:(prev.totalEchoesEarned||0)+ee};saveMeta(nx);return nx;});
+ else{const _rawEe=Math.max(0,Math.floor(gs.wave*1.5+gs.kills*0.38+Math.pow(gs.wave,2.8)*0.065+Math.pow(gs.wave,1.8)*0.4)-(gs.kills===0&&gs.wave<=1?1:0));const _heTier=metaRef.current.metaTier||1;const _heTV=_heTier===3?2.5:_heTier===2?1.5:1;const _hePh=_heTier>=2?(1+(metaRef.current.phantomHighWave||0)*(0.01+(metaRef.current.lab?.completed?.phantom_enhance||0)*0.001)):1;const _hePr=_heTier>=2?(1+(metaRef.current.practiseHighWave||0)*(0.006+(metaRef.current.lab?.completed?.practise_enhance||0)*0.001)):1;const _heEnf=_heTier>=2?1+(metaRef.current.enforcerKills||0)*0.025:1;const _heDes=_heTier>=2?1+((metaRef.current.ownedDesigns||[]).length)*0.004:1;const _heMult=_heTV*_hePh*_hePr*_heEnf*_heDes;const ee=Math.floor(_rawEe*_heMult*((gs._diffuseMult||1)+((metaRef.current.pathsUpg?.pr_diff&&(metaRef.current.practiseHighWave||0)>0&&(metaRef.current.practiseHighWave||0)%5===0)?0.045:0)));let _lpAffected=[];let _lpNewLabState=null;let _lpSprintBonusToSet=null;
+ {const _curLab=metaRef.current.lab||{};
+  if(_curLab.plusUnlocked){
+   const _pUp=_curLab.plusUp||{waves:0,thresh:0,sprint:0};
+   const _pWaves=5+(_pUp.waves||0);const _pThresh=55-(_pUp.thresh||0);const _pSprint=_pUp.sprint||0;
+   if(gs.wave>=_pThresh){
+    const _pSlots=[1,2,3][Math.min(_curLab.completed?.labplus_slots||0,2)];
+    const _srcActive=_curLab.active||[];const _validIdx=[];_srcActive.forEach((a,ix)=>{if(a)_validIdx.push(ix);});
+    for(let _i=_validIdx.length-1;_i>0;_i--){const _j=Math.floor(Math.random()*(_i+1));const _t=_validIdx[_i];_validIdx[_i]=_validIdx[_j];_validIdx[_j]=_t;}
+    const _chosen=_validIdx.slice(0,Math.min(_pSlots,_validIdx.length));
+    if(_chosen.length){
+     const newActive=[..._srcActive];const newCompleted={...(_curLab.completed||{})};
+     _chosen.forEach(idx=>{
+      let ar=newActive[idx];if(!ar)return;const _origId=ar.id;let remaining=_pWaves;let levelsGained=0;
+      while(remaining>0&&ar){
+       const need=ar.wavesNeeded-ar.wavesProgress;
+       if(remaining>=need){
+        remaining-=need;const lu=LAB_UPGRADES.find(l=>l.id===ar.id);const curLvlX=newCompleted[ar.id]||0;newCompleted[ar.id]=curLvlX+1;levelsGained++;
+        if(lu&&curLvlX+1<lu.levels.length){ar={id:ar.id,wavesNeeded:lu.levels[curLvlX+1].waves,wavesProgress:0};}else{ar=null;remaining=0;}
+       }else{ar={...ar,wavesProgress:ar.wavesProgress+remaining};remaining=0;}
+      }
+      newActive[idx]=ar;
+      if(levelsGained>0){const _luName=(LAB_UPGRADES.find(l=>l.id===_origId)||{}).name||"?";_lpAffected.push({name:_luName,levels:levelsGained,waves:_pWaves});}
+     });
+     _lpNewLabState={...(_curLab),active:newActive,completed:newCompleted};
+     if(_pSprint>0)_lpSprintBonusToSet=_pSprint;
+    }
+   }
+  }
+ }
+setDeathData({wave:gs.wave,kills:gs.kills,echoesEarned:ee,cause:gs.deathCause||"Unknown",labPlus:_lpAffected});
+ setMeta(prev=>{const _ohDeath=gs._overheatPoints||0;const nx={...prev,echoes:prev.echoes+ee,overheat:(prev.overheat||0)+_ohDeath,highWave:Math.max(prev.highWave||0,gs.wave),totalEchoesEarned:(prev.totalEchoesEarned||0)+ee,...(_lpNewLabState?{lab:{..._lpNewLabState,...(_lpSprintBonusToSet!==null?{_pendingSprintBonus:_lpSprintBonusToSet}:{})}}:{})};saveMeta(nx);return nx;});
  if(!_isRpl_)try{const _hist=JSON.parse(localStorage.getItem("vs4-history")||"[]");
  const _entry={date:Date.now(),wave:gs.wave,kills:gs.kills,echoes:ee,cause:gs.deathCause||"Unknown",scrap:gs.scrap,cores:gs.cores,plasma:gs.plasma,totalScrap:gs._totalScrap||gs.scrap,totalCores:gs._totalCores||gs.cores,totalPlasma:gs._totalPlasma||gs.plasma,forfeited:false,lifetimeEchoes:(meta.echoes||0)+ee,
  stats:{dmg:gs.dmgTrack||{},heal:gs.healTrack||{},pain:gs.painTrack||{},shieldPain:gs.shieldPain||{},waveDmg:gs.waveDmg||{},waveHeal:gs.waveHeal||{},wavePain:gs.wavePain||{},waveShieldPain:gs.waveShieldPain||{}},
@@ -1607,8 +1733,9 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  if(activeBullets.length===0){gs.eBullets=[];if(!(has(gs,"nova")&&hasAU(gs,"nova_mastery")))gs._novaMines=[];gs.waveActive=false;gs._waveEndTimer=1000;_revertHealthBot(gs);}}
  }
  if(gs._isEnforcer&&gs._enfTimer<=0&&gs.enemies.length>0){gs.enemies.forEach(e=>{sp(gs,e.x,e.y,"#ff5577",20,6);});gs.enemies=[];gs.waveActive=false;gs._waveEndTimer=120;const _defET=gs._pgEnemy||"unknown";setMeta(prev=>{const _alreadyDefeated=!!(prev.enforcerDefeated||{})[_defET];const _ed={...(prev.enforcerDefeated||{})};_ed[_defET]=true;const _eb2={...(prev.enforcerBest||{})};_eb2[_defET]=60;const nx={...prev,enforcerKills:_alreadyDefeated?(prev.enforcerKills||0):(prev.enforcerKills||0)+1,enforcerDefeated:_ed,enforcerBest:_eb2};saveMeta(nx);return nx;});setTimeout(()=>{_setEnforcerDeath({enemy:_defET,survived:60,defeated:true});setPhase("menu");},800);}
- if(!gs.waveActive&&gs._waveEndTimer>0){gs._waveEndTimer-=dt;if(gs._waveEndTimer<=0){gs._waveEndTimer=0;if(has(gs,"drone")&&hasAU(gs,"drone_mastery")&&!gs._inSprint){gs.pickups.forEach(pk=>{if(!pk._counted){pk._counted=true;if(!gs._missed)gs._missed={};gs._missed[pk.type]=(gs._missed[pk.type]||0)+pk.value;}});}if(gs._inSprint&&gs.pickups.length>0){const _sclLab=metaRef.current.lab?.completed?.sprint_currency_lifespan||0;const _isLvlSC=metaRef.current.lab?.completed?.intro_sprint||0;const _isPctSC=_isLvlSC>0?[10,20,30,40,50][Math.min(_isLvlSC-1,4)]:0;const _isThreshSC=Math.floor((metaRef.current.highWave||0)*_isPctSC/100);const _lastSW=gs.wave>=_isThreshSC;const _expPks=[];const _keepPks=[];gs.pickups.forEach(pk=>{if(_lastSW||(gs.wave-(pk._waveCreated||gs.wave))>_sclLab){_expPks.push(pk);}else{_keepPks.push(pk);}});_expPks.forEach(pk=>{const _sc=CUR[pk.type]?.color||"#fff";for(let _si=0;_si<10;_si++){const _sa=PI2/10*_si+rand(-0.4,0.4);const _sv=rand(3,7.5);gs.particles.push({x:pk.x,y:pk.y,vx:Math.cos(_sa)*_sv,vy:Math.sin(_sa)*_sv,life:rand(16,28),ml:28,color:_sc,size:rand(5,9)});}for(let _si=0;_si<5;_si++){gs.particles.push({x:pk.x+rand(-12,12),y:pk.y+rand(-12,12),vx:rand(-1.5,1.5),vy:rand(-4,-1.5),life:rand(20,35),ml:35,color:"#ffffff",size:rand(3,5.5)});}});gs.pickups=_keepPks;}else{gs.pickups=[];}
- if(gs.isPlayground){
+ if(!gs.waveActive&&gs._waveEndTimer>0){gs._waveEndTimer-=dt;if(gs._waveEndTimer<=0){gs._waveEndTimer=0;if(has(gs,"drone")&&hasAU(gs,"drone_mastery")&&!gs._inSprint){gs.pickups.forEach(pk=>{if(!pk._counted){pk._counted=true;if(!gs._missed)gs._missed={};gs._missed[pk.type]=(gs._missed[pk.type]||0)+pk.value;}});}if(gs._inSprint&&gs.pickups.length>0){const _isLvlSC=metaRef.current.lab?.completed?.intro_sprint||0;const _isPctSC=_isLvlSC>0?[10,20,30,40,50][Math.min(_isLvlSC-1,4)]:0;const _isThreshSC=Math.floor((metaRef.current.highWave||0)*_isPctSC/100);const _lastSW=gs.wave>=_isThreshSC;const _expPks=[];const _keepPks=[];gs.pickups.forEach(pk=>{if(_lastSW){_expPks.push(pk);}else{_keepPks.push(pk);}});_expPks.forEach(pk=>{const _sc=CUR[pk.type]?.color||"#fff";for(let _si=0;_si<10;_si++){const _sa=PI2/10*_si+rand(-0.4,0.4);const _sv=rand(3,7.5);gs.particles.push({x:pk.x,y:pk.y,vx:Math.cos(_sa)*_sv,vy:Math.sin(_sa)*_sv,life:rand(16,28),ml:28,color:_sc,size:rand(5,9)});}for(let _si=0;_si<5;_si++){gs.particles.push({x:pk.x+rand(-12,12),y:pk.y+rand(-12,12),vx:rand(-1.5,1.5),vy:rand(-4,-1.5),life:rand(20,35),ml:35,color:"#ffffff",size:rand(3,5.5)});}});gs.pickups=_keepPks;}else{gs.pickups=[];}
+ if(gs.isPlayground&&gs._tutType){startWave(gs);}
+ else if(gs.isPlayground){
  const pg=pgRef.current;
  if(pg&&pg.subWave===1&&pg.enemy!=="boss"){
  setPgMode({enemy:pg.enemy,subWave:2});
@@ -1632,7 +1759,7 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  if(_isPct2>0&&gs.wave<_isThresh2&&!gs.isTutorial&&!gs.isPlayground&&!gs.isNewMode&&!gs.isPractise&&!gs.isCargo&&!metaRef.current.introSprintOff&&!gs._sprintStopReq){
  gs._pendingAbPicks=(gs._pendingAbPicks||0)+1;
  gs._sprintedWaves=(gs._sprintedWaves||0)+1;
- {const _seLvl=metaRef.current.lab?.completed?.sprint_efficiency||0;const _sePct=_seLvl>0?[40,50,60,70,80][Math.min(_seLvl-1,4)]:30;if(Math.random()*100<_sePct){gs._sprintLabWaves=(gs._sprintLabWaves||0)+1;setMeta(prev=>{const lab=prev.lab;if(!lab||!lab.active||lab.active.length===0)return prev;const nx={...prev,lab:{...lab,totalWaves:(lab.totalWaves||0)+1,active:[...lab.active],completed:{...(lab.completed||{})}}};nx.lab.active=nx.lab.active.map(ar=>{if(!ar)return null;const upd={...ar,wavesProgress:(ar.wavesProgress||0)+1};if(upd.wavesProgress>=upd.wavesNeeded){const lu=LAB_UPGRADES.find(l=>l.id===ar.id);const curLvl=(nx.lab.completed[ar.id]||0);nx.lab.completed[ar.id]=curLvl+1;if(lu&&curLvl+1<lu.levels.length)return{id:ar.id,wavesNeeded:lu.levels[curLvl+1].waves,wavesProgress:0};return null;}return upd;}).filter(Boolean);const _lfS=metaRef.current.labAlertFreq===undefined?5:metaRef.current.labAlertFreq;const _gsS=gsRef.current;if(_lfS>0&&_gsS){nx.lab.active.forEach(ar=>{if(!ar)return;const _luS=LAB_UPGRADES.find(l=>l.id===ar.id);const _lvlS=nx.lab.completed[ar.id]||0;if(ar.wavesProgress===0&&_lvlS>0){const _pnS=(_gsS._pendingLabNotifs||[]);if(!_gsS._labNotifs.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.levelUp&&ln.level===_lvlS)&&!_pnS.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.levelUp&&ln.level===_lvlS)){_gsS._pendingLabNotifs=_pnS;_gsS._pendingLabNotifs.push({name:_luS?_luS.name:ar.id,level:_lvlS,progress:0,needed:0,timer:180,levelUp:true,confetti:Array.from({length:24},()=>({x:rand(-60,60),y:rand(-15,5),vx:rand(-1.5,1.5),vy:rand(-2.5,-0.5),col:pick(["#ffcc44","#44ddcc","#ff88ff","#88ddff","#ff6644","#66ff88"]),rot:rand(0,6.28),life:999}))});}}else if(ar.wavesProgress>0&&ar.wavesProgress%_lfS===0&&ar.wavesProgress<ar.wavesNeeded){const _pnS2=(_gsS._pendingLabNotifs||[]);if(!_gsS._labNotifs.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.progress===ar.wavesProgress)&&!_pnS2.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.progress===ar.wavesProgress)){_gsS._pendingLabNotifs=_pnS2;_gsS._pendingLabNotifs.push({name:_luS?_luS.name:ar.id,level:_lvlS,progress:ar.wavesProgress,needed:ar.wavesNeeded,timer:180});}}});}saveMeta(nx);return nx;});}}
+ {const _seLvl=metaRef.current.lab?.completed?.sprint_efficiency||0;const _sePct=(_seLvl>0?[40,50,60,70,80][Math.min(_seLvl-1,4)]:30)+(gs._sprintBonusActive||0);if(Math.random()*100<_sePct){gs._sprintLabWaves=(gs._sprintLabWaves||0)+1;setMeta(prev=>{const lab=prev.lab;if(!lab||!lab.active||lab.active.length===0)return prev;const nx={...prev,lab:{...lab,totalWaves:(lab.totalWaves||0)+1,active:[...lab.active],completed:{...(lab.completed||{})}}};nx.lab.active=nx.lab.active.map(ar=>{if(!ar)return null;const upd={...ar,wavesProgress:(ar.wavesProgress||0)+1};if(upd.wavesProgress>=upd.wavesNeeded){const lu=LAB_UPGRADES.find(l=>l.id===ar.id);const curLvl=(nx.lab.completed[ar.id]||0);nx.lab.completed[ar.id]=curLvl+1;if(lu&&curLvl+1<lu.levels.length)return{id:ar.id,wavesNeeded:lu.levels[curLvl+1].waves,wavesProgress:0};return null;}return upd;}).filter(Boolean);const _lfS=metaRef.current.labAlertFreq===undefined?5:metaRef.current.labAlertFreq;const _gsS=gsRef.current;if(_lfS>0&&_gsS){nx.lab.active.forEach(ar=>{if(!ar)return;const _luS=LAB_UPGRADES.find(l=>l.id===ar.id);const _lvlS=nx.lab.completed[ar.id]||0;if(ar.wavesProgress===0&&_lvlS>0){const _pnS=(_gsS._pendingLabNotifs||[]);if(!_gsS._labNotifs.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.levelUp&&ln.level===_lvlS)&&!_pnS.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.levelUp&&ln.level===_lvlS)){_gsS._pendingLabNotifs=_pnS;_gsS._pendingLabNotifs.push({name:_luS?_luS.name:ar.id,level:_lvlS,progress:0,needed:0,timer:180,levelUp:true,confetti:Array.from({length:24},()=>({x:rand(-60,60),y:rand(-15,5),vx:rand(-1.5,1.5),vy:rand(-2.5,-0.5),col:pick(["#ffcc44","#44ddcc","#ff88ff","#88ddff","#ff6644","#66ff88"]),rot:rand(0,6.28),life:999}))});}}else if(ar.wavesProgress>0&&ar.wavesProgress%_lfS===0&&ar.wavesProgress<ar.wavesNeeded){const _pnS2=(_gsS._pendingLabNotifs||[]);if(!_gsS._labNotifs.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.progress===ar.wavesProgress)&&!_pnS2.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.progress===ar.wavesProgress)){_gsS._pendingLabNotifs=_pnS2;_gsS._pendingLabNotifs.push({name:_luS?_luS.name:ar.id,level:_lvlS,progress:ar.wavesProgress,needed:ar.wavesNeeded,timer:180});}}});}saveMeta(nx);return nx;});}}
  startWave(gs,true);return;
  }
  if((gs._pendingAbPicks||0)>0){gs._pAb=(gs._pendingAbPicks||0);gs._pendingAbPicks=0;gs._sprintJustEnded=true;offerAb(gs);return;}
@@ -1664,7 +1791,7 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  const _isThresh=Math.floor(_isMax*_isPct/100);
  if(_isPct>0&&gs.wave<_isThresh&&!gs.isTutorial&&!gs.isPlayground&&!gs.isNewMode&&!gs.isPractise&&!gs.isCargo&&!metaRef.current.introSprintOff&&!gs._sprintStopReq){
  gs._sprintedWaves=(gs._sprintedWaves||0)+1;
- {const _seLvl=metaRef.current.lab?.completed?.sprint_efficiency||0;const _sePct=_seLvl>0?[40,50,60,70,80][Math.min(_seLvl-1,4)]:30;if(Math.random()*100<_sePct){gs._sprintLabWaves=(gs._sprintLabWaves||0)+1;setMeta(prev=>{const lab=prev.lab;if(!lab||!lab.active||lab.active.length===0)return prev;const nx={...prev,lab:{...lab,totalWaves:(lab.totalWaves||0)+1,active:[...lab.active],completed:{...(lab.completed||{})}}};nx.lab.active=nx.lab.active.map(ar=>{if(!ar)return null;const upd={...ar,wavesProgress:(ar.wavesProgress||0)+1};if(upd.wavesProgress>=upd.wavesNeeded){const lu=LAB_UPGRADES.find(l=>l.id===ar.id);const curLvl=(nx.lab.completed[ar.id]||0);nx.lab.completed[ar.id]=curLvl+1;if(lu&&curLvl+1<lu.levels.length)return{id:ar.id,wavesNeeded:lu.levels[curLvl+1].waves,wavesProgress:0};return null;}return upd;}).filter(Boolean);const _lfS=metaRef.current.labAlertFreq===undefined?5:metaRef.current.labAlertFreq;const _gsS=gsRef.current;if(_lfS>0&&_gsS){nx.lab.active.forEach(ar=>{if(!ar)return;const _luS=LAB_UPGRADES.find(l=>l.id===ar.id);const _lvlS=nx.lab.completed[ar.id]||0;if(ar.wavesProgress===0&&_lvlS>0){const _pnS=(_gsS._pendingLabNotifs||[]);if(!_gsS._labNotifs.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.levelUp&&ln.level===_lvlS)&&!_pnS.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.levelUp&&ln.level===_lvlS)){_gsS._pendingLabNotifs=_pnS;_gsS._pendingLabNotifs.push({name:_luS?_luS.name:ar.id,level:_lvlS,progress:0,needed:0,timer:180,levelUp:true,confetti:Array.from({length:24},()=>({x:rand(-60,60),y:rand(-15,5),vx:rand(-1.5,1.5),vy:rand(-2.5,-0.5),col:pick(["#ffcc44","#44ddcc","#ff88ff","#88ddff","#ff6644","#66ff88"]),rot:rand(0,6.28),life:999}))});}}else if(ar.wavesProgress>0&&ar.wavesProgress%_lfS===0&&ar.wavesProgress<ar.wavesNeeded){const _pnS2=(_gsS._pendingLabNotifs||[]);if(!_gsS._labNotifs.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.progress===ar.wavesProgress)&&!_pnS2.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.progress===ar.wavesProgress)){_gsS._pendingLabNotifs=_pnS2;_gsS._pendingLabNotifs.push({name:_luS?_luS.name:ar.id,level:_lvlS,progress:ar.wavesProgress,needed:ar.wavesNeeded,timer:180});}}});}saveMeta(nx);return nx;});}}
+ {const _seLvl=metaRef.current.lab?.completed?.sprint_efficiency||0;const _sePct=(_seLvl>0?[40,50,60,70,80][Math.min(_seLvl-1,4)]:30)+(gs._sprintBonusActive||0);if(Math.random()*100<_sePct){gs._sprintLabWaves=(gs._sprintLabWaves||0)+1;setMeta(prev=>{const lab=prev.lab;if(!lab||!lab.active||lab.active.length===0)return prev;const nx={...prev,lab:{...lab,totalWaves:(lab.totalWaves||0)+1,active:[...lab.active],completed:{...(lab.completed||{})}}};nx.lab.active=nx.lab.active.map(ar=>{if(!ar)return null;const upd={...ar,wavesProgress:(ar.wavesProgress||0)+1};if(upd.wavesProgress>=upd.wavesNeeded){const lu=LAB_UPGRADES.find(l=>l.id===ar.id);const curLvl=(nx.lab.completed[ar.id]||0);nx.lab.completed[ar.id]=curLvl+1;if(lu&&curLvl+1<lu.levels.length)return{id:ar.id,wavesNeeded:lu.levels[curLvl+1].waves,wavesProgress:0};return null;}return upd;}).filter(Boolean);const _lfS=metaRef.current.labAlertFreq===undefined?5:metaRef.current.labAlertFreq;const _gsS=gsRef.current;if(_lfS>0&&_gsS){nx.lab.active.forEach(ar=>{if(!ar)return;const _luS=LAB_UPGRADES.find(l=>l.id===ar.id);const _lvlS=nx.lab.completed[ar.id]||0;if(ar.wavesProgress===0&&_lvlS>0){const _pnS=(_gsS._pendingLabNotifs||[]);if(!_gsS._labNotifs.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.levelUp&&ln.level===_lvlS)&&!_pnS.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.levelUp&&ln.level===_lvlS)){_gsS._pendingLabNotifs=_pnS;_gsS._pendingLabNotifs.push({name:_luS?_luS.name:ar.id,level:_lvlS,progress:0,needed:0,timer:180,levelUp:true,confetti:Array.from({length:24},()=>({x:rand(-60,60),y:rand(-15,5),vx:rand(-1.5,1.5),vy:rand(-2.5,-0.5),col:pick(["#ffcc44","#44ddcc","#ff88ff","#88ddff","#ff6644","#66ff88"]),rot:rand(0,6.28),life:999}))});}}else if(ar.wavesProgress>0&&ar.wavesProgress%_lfS===0&&ar.wavesProgress<ar.wavesNeeded){const _pnS2=(_gsS._pendingLabNotifs||[]);if(!_gsS._labNotifs.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.progress===ar.wavesProgress)&&!_pnS2.some(ln=>ln.name===(_luS?_luS.name:ar.id)&&ln.progress===ar.wavesProgress)){_gsS._pendingLabNotifs=_pnS2;_gsS._pendingLabNotifs.push({name:_luS?_luS.name:ar.id,level:_lvlS,progress:ar.wavesProgress,needed:ar.wavesNeeded,timer:180});}}});}saveMeta(nx);return nx;});}}
  startWave(gs,true);return;
  }
  if((gs._pendingAbPicks||0)>0){gs._pAb=(gs._pendingAbPicks||0);gs._pendingAbPicks=0;gs._sprintJustEnded=true;if((gs._sprintLabWaves||0)>0){const _gs=gsRef.current;if(_gs){if(!_gs._pendingLabNotifs)_gs._pendingLabNotifs=[];_gs._pendingLabNotifs.push({name:"Sprint Labs",level:0,progress:gs._sprintLabWaves,needed:gs._sprintedWaves||0,timer:240});}}offerAb(gs);return;}
@@ -1717,7 +1844,7 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  gs.eBullets.forEach(b=>{if(b.mine){const mp=0.6+Math.sin((b.mineTimer||0)*0.003)*0.4;ctx.fillStyle="#cc44ff";ctx.shadowColor="#cc44ff";ctx.shadowBlur=8*mp;ctx.beginPath();ctx.arc(b.x,b.y,b.size*mp,0,PI2);ctx.fill();ctx.strokeStyle="#ff88ff44";ctx.lineWidth=1;ctx.beginPath();ctx.arc(b.x,b.y,b.size*1.5,0,PI2);ctx.stroke();}else{ctx.fillStyle=b._sniperBullet?"#ff3344":"#ff4444";ctx.shadowColor=b._sniperBullet?"#ff3344":"#ff4444";ctx.shadowBlur=5;ctx.beginPath();ctx.arc(b.x,b.y,b.size,0,PI2);ctx.fill();}});ctx.shadowBlur=0;
  const scc=(gs.shipCol||{color:"#00e5ff"}).color;
  const bcc=gs.bulCol||scc;
- gs.pBullets.forEach(b=>{ctx.fillStyle=b.isCrit?"#ffff44":bcc;ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=6;ctx.beginPath();ctx.arc(b.x,b.y,b.size,0,PI2);ctx.fill();});ctx.shadowBlur=0;
+ if(gs._launchPh)return;gs.pBullets.forEach(b=>{ctx.fillStyle=b.isCrit?"#ffff44":bcc;ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=6;ctx.beginPath();ctx.arc(b.x,b.y,b.size,0,PI2);ctx.fill();});ctx.shadowBlur=0;
  gs.homingMissiles.forEach(m=>{const _mc=m.isCrit?"#ffff44":bcc;ctx.fillStyle=_mc;ctx.shadowColor=_mc;ctx.shadowBlur=m.isCrit?8:5;ctx.save();ctx.translate(m.x,m.y);const ma=Math.atan2(m.vy||0,m.vx||0);ctx.rotate(ma);ctx.beginPath();ctx.ellipse(0,0,m.size*2.5,m.size*0.8,0,0,PI2);ctx.fill();ctx.restore();});ctx.shadowBlur=0;
  if(gs._bots)for(const b of gs._bots){ctx.save();if(b.active){ctx.globalAlpha=0.09;ctx.fillStyle=b.col;ctx.beginPath();ctx.arc(b.x,b.y,b.curR,0,PI2);ctx.fill();ctx.globalAlpha=0.75;ctx.strokeStyle=b.col;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(b.x,b.y,b.curR,0,PI2);ctx.stroke();ctx.globalAlpha=0.85;_drawBotIcon(ctx,b.id,b.x,b.y,8,b.col);}else{ctx.globalAlpha=0.8;_drawBotIcon(ctx,b.id,b.x,b.y,8,b.col);}ctx.globalAlpha=1;ctx.restore();}
  const _reinfInvuln=gs.enemies.some(en=>!en._eliteReinf&&en.hp>0);gs.enemies.forEach(e=>{const _eCol=(e.type==="bomber"&&(e._tdBlue||0)>0)?`rgba(${Math.round(255*(1-e._tdBlue)+68*e._tdBlue)},${Math.round(204*(1-e._tdBlue)+170*e._tdBlue)},${Math.round(68*(1-e._tdBlue)+255*e._tdBlue)},1)`:e.color;
@@ -1855,7 +1982,6 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  ctx.globalAlpha=0.15;ctx.strokeStyle="#ccddee";ctx.lineWidth=1.5;ctx.strokeRect(_dcx-_hk-_kGp-_kSz,_dcy-_hk,_kSz,_kSz);ctx.globalAlpha=_tr2._arrowL?0.4:0.12;ctx.beginPath();ctx.moveTo(_dcx-_hk-_kGp-_kSz*0.72,_dcy);ctx.lineTo(_dcx-_hk-_kGp-_kSz*0.3,_dcy-_hk*0.55);ctx.lineTo(_dcx-_hk-_kGp-_kSz*0.3,_dcy+_hk*0.55);ctx.fill();
  ctx.globalAlpha=0.15;ctx.strokeStyle="#ccddee";ctx.lineWidth=1.5;ctx.strokeRect(_dcx+_hk+_kGp,_dcy-_hk,_kSz,_kSz);ctx.globalAlpha=_tr2._arrowR?0.4:0.12;ctx.beginPath();ctx.moveTo(_dcx+_hk+_kGp+_kSz*0.72,_dcy);ctx.lineTo(_dcx+_hk+_kGp+_kSz*0.3,_dcy-_hk*0.55);ctx.lineTo(_dcx+_hk+_kGp+_kSz*0.3,_dcy+_hk*0.55);ctx.fill();
  ctx.globalAlpha=1;}
- if(_mc2!=="reactive"||_tr2._wasUsed){ctx.globalAlpha=0.35;ctx.strokeStyle="#ccddee";ctx.lineWidth=2;const _pbx=GW-66;ctx.strokeRect(_pbx,62,52,32);ctx.fillStyle="#ccddee";ctx.fillRect(_pbx+14,68,7,20);ctx.fillRect(_pbx+29,68,7,20);ctx.globalAlpha=1;}
  if(_mc2==="reactive"&&_tr2.active)_tr2._wasUsed=true;
  if(gs.newEnemyNotif){const nn=gs.newEnemyNotif;const na=Math.min(1,nn.timer/30);const name=nn.type.charAt(0).toUpperCase()+nn.type.slice(1);
  ctx.globalAlpha=na;ctx.fillStyle="rgba(6,6,14,0.7)";ctx.fillRect(GW/2-80,68,160,26);ctx.strokeStyle="#ffcc4466";ctx.lineWidth=1;ctx.strokeRect(GW/2-80,68,160,26);
@@ -1960,8 +2086,9 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  useEffect(()=>{
  const c=canvasRef.current;if(!c)return;
  const getT=(e)=>{const r=c.getBoundingClientRect();const scl=GW/r.width;return{x:(e.clientX-r.left)*scl,y:(e.clientY-r.top)*scl};};
- const ts=(e)=>{if(phRef.current!=="playing"||pausedRef.current)return;const mc=metaRef.current.mobileControls||"reactive";const t=e.changedTouches[0];if(!t)return;e.preventDefault();const p=getT(t);
- if(p.x>GW-70&&p.x<GW-10&&p.y>58&&p.y<100){setPaused(pr=>!pr);return;}
+ const ts=(e)=>{if(phRef.current!=="playing"||pausedRef.current)return;const _tg=e.target;if(_tg&&_tg.closest&&_tg.closest("button,a,input,select,textarea,[data-noctl]"))return;const mc=metaRef.current.mobileControls||"reactive";const t=e.changedTouches[0];if(!t)return;e.preventDefault();const p=getT(t);
+ const _gsT=gsRef.current;const _spIdT=_gsT?(_gsT._inSprint&&metaRef.current.pathsUpg?.sp_stop?"sp_stop":_gsT._isEnforcer&&metaRef.current.pathsUpg?.ef_shield?"ef_shield":_gsT.isCargo&&metaRef.current.pathsUpg?.cg_rev?"cg_rev":_gsT.isNewMode&&metaRef.current.pathsUpg?.ph_wave?"ph_wave":null):null;
+
  if(mc==="reactive"){touchRef.current={active:true,startX:p.x,startY:p.y,curX:p.x,curY:p.y,id:t.identifier};}
  else if(mc==="stationary"){touchRef.current={active:true,startX:GW-90,startY:GH-90,curX:p.x,curY:p.y,id:t.identifier};}
  else if(mc==="arrows"){const tr=touchRef.current;const _kSz=52,_kGp=5,_dcx=GW-115,_dcy=GH-135,_hk=26;
@@ -1972,8 +2099,8 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  tr.active=true;tr.id=t.identifier;}};
  const tm=(e)=>{const tr=touchRef.current;if(!tr.active)return;e.preventDefault();for(let i=0;i<e.changedTouches.length;i++){if(e.changedTouches[i].identifier===tr.id){const p=getT(e.changedTouches[i]);tr.curX=p.x;tr.curY=p.y;}}};
  const te=(e)=>{const tr=touchRef.current;if(!tr.active)return;for(let i=0;i<e.changedTouches.length;i++){if(e.changedTouches[i].identifier===tr.id){tr.active=false;tr._arrowL=false;tr._arrowR=false;tr._arrowU=false;tr._arrowD=false;}}};
- c.addEventListener("touchstart",ts,{passive:false});c.addEventListener("touchmove",tm,{passive:false});c.addEventListener("touchend",te);c.addEventListener("touchcancel",te);
- return()=>{c.removeEventListener("touchstart",ts);c.removeEventListener("touchmove",tm);c.removeEventListener("touchend",te);c.removeEventListener("touchcancel",te);};
+ window.addEventListener("touchstart",ts,{passive:false});window.addEventListener("touchmove",tm,{passive:false});window.addEventListener("touchend",te);window.addEventListener("touchcancel",te);
+ return()=>{window.removeEventListener("touchstart",ts);window.removeEventListener("touchmove",tm);window.removeEventListener("touchend",te);window.removeEventListener("touchcancel",te);};
  },[]);
  useEffect(()=>{const h=e=>{
  const k=e.key.toLowerCase();
@@ -2002,24 +2129,25 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  function buyBotUnlock(id){const owned=meta.bots||{};if(owned[id])return;const cnt=Object.keys(owned).length;const cost=BOT_UNLOCK[Math.min(cnt,BOT_UNLOCK.length-1)];if((meta.echoes||0)<cost)return;setMeta(prev=>{const nb={...(prev.bots||{})};nb[id]={size:0,time:0,custom:0};const nx={...prev,echoes:prev.echoes-cost,bots:nb};saveMeta(nx);return nx;});}
  function buyBotStat(id,stat){const owned=meta.bots||{};const lv=owned[id];if(!lv||(lv[stat]||0)>=20)return;const cost=botUpCost(lv[stat]||0);if((meta.echoes||0)<cost)return;setMeta(prev=>{const nb={...(prev.bots||{})};const cur={...(nb[id]||{size:0,time:0,custom:0})};cur[stat]=(cur[stat]||0)+1;nb[id]=cur;const nx={...prev,echoes:prev.echoes-cost,bots:nb};saveMeta(nx);return nx;});}
  function buyTier(){const tier=meta.metaTier||1;if(tier>=3)return;const allMaxed=META.every(up=>(meta.levels[up.id]||0)>=up.max*tier);const tierCost=tier===1?800:25000;if(!allMaxed||meta.echoes<tierCost)return;setMeta(prev=>{const nx={...prev,echoes:prev.echoes-tierCost,metaTier:(prev.metaTier||1)+1};saveMeta(nx);return nx;});}
- const _affDot={position:"absolute",top:-4,right:-4,width:9,height:9,borderRadius:"50%",background:"#ff4455",boxShadow:"0 0 6px #ff4455",pointerEvents:"none",zIndex:2}; const _affDotBig={position:"absolute",top:-4,right:-4,width:15,height:15,borderRadius:"50%",background:"#ff4455",boxShadow:"0 0 9px #ff4455",pointerEvents:"none",zIndex:2}; const _isCheater=(m)=>!!m&&(m.totalEchoesEarned||0)>0&&(m.echoes||0)>(m.totalEchoesEarned||0);
+ const _affDot={position:"absolute",top:-4,right:-4,width:9,height:9,borderRadius:"50%",background:"#ff4455",boxShadow:"0 0 6px #ff4455",pointerEvents:"none",zIndex:2}; const _affDotBig={position:"absolute",top:-4,right:-4,width:15,height:15,borderRadius:"50%",background:"#ff4455",boxShadow:"0 0 9px #ff4455",pointerEvents:"none",zIndex:2}; const _affDotBlue={..._affDot,background:"#66bbee",boxShadow:"0 0 6px #66bbee"}; const _affDotBigBlue={..._affDotBig,background:"#66bbee",boxShadow:"0 0 9px #66bbee"}; const _isCheater=(m)=>!!m&&(m.totalEchoesEarned||0)>0&&(m.echoes||0)>(m.totalEchoesEarned||0);
  const _dotsOn=meta.affordDotOff!==true;
  const _pFeatA=(id)=>id==="phantom"?(meta.phantomHighWave||0)>0:id==="practise"?(meta.practiseHighWave||0)>0:id==="cargo"?(meta.cargoHighDistance||0)>0:id==="enforcer"?(meta.metaTier||1)>=2:id==="dealer"?!!meta._dealerPlayed:id==="bots"?Object.keys(meta.bots||{}).length>0:id==="intro_sprint"?((meta.lab?.completed?.intro_sprint||0)>=1):true;
  const _affordPaths=(!meta.pathsCore&&(meta.packages||0)>=20)||(!!meta.pathsCore&&(((meta.packages||0)>=50&&PATH_DEFS.some(p=>!(meta.pathsCat&&meta.pathsCat[p.id])&&_pFeatA(p.id)))||Object.keys(PATH_UPG).some(_pc=>(meta.pathsCat&&meta.pathsCat[_pc])&&(PATH_UPG[_pc]||[]).some(_pu=>!(meta.pathsUpg&&meta.pathsUpg[_pu.id])&&(_pu.parent?!!(meta.pathsUpg&&meta.pathsUpg[_pu.parent]):true)&&(meta.packages||0)>=_pu.cost))));
  const _affordDesign=SHIP_DESIGNS.some(d=>d.cost>0&&!(meta.ownedDesigns||[]).includes(d.id)&&(meta.bossShards||0)>=d.cost);
- const _affordMeta=()=>{const m=meta;const tier=m.metaTier||1;const lv=m.levels||{};const ec=m.echoes||0;let ship=META.some(up=>{const l=lv[up.id]||0;const mx=up.max*tier;return l<mx&&ec>=metaCost(up,l,tier);});if(!ship&&tier<3){const allMaxed=META.every(up=>(lv[up.id]||0)>=up.max*tier);const tc=tier===1?800:25000;if(allMaxed&&ec>=tc)ship=true;}const shards=m.shards||0;const bought=m.shardsBought||0;const au=m.abUpgrades||{};let used=0;ABILITIES.forEach(ab=>{if(au[ab.id+"_sub1"])used++;if(au[ab.id+"_sub2"])used++;if(au[ab.id+"_mastery"])used+=3;});const shardsLeft=Math.max(0,60-shards-used);const shardCost=Math.ceil(100*Math.pow(1+bought*0.12,1.6)+(bought>15?Math.pow(bought-15,1.8)*0.8:0)+(bought>30?Math.pow(bought-30,1.5)*2.5:0));let abilities=(shardsLeft>0&&ec>=shardCost);if(!abilities&&shards>0){abilities=ABILITIES.some(ab=>{const s1=!!au[ab.id+"_sub1"],s2=!!au[ab.id+"_sub2"],ms=!!au[ab.id+"_mastery"];if(!s1||!s2)return true;return !ms&&shards>=3;});}const slots=(m.lab&&m.lab.slots)||0;const lab=slots<LAB_SLOT_COSTS.length&&ec>=LAB_SLOT_COSTS[slots];const owned=m.bots||{};const cnt=Object.keys(owned).length;let bots=cnt<BOTS.length&&ec>=BOT_UNLOCK[Math.min(cnt,BOT_UNLOCK.length-1)];if(!bots){bots=BOTS.some(b=>{const l=owned[b.id];if(!l)return false;return ["size","time","custom"].some(st=>(l[st]||0)<20&&ec>=botUpCost(l[st]||0));});}let overheat;if(!m.overheatUnlocked){overheat=ec>=OH_COSTS.unlock;}else{const ohPts=m.overheat||0;const ohUp=m.overheatUpgrades||{};const ohIU=m.overheatItemUnlocked||{};const _shop=SHOP.filter(u=>u.id!=="rear"&&u.id!=="shield");overheat=_shop.some(up=>{if(!ohIU[up.id])return ec>=OH_COSTS.itemEc(up.id)&&ohPts>=OH_COSTS.itemOhCost(up.id);const ol=ohUp[up.id]||0;return ol<OH_COSTS.maxLvl&&ohPts>=OH_COSTS.lvlCost(up.id,ol);});}return{ship,abilities,lab,bots,overheat,any:ship||abilities||lab||bots||overheat};};
- const bs2=(c)=>({padding:"10px 28px",background:"transparent",border:`2px solid ${c}`,color:c,fontSize:14,fontFamily:"inherit",cursor:"pointer",letterSpacing:2,transition:"all 0.2s"});
- const hv=c=>({onMouseOver:e=>{e.target.style.background=c;e.target.style.color="#06060e";},onMouseOut:e=>{e.target.style.background="transparent";e.target.style.color=c;}});
- const [sc2,setSc2]=useState(()=>typeof window!=="undefined"?Math.min((window.innerWidth-32)/GW,(window.innerHeight-32)/GH):1);
+ const _affordMeta=()=>{const m=meta;const tier=m.metaTier||1;const lv=m.levels||{};const ec=m.echoes||0;let ship=META.some(up=>{const l=lv[up.id]||0;const mx=up.max*tier;return l<mx&&ec>=metaCost(up,l,tier);});if(!ship&&tier<3){const allMaxed=META.every(up=>(lv[up.id]||0)>=up.max*tier);const tc=tier===1?800:25000;if(allMaxed&&ec>=tc)ship=true;}const shards=m.shards||0;const bought=m.shardsBought||0;const au=m.abUpgrades||{};let used=0;ABILITIES.forEach(ab=>{if(au[ab.id+"_sub1"])used++;if(au[ab.id+"_sub2"])used++;if(au[ab.id+"_mastery"])used+=3;});const shardsLeft=Math.max(0,60-shards-used);const shardCost=Math.ceil(100*Math.pow(1+bought*0.12,1.6)+(bought>15?Math.pow(bought-15,1.8)*0.8:0)+(bought>30?Math.pow(bought-30,1.5)*2.5:0));let abilities=(shardsLeft>0&&ec>=shardCost);if(!abilities&&shards>0){abilities=ABILITIES.some(ab=>{const s1=!!au[ab.id+"_sub1"],s2=!!au[ab.id+"_sub2"],ms=!!au[ab.id+"_mastery"];if(!s1||!s2)return true;return !ms&&shards>=3;});}const slots=(m.lab&&m.lab.slots)||0;const lab=slots<LAB_SLOT_COSTS.length&&ec>=LAB_SLOT_COSTS[slots];const owned=m.bots||{};const cnt=Object.keys(owned).length;let bots=cnt<BOTS.length&&ec>=BOT_UNLOCK[Math.min(cnt,BOT_UNLOCK.length-1)];if(!bots){bots=BOTS.some(b=>{const l=owned[b.id];if(!l)return false;return ["size","time","custom"].some(st=>(l[st]||0)<20&&ec>=botUpCost(l[st]||0));});}let overheat;if(!m.overheatUnlocked){overheat=ec>=OH_COSTS.unlock;}else{const ohPts=m.overheat||0;const ohUp=m.overheatUpgrades||{};const ohIU=m.overheatItemUnlocked||{};const _shop=SHOP.filter(u=>u.id!=="rear"&&u.id!=="shield");overheat=_shop.some(up=>{if(!ohIU[up.id])return ec>=OH_COSTS.itemEc(up.id)&&ohPts>=OH_COSTS.itemOhCost(up.id);const ol=ohUp[up.id]||0;return ol<OH_COSTS.maxLvl&&ohPts>=OH_COSTS.lvlCost(up.id,ol);});}const labEmpty=((m.lab&&m.lab.slots)||0)>((m.lab&&m.lab.active&&m.lab.active.filter(a=>a).length)||0);return{ship,abilities,lab,bots,overheat,labEmpty,any:ship||abilities||lab||bots||overheat};};
+ const bs2=(c)=>_mob?(()=>{const _c7=(c||"#8899aa").slice(0,7);return {..._gp(_c7,14),padding:"19px 26px",color:"#fff",fontSize:16,fontFamily:"inherit",cursor:"pointer",letterSpacing:2,fontWeight:"bold",transition:"all 0.2s"};})():({padding:"10px 28px",background:"transparent",border:`2px solid ${c}`,color:c,fontSize:_mf(14),fontFamily:"inherit",cursor:"pointer",letterSpacing:2,transition:"all 0.2s"});
+ const hv=c=>_mob?{}:({onMouseOver:e=>{e.target.style.background=c;e.target.style.color="#06060e";},onMouseOut:e=>{e.target.style.background="transparent";e.target.style.color=c;}});
+ const [sc2,setSc2]=useState(()=>typeof window!=="undefined"?Math.min((window.innerWidth-(_devMob?0:32))/GW,(window.innerHeight-(_devMob?0:32))/GH):1);
  useEffect(()=>{if(phase!=="metashop")return;const au=metaRef.current.abUpgrades||{};const col=metaRef.current.abCollapsed||{};const _nx={};ABILITIES.forEach(ab=>{const ao=au[ab.id+"_sub1"]&&au[ab.id+"_sub2"]&&au[ab.id+"_mastery"];_nx[ab.id]=(col[ab.id]!==undefined)?col[ab.id]:!!ao;});_setAbCol(_nx);},[phase]);
-  useEffect(()=>{const _onResize=()=>setSc2(Math.min((window.innerWidth-32)/GW,(window.innerHeight-32)/GH));window.addEventListener("resize",_onResize);window.addEventListener("orientationchange",_onResize);return()=>{window.removeEventListener("resize",_onResize);window.removeEventListener("orientationchange",_onResize);};},[]);
+  useEffect(()=>{const _onResize=()=>{const _pad=_devMob?0:32;setSc2(Math.min((window.innerWidth-_pad)/GW,(window.innerHeight-_pad)/GH));};_onResize();window.addEventListener("resize",_onResize);window.addEventListener("orientationchange",_onResize);return()=>{window.removeEventListener("resize",_onResize);window.removeEventListener("orientationchange",_onResize);};},[_devMob]);
+ const MenuIcon=({id,size,color})=>{
+ return <canvas width={size*3} height={size*3} style={{width:size,height:size,flexShrink:0}} ref={el=>{if(el){const ctx=el.getContext("2d");ctx.setTransform(3,0,0,3,0,0);drawMenuIcon(ctx,id,size,color||"#88aacc");}}} />;
+ };
  const EnemyIcon=({type,size,color,cardMode})=>{
- const ref=useRef(null);
- useEffect(()=>{const c=ref.current;if(!c)return;const ctx=c.getContext("2d");ctx.setTransform(3,0,0,3,0,0);ctx.clearRect(0,0,size,size);
+ return <canvas width={size*3} height={size*3} style={{width:size,height:size,flexShrink:0}} ref={el=>{if(el){const ctx=el.getContext("2d");ctx.setTransform(3,0,0,3,0,0);ctx.clearRect(0,0,size,size);
  const ed=ED[type];if(ed)drawShape(ctx,type,size/2,size/2,size*0.35,color||ed.col,0,{_cardMode:!!cardMode});
  else if(type==="boss")drawShape(ctx,"boss",size/2,size/2,size*0.35,color||"#ff2266",0,{_cardMode:!!cardMode});
- },[type,size,color,cardMode]);
- return <canvas ref={ref} width={size*3} height={size*3} style={{width:size,height:size,flexShrink:0}} />;
+ }}} />;
  };
  const AbilityIcon=({id,size,color})=>{
  const c=color||"#ccddee";const s=size;const sw=Math.max(1,s*0.06);
@@ -2047,8 +2175,8 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  ctx.beginPath();ctx.moveTo(cx,cy-s-3);ctx.lineTo(cx-s,cy+s);ctx.lineTo(cx,cy+s*0.4);ctx.lineTo(cx+s,cy+s);ctx.closePath();ctx.fill();
  ctx.shadowBlur=0;const _sdM=SHIP_DESIGNS.find(d=>d.id===(metaRef.current.shipDesign||"none"));if(_sdM&&_sdM.draw){const _dcIdM=metaRef.current.designColor||"orange";const _dcM=SHIP_COLORS.find(c2=>c2.id===_dcIdM)||SHIP_COLORS[0];_sdM.draw(ctx,cx,cy,s,_dcM.color);ctx.globalAlpha=1;ctx.shadowBlur=0;}ctx.fillStyle=sc.color;ctx.globalAlpha=0.3;ctx.beginPath();ctx.arc(cx,cy+s+3,3,0,PI2);ctx.fill();ctx.globalAlpha=1;
  },[size,sc,meta.shipDesign,meta.designColor]);
- return <canvas ref={ref} width={size*3} height={size*3} onClick={onClick} style={{width:size,height:size,cursor:"pointer",borderRadius:"50%",border:`1px solid ${sc.color}22`,transition:"all 0.2s"}}
- onMouseOver={e=>e.currentTarget.style.borderColor=sc.color+"66"} onMouseOut={e=>e.currentTarget.style.borderColor=sc.color+"22"} />;
+ return <canvas ref={ref} width={size*3} height={size*3} onClick={onClick} style={{width:size,height:size,cursor:"pointer",borderRadius:"50%",border:_mob?"none":`1px solid ${sc.color}22`,transition:"all 0.2s"}}
+ onMouseOver={e=>{if(!_mob)e.currentTarget.style.borderColor=sc.color+"66";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor=sc.color+"22";}} />;
  };
  const [MenuBG]=useState(()=>()=>{
  const bgRef=useRef(null);const bgStars=useRef(null);const bgNebula=useRef(null);const bgDebris=useRef(null);const bgTime=useRef(0);const bgRaf=useRef(null);
@@ -2095,8 +2223,8 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  const v=(pVal,menuVal)=>p?pVal:menuVal;
  const mHp=75+gml("m_hp")*12,mDmg=(7+gml("m_dmg")*1.5),mSpd=(3.6*(1+gml("m_spd")*0.05)),mBs=(3.2+gml("m_bullet")*0.25),mMag=(50*(1+gml("m_magnet")*0.04)),mFort=(1+gml("m_luck")*0.08),mSh=gml("m_shield");
  return(
- <div style={{padding:"6px 0",fontSize:9,color:"#8899aa",lineHeight:1.8,textAlign:"center",maxWidth:wide?"100%":300,width:wide?"100%":"auto"}}>
- <div style={{color:"#bbccdd",fontSize:10,fontWeight:"bold",marginBottom:3}}>SHIP STATUS</div>
+ <div style={{padding:"6px 0",fontSize:_mf(9),color:"#8899aa",lineHeight:1.8,textAlign:"center",maxWidth:wide?"100%":300,width:wide?"100%":"auto"}}>
+ <div style={{color:"#bbccdd",fontSize:_mf(10),fontWeight:"bold",marginBottom:3}}>SHIP STATUS</div>
  <div>HP: <span style={{color:"#ff5577"}}>{p?`${Math.ceil(p.hp)}/${p.maxHp}`:mHp}</span> · Shields: <span style={{color:"#44aaff"}}>{p?`${p.shields}/${p.shieldMax}`:mSh}</span></div>
  <div>Damage: <span style={{color:"#ff8866"}}>{v(p?.damage.toFixed(1),mDmg.toFixed(1))}</span> · Fire delay: <span style={{color:"#ffaa44"}}>{v(p?.fireDelay.toFixed(0)+"ms","210ms")}</span></div>
  <div>Speed: <span style={{color:"#44ccff"}}>{v(p?.speed.toFixed(1),mSpd.toFixed(1))}</span> · Bullet size: <span style={{color:"#44ccff"}}>{v(p?.bulletSize.toFixed(1),mBs.toFixed(1))}</span></div>
@@ -2109,22 +2237,22 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  );
  };
  const[codexOpen,setCodexOpen]=useState({controls:false,mechanics:false,currencies:false,enemies:false,abilities:false,scrap:false,cores:false,plasma:false,meta:false,metaab:false,designs:false,labs:false,overheat:false,bots:false,paths:false,cargo:false});
- const togCodex=(k)=>setCodexOpen(p=>({...p,[k]:!p[k]}));
+ const togCodex=(k)=>setCodexOpen(p=>{if(!_mob)return {...p,[k]:!p[k]};const _o=!p[k];const nx={};Object.keys(p).forEach(kk=>{nx[kk]=false;});nx[k]=_o;return nx;});
  const CodexSec=({id,title,color,children})=>(<div style={{marginBottom:4}}>
- <h3 onClick={()=>togCodex(id)} style={{color:color||"#bbccdd",fontSize:13,letterSpacing:2,margin:"10px 0 4px",cursor:"pointer",userSelect:"none",textDecoration:"underline",textDecorationColor:(color||"#bbccdd")+"44",textUnderlineOffset:3}}>{codexOpen[id]?"▾":"▸"} {title}</h3>
+ <h3 onClick={()=>togCodex(id)} style={_mob?{...(codexOpen[id]?_gp(color||"#bbccdd",12):_gpDim(color||"#bbccdd",12)),color:"#fff",fontSize:12,letterSpacing:1.5,margin:"0 0 6px",padding:"12px 14px",cursor:"pointer",userSelect:"none",display:"flex",alignItems:"center",justifyContent:"space-between",fontWeight:"bold"}:{color:color||"#bbccdd",fontSize:_mf(13),letterSpacing:2,margin:"10px 0 4px",cursor:"pointer",userSelect:"none",textDecoration:"underline",textDecorationColor:(color||"#bbccdd")+"44",textUnderlineOffset:3}}>{_mob?<><span>{title}</span><span style={{fontSize:14,opacity:0.8}}>{codexOpen[id]?"▾":"▸"}</span></>:<>{codexOpen[id]?"▾":"▸"} {title}</>}</h3>
  {codexOpen[id]&&children}</div>);
  const Wiki=()=>(
- <div style={{position:"absolute",inset:0,background:"#06060e",zIndex:20,display:"flex",flexDirection:"column",animation:_wikiClosing?"menuFadeOut 200ms ease-out forwards":"vsElemIn 200ms cubic-bezier(0.22,1,0.36,1) both"}}>
- <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px 10px",background:"#06060e",borderBottom:"1px solid #1a1a2e",flexShrink:0,zIndex:1}}>
- <h2 style={{color:"#dde",fontSize:18,margin:0,letterSpacing:3}}>VOID CODEX</h2>
- <button onClick={()=>closeWiki()} style={{background:"none",border:"1px solid #667",color:"#bbc",padding:"4px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:11}}>✕</button>
- </div>
- <div className={"vs-scroll "+(_wikiEntering&&!_wikiClosing?"vs-enter":"")} style={{flex:1,overflow:"auto",padding:"10px 16px 16px",minHeight:0}}>
+ <div style={{position:"absolute",inset:0,background:_mv("#06060e","#04040a"),zIndex:20,display:"flex",flexDirection:"column",animation:_wikiClosing?"menuFadeOut 200ms ease-out forwards":"vsElemIn 200ms cubic-bezier(0.22,1,0.36,1) both"}}>
+ {_mob?<div style={{padding:"10px 10px 6px",background:"#04040a",flexShrink:0,zIndex:1}}>{_gHead("VOID CODEX","#88bbdd",()=>closeWiki(),<button onClick={()=>{if(_wikiScrollRef.current)_wikiScrollRef.current.scrollTo({top:0,behavior:"smooth"});}} style={{background:"#ffffff14",border:"1px solid #ffffff2e",borderRadius:20,padding:"8px 12px",color:"#d8dfff",fontSize:10,fontWeight:"bold",fontFamily:"inherit",cursor:"pointer"}}>↑ TOP</button>)}</div>:<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px 10px",background:"#06060e",borderBottom:"1px solid #1a1a2e",flexShrink:0,zIndex:1}}>
+ <h2 style={{color:"#dde",fontSize:_mf(18),margin:0,letterSpacing:3}}>VOID CODEX</h2>
+ <button onClick={()=>closeWiki()} style={{background:"none",border:"1px solid #667",color:"#bbc",padding:"4px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(11)}}>✕</button>
+ </div>}
+ <div ref={_wikiScrollRef} className={"vs-scroll "+(_wikiEntering&&!_wikiClosing?"vs-enter":"")} style={{flex:1,overflow:"auto",padding:"10px 16px 16px",minHeight:0}}>
  <CodexSec id="controls" title="CONTROLS" color="#88bbdd">
- <div style={{color:"#99aabb",fontSize:10,lineHeight:1.7}}><b style={{color:"#dde"}}>WASD / Arrow Keys</b> — Move · <b style={{color:"#dde"}}>P / Esc</b> — Pause</div>
+ <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.7}}>{_mob?<><b style={{color:"#dde"}}>Touch and drag</b> — Move (style set in Settings) · <b style={{color:"#dde"}}>❙❙ button</b> — Pause</>:<><b style={{color:"#dde"}}>WASD / Arrow Keys</b> — Move · <b style={{color:"#dde"}}>P / Esc</b> — Pause</>}</div>
  </CodexSec>
  <CodexSec id="mechanics" title="MECHANICS" color="#aabbcc">
- <div style={{color:"#8899aa",fontSize:9,lineHeight:1.6}}>
+ <div style={{color:"#8899aa",fontSize:_mf(9),lineHeight:1.6}}>
  <b style={{color:"#bbccdd"}}>Auto-fire</b> — your ship fires automatically. You only need to move and dodge.<br/>
  <b style={{color:"#bbccdd"}}>Waves</b> — enemies spawn in waves of increasing difficulty. Between waves you visit the upgrade station to spend currency.<br/>
  <b style={{color:"#bbccdd"}}>Abilities</b> — every 3 waves, choose 1 of 3 abilities. These are permanent for the run and cannot be duplicated.<br/>
@@ -2140,39 +2268,39 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  <CodexSec id="currencies" title="CURRENCIES" color="#ffcc44">
  {Object.entries(CUR).map(([k,c])=>(
  <div key={k} style={{display:"flex",gap:8,padding:"5px 0",borderBottom:"1px solid #1a1a2e"}}>
- <span style={{color:c.color,fontSize:16*(c.sz||1),minWidth:20,display:"inline-flex",alignItems:"center",justifyContent:"center",width:22,height:22}}>{c.icon}</span>
- <div><div style={{color:c.color,fontSize:10,fontWeight:"bold"}}>{c.name} <span style={{color:"#778899",fontSize:8}}>{c.rarity}</span></div>
- <div style={{color:"#8899aa",fontSize:9}}>{c.desc}</div>
- {k==="echoes"&&<div style={{color:"#667788",fontSize:8}}>Earned when your ship is destroyed.</div>}</div>
+ <span style={{color:c.color,fontSize:_mf(16)*(c.sz||1),minWidth:20,display:"inline-flex",alignItems:"center",justifyContent:"center",width:22,height:22}}>{c.icon}</span>
+ <div><div style={{color:c.color,fontSize:_mf(10),fontWeight:"bold"}}>{c.name} <span style={{color:"#778899",fontSize:_mf(8)}}>{c.rarity}</span></div>
+ <div style={{color:"#8899aa",fontSize:_mf(9)}}>{c.desc}</div>
+ {k==="echoes"&&<div style={{color:"#667788",fontSize:_mf(8)}}>Earned when your ship is destroyed.</div>}</div>
  </div>))}
  </CodexSec>
  <CodexSec id="enemies" title="ENEMIES" color="#ff4466">
- <div style={{color:"#667788",fontSize:8,marginBottom:4}}>All stats scale with wave progression. HP multiplier is relative to base drone HP. Unlock wave shown in brackets.</div>
+ <div style={{color:"#667788",fontSize:_mf(8),marginBottom:4}}>All stats scale with wave progression. HP multiplier is relative to base drone HP. Unlock wave shown in brackets.</div>
  {Object.entries(ED).sort(([a],[b])=>(ENEMY_UNLOCK[a]||1)-(ENEMY_UNLOCK[b]||1)).map(([k,ed])=>{
  const unlockW=ENEMY_UNLOCK[k]||1;
  return(
  <div key={k} style={{display:"flex",gap:10,alignItems:"center",padding:"6px 0",borderBottom:"1px solid #1a1a2e"}}>
  <EnemyIcon type={k} size={28} />
  <div style={{flex:1}}>
- <div style={{color:"#ccddee",fontSize:10,fontWeight:"bold",textTransform:"capitalize"}}>{k} <span style={{color:"#667788",fontSize:8}}>[Wave {unlockW}+] · HP ×{ed.hpM} · DMG ×{ed.dM} · Speed {ed.spd}</span></div>
- <div style={{color:"#8899aa",fontSize:9}}>{ed.desc}</div>
- <div style={{color:"#667788",fontSize:8}}>Attack: {ed.pat==="none"?"Kamikaze (explodes into bullets on death)":ed.pat} · Base drops: {ed.sB}⬡{ed.cB>0?" "+ed.cB+"◆":""}{ed.pB>0?" "+ed.pB+"✦":""}</div>
+ <div style={{color:"#ccddee",fontSize:_mf(10),fontWeight:"bold",textTransform:"capitalize"}}>{k} <span style={{color:"#667788",fontSize:_mf(8)}}>[Wave {unlockW}+] · HP ×{ed.hpM} · DMG ×{ed.dM} · Speed {ed.spd}</span></div>
+ <div style={{color:"#8899aa",fontSize:_mf(9)}}>{ed.desc}</div>
+ <div style={{color:"#667788",fontSize:_mf(8)}}>Attack: {ed.pat==="none"?"Kamikaze (explodes into bullets on death)":ed.pat} · Base drops: {ed.sB}⬡{ed.cB>0?" "+ed.cB+"◆":""}{ed.pB>0?" "+ed.pB+"✦":""}</div>
  </div>
  </div>);})}
  <div style={{display:"flex",gap:10,alignItems:"center",padding:"6px 0",borderBottom:"1px solid #1a1a2e"}}>
  <EnemyIcon type="boss" size={28} />
  <div style={{flex:1}}>
- <div style={{color:"#ff2266",fontSize:10,fontWeight:"bold"}}>Boss <span style={{color:"#667788",fontSize:8}}>[Every 5 waves] · HP ×18 · Dual-phase attack patterns</span></div>
- <div style={{color:"#8899aa",fontSize:9}}>Massive ship with escort spawns. Phase 2 below 50% HP adds spiral bullet rings. Drops all three currencies generously.</div>
+ <div style={{color:"#ff2266",fontSize:_mf(10),fontWeight:"bold"}}>Boss <span style={{color:"#667788",fontSize:_mf(8)}}>[Every 5 waves] · HP ×18 · Dual-phase attack patterns</span></div>
+ <div style={{color:"#8899aa",fontSize:_mf(9)}}>Massive ship with escort spawns. Phase 2 below 50% HP adds spiral bullet rings. Drops all three currencies generously.</div>
  </div>
  </div>
 </CodexSec>
         <CodexSec id="elites" title="ELITES" color="#ff66bb">
-        <div style={{color:"#8899aa",fontSize:9,lineHeight:1.6,marginBottom:6}}>From wave 25 onward, most regular enemies can spawn as an <b style={{color:"#ff88cc"}}>elite</b> — a variant wrapped in a shifting chromatic glow and a pulsing red ring. Bombers and splitters never become elites.</div>
-        <div style={{color:"#667788",fontSize:8,lineHeight:1.7,marginBottom:6}}><b style={{color:"#ff88cc"}}>Spawning:</b> the chance is 2% at wave 25 and rises 6 percentage points each wave after, capping at 95%. An elite has 60% more health than its normal version and otherwise moves and attacks like a normal enemy of its type.</div>
-        <div style={{color:"#667788",fontSize:8,lineHeight:1.7,marginBottom:6}}><b style={{color:"#ff88cc"}}>Countdown:</b> a small arc above the elite fills over a roughly six-second timer. When it completes, the elite detonates.</div>
-        <div style={{color:"#667788",fontSize:8,lineHeight:1.7,marginBottom:6}}><b style={{color:"#ff88cc"}}>Detonation:</b> the elite fires an 18-bullet ring outward, spawns 7 reinforcement copies of its own type, and is then destroyed. Each reinforcement spawns with 1.3× the wave-scaled health of a normal enemy of that type.</div>
-        <div style={{color:"#8899aa",fontSize:8,lineHeight:1.8}}>
+        <div style={{color:"#8899aa",fontSize:_mf(9),lineHeight:1.6,marginBottom:6}}>From wave 25 onward, most regular enemies can spawn as an <b style={{color:"#ff88cc"}}>elite</b> — a variant wrapped in a shifting chromatic glow and a pulsing red ring. Bombers and splitters never become elites.</div>
+        <div style={{color:"#667788",fontSize:_mf(8),lineHeight:1.7,marginBottom:6}}><b style={{color:"#ff88cc"}}>Spawning:</b> the chance is 2% at wave 25 and rises 6 percentage points each wave after, capping at 95%. An elite has 60% more health than its normal version and otherwise moves and attacks like a normal enemy of its type.</div>
+        <div style={{color:"#667788",fontSize:_mf(8),lineHeight:1.7,marginBottom:6}}><b style={{color:"#ff88cc"}}>Countdown:</b> a small arc above the elite fills over a roughly six-second timer. When it completes, the elite detonates.</div>
+        <div style={{color:"#667788",fontSize:_mf(8),lineHeight:1.7,marginBottom:6}}><b style={{color:"#ff88cc"}}>Detonation:</b> the elite fires an 18-bullet ring outward, spawns 7 reinforcement copies of its own type, and is then destroyed. Each reinforcement spawns with 1.3× the wave-scaled health of a normal enemy of that type.</div>
+        <div style={{color:"#8899aa",fontSize:_mf(8),lineHeight:1.8}}>
          <b style={{color:"#ff88cc"}}>Reinforcements</b> share the elite chromatic glow and:<br/>
          • are invulnerable until every other non-reinforcement enemy in the wave is dead. The red ring indicates this and disappears the moment they become killable.<br/>
          • do not count toward kills or wave-clear progress.<br/>
@@ -2181,11 +2309,11 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
         </div>
         </CodexSec>
  <CodexSec id="abilities" title="ABILITIES" color="#66bbff">
- <div style={{color:"#778899",fontSize:8,marginBottom:3}}>Choose 1 of 3 every 3 waves. Permanent for the run. Cannot be duplicated.</div>
- {ABILITIES.map(ab=>(<div key={ab.id} style={{padding:"3px 0",borderBottom:"1px solid #1a1a2e"}}><span style={{color:"#dde",fontSize:10,display:"inline-flex",alignItems:"center",gap:4}}><AbilityIcon id={ab.id} size={14} color="#dde" /><b>{ab.name}</b></span><div style={{color:"#8899aa",fontSize:8}}>{ab.desc}</div></div>))}
+ <div style={{color:"#778899",fontSize:_mf(8),marginBottom:3}}>Choose 1 of 3 every 3 waves. Permanent for the run. Cannot be duplicated.</div>
+ {ABILITIES.map(ab=>(<div key={ab.id} style={{padding:"3px 0",borderBottom:"1px solid #1a1a2e"}}><span style={{color:"#dde",fontSize:_mf(10),display:"inline-flex",alignItems:"center",gap:4}}><AbilityIcon id={ab.id} size={14} color="#dde" /><b>{ab.name}</b></span><div style={{color:"#8899aa",fontSize:_mf(8)}}>{ab.desc}</div></div>))}
  </CodexSec>
  <CodexSec id="designs" title={"SHIP DESIGNS"} color="#cc7744">
- <div style={{color:"#8899aa",fontSize:11,lineHeight:1.6,marginBottom:6}}>
+ <div style={{color:"#8899aa",fontSize:_mf(11),lineHeight:1.6,marginBottom:6}}>
  Custom ship designs are cosmetic overlays that change the look of your ship without affecting its size or hitbox.<br/><br/>
  <b style={{color:"#bbccdd"}}>Unlocking</b> — designs are purchased with <span style={{color:"#cc3333"}}>{String.fromCharCode(9672)} Boss Shards</span>, a permanent currency dropped by bosses. You need the Boss Shard Drop Rate lab to start earning them. There are 15 designs ranging from 5 to 100 boss shards, with more intricate designs costing more.<br/><br/>
  <b style={{color:"#bbccdd"}}>Equipping</b> — go to Settings, Customisation, Custom Designs. Tap any owned design to equip it. Only one design can be active at a time.<br/><br/>
@@ -2194,43 +2322,43 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  </div>
  </CodexSec>
 <CodexSec id="scrap" title={"WAVE UPGRADES — SCRAP ⬡"} color={CUR.scrap.color}>
- <div style={{color:"#667788",fontSize:8,marginBottom:4}}>Bought between waves. Costs increase per level. All upgrades shown including locked ones.</div>
+ <div style={{color:"#667788",fontSize:_mf(8),marginBottom:4}}>Bought between waves. Costs increase per level. All upgrades shown including locked ones.</div>
  {SHOP.filter(u=>u.cur==="scrap").map(up=>(
  <div key={up.id} style={{padding:"5px 0",borderBottom:"1px solid #1a1a2e"}}>
- <div style={{color:CC[up.cat],fontSize:10,fontWeight:"bold"}}>{up.name} <span style={{color:"#667788",fontSize:8}}>({up.cat}) · {up.max} levels · Unlocks wave {up.wave||1}</span></div>
- <div style={{color:"#8899aa",fontSize:9}}>{up.desc}</div>
- <div style={{color:"#667788",fontSize:8}}>{costStr(up,"⬡")}</div>
+ <div style={{color:CC[up.cat],fontSize:_mf(10),fontWeight:"bold"}}>{up.name} <span style={{color:"#667788",fontSize:_mf(8)}}>({up.cat}) · {up.max} levels · Unlocks wave {up.wave||1}</span></div>
+ <div style={{color:"#8899aa",fontSize:_mf(9)}}>{up.desc}</div>
+ <div style={{color:"#667788",fontSize:_mf(8)}}>{costStr(up,"⬡")}</div>
  </div>))}
  </CodexSec>
  <CodexSec id="cores" title={"WAVE UPGRADES — CORES ◆"} color={CUR.cores.color}>
- <div style={{color:"#667788",fontSize:8,marginBottom:4}}>Cores first drop from Sprayers (wave 4+). These upgrades unlock accordingly.</div>
+ <div style={{color:"#667788",fontSize:_mf(8),marginBottom:4}}>Cores first drop from Sprayers (wave 4+). These upgrades unlock accordingly.</div>
  {SHOP.filter(u=>u.cur==="cores").map(up=>(
  <div key={up.id} style={{padding:"5px 0",borderBottom:"1px solid #1a1a2e"}}>
- <div style={{color:CC[up.cat],fontSize:10,fontWeight:"bold"}}>{up.name} <span style={{color:"#667788",fontSize:8}}>({up.cat}) · {up.max} levels · Unlocks wave {up.wave}</span></div>
- <div style={{color:"#8899aa",fontSize:9}}>{up.desc}</div>
- <div style={{color:"#667788",fontSize:8}}>{costStr(up,"◆")}</div>
+ <div style={{color:CC[up.cat],fontSize:_mf(10),fontWeight:"bold"}}>{up.name} <span style={{color:"#667788",fontSize:_mf(8)}}>({up.cat}) · {up.max} levels · Unlocks wave {up.wave}</span></div>
+ <div style={{color:"#8899aa",fontSize:_mf(9)}}>{up.desc}</div>
+ <div style={{color:"#667788",fontSize:_mf(8)}}>{costStr(up,"◆")}</div>
  </div>))}
  </CodexSec>
  <CodexSec id="plasma" title={"WAVE UPGRADES — PLASMA ✦"} color={CUR.plasma.color}>
- <div style={{color:"#667788",fontSize:8,marginBottom:4}}>Plasma drops from Bosses (wave 5+) and Pulse enemies (wave 11+). Endgame exotic upgrades.</div>
+ <div style={{color:"#667788",fontSize:_mf(8),marginBottom:4}}>Plasma drops from Bosses (wave 5+) and Pulse enemies (wave 11+). Endgame exotic upgrades.</div>
  {SHOP.filter(u=>u.cur==="plasma").map(up=>(
  <div key={up.id} style={{padding:"5px 0",borderBottom:"1px solid #1a1a2e"}}>
- <div style={{color:CC[up.cat],fontSize:10,fontWeight:"bold"}}>{up.name} <span style={{color:"#667788",fontSize:8}}>({up.cat}) · {up.max} levels · Unlocks wave {up.wave}</span></div>
- <div style={{color:"#8899aa",fontSize:9}}>{up.desc}</div>
- <div style={{color:"#667788",fontSize:8}}>{costStr(up,"✦")}</div>
+ <div style={{color:CC[up.cat],fontSize:_mf(10),fontWeight:"bold"}}>{up.name} <span style={{color:"#667788",fontSize:_mf(8)}}>({up.cat}) · {up.max} levels · Unlocks wave {up.wave}</span></div>
+ <div style={{color:"#8899aa",fontSize:_mf(9)}}>{up.desc}</div>
+ <div style={{color:"#667788",fontSize:_mf(8)}}>{costStr(up,"✦")}</div>
  </div>))}
  </CodexSec>
  <CodexSec id="meta" title={"META SHIP UPGRADES"} color={CUR.echoes.color}>
- <div style={{color:"#667788",fontSize:8,marginBottom:4}}>Permanent upgrades bought with Echoes. Persist across all runs forever. Tier system: max all upgrades at current tier to unlock the next. Tier 1 → 2 costs 800⬢, Tier 2 → 3 costs 25,000⬢. Each tier doubles max levels with steeper costs. Tier 3 is the maximum.</div>
+ <div style={{color:"#667788",fontSize:_mf(8),marginBottom:4}}>Permanent upgrades bought with Echoes. Persist across all runs forever. Tier system: max all upgrades at current tier to unlock the next. Tier 1 → 2 costs 800⬢, Tier 2 → 3 costs 25,000⬢. Each tier doubles max levels with steeper costs. Tier 3 is the maximum.</div>
  {META.map(up=>{const tc=Array.from({length:up.max},(_, l)=>Math.ceil(up.base*(1+l*0.85))).reduce((a,b)=>a+b,0);return(
  <div key={up.id} style={{padding:"4px 0",borderBottom:"1px solid #1a1a2e"}}>
- <div style={{color:CUR.echoes.color,fontSize:10,fontWeight:"bold"}}>{up.name} <span style={{color:"#667788",fontSize:8}}>Tier 1: {up.max} levels</span></div>
- <div style={{color:"#8899aa",fontSize:9}}>{up.desc}</div>
- <div style={{color:"#667788",fontSize:8}}>First level: {up.base}⬢ · Tier 1 total: {tc}⬢</div>
+ <div style={{color:CUR.echoes.color,fontSize:_mf(10),fontWeight:"bold"}}>{up.name} <span style={{color:"#667788",fontSize:_mf(8)}}>Tier 1: {up.max} levels</span></div>
+ <div style={{color:"#8899aa",fontSize:_mf(9)}}>{up.desc}</div>
+ <div style={{color:"#667788",fontSize:_mf(8)}}>First level: {up.base}⬢ · Tier 1 total: {tc}⬢</div>
  </div>);})}
  </CodexSec>
  <CodexSec id="metaab" title={"META ABILITY UPGRADES"} color="#44ddcc">
- <div style={{color:"#8899aa",fontSize:9,lineHeight:1.6}}>
+ <div style={{color:"#8899aa",fontSize:_mf(9),lineHeight:1.6}}>
  <b style={{color:"#bbccdd"}}>Overview</b> — each of the 12 abilities has 2 sub-upgrades and 1 mastery upgrade. These are permanent and apply to every run where you pick that ability.<br/>
  <b style={{color:"#bbccdd"}}>Ability Shards</b> — the currency for ability upgrades, bought with Echoes. Sub-upgrades cost 1 shard each. Mastery upgrades cost 3 shards and require both subs.<br/>
  <b style={{color:"#bbccdd"}}>Shard Costs</b> — each shard costs more than the last. {(()=>{const _sc=n=>Math.ceil(100*Math.pow(1+n*0.12,1.6)+(n>15?Math.pow(n-15,1.8)*0.8:0)+(n>30?Math.pow(n-30,1.5)*2.5:0));return `First shard: ${_sc(0)}⬢, 5th: ~${_sc(4)}⬢, 10th: ~${_sc(9)}⬢, 30th: ~${_sc(29).toLocaleString()}⬢.`;})()}<br/>
@@ -2239,8 +2367,8 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  </div>
  <div style={{marginTop:6}}>
  {ABILITIES.map(ab=><div key={ab.id} style={{padding:"4px 0",borderBottom:"1px solid #1a1a2e"}}>
- <div style={{color:"#44ddcc",fontSize:10,fontWeight:"bold",display:"inline-flex",alignItems:"center",gap:3}}><AbilityIcon id={ab.id} size={14} color="#44ddcc" />{ab.name}</div>
- <div style={{color:"#8899aa",fontSize:8,lineHeight:1.4}}>
+ <div style={{color:"#44ddcc",fontSize:_mf(10),fontWeight:"bold",display:"inline-flex",alignItems:"center",gap:3}}><AbilityIcon id={ab.id} size={14} color="#44ddcc" />{ab.name}</div>
+ <div style={{color:"#8899aa",fontSize:_mf(8),lineHeight:1.4}}>
  <span style={{color:"#778899"}}>Sub 1:</span> {AB_DESCS[ab.id+"_sub1"]||"???"}<br/>
  <span style={{color:"#778899"}}>Sub 2:</span> {AB_DESCS[ab.id+"_sub2"]||"???"}<br/>
  <span style={{color:"#ffcc44"}}>Mastery:</span> {AB_DESCS[ab.id+"_mastery"]||"???"}
@@ -2249,65 +2377,65 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  </div>
  </CodexSec>
 <CodexSec id="labs" title={"META LAB UPGRADES"} color="#ff9966">
- <div style={{color:"#8899aa",fontSize:11,lineHeight:1.6,marginBottom:6}}>Labs let you research upgrades over multiple waves. Progress carries across runs.</div>
- {[...LAB_UPGRADES].sort((a,b)=>(a.tier||1)-(b.tier||1)||(a.minWave-b.minWave)).map((lab,li,arr)=>{const curLvl=meta.lab?.completed?.[lab.id]||0;const _prevTier=li>0?(arr[li-1].tier||1):0;const _curTier=lab.tier||1;const _showTierH=_curTier!==_prevTier;const _unresVal=(()=>{if(lab.id==="boss_shard_drop")return "0%";if(lab.id==="intro_sprint")return "0%";if(lab.id==="sprint_efficiency")return "30%";if(lab.id==="cheaper_respec")return "0⬢ discount";if(lab.id==="phantom_enhance")return "+0.010 per wave";if(lab.id==="practise_enhance")return "+0.006 per wave";if(lab.id==="sprint_currency_lifespan")return "1 wave";if(lab.id==="diffusion_chance")return "0%";if(lab.id==="diffusion_multi")return "+0.038 per diffuse";if(lab.id==="overheat_bot_mult")return "+0 overheat";if(lab.id==="overheat_wave_cost")return "-0%";if(lab.id==="overheat_chance")return "25%";return "";})();return(
- <div key={lab.id}>{_showTierH&&<div style={{color:_curTier===3?"#ff5577":_curTier===2?"#bb99ff":"#44ccaa",fontSize:10,fontWeight:"bold",letterSpacing:1,marginTop:li>0?10:0,paddingBottom:4,borderBottom:"1px solid "+(_curTier===3?"#ff557722":_curTier===2?"#bb99ff22":"#44ccaa22")}}>TIER {_curTier}</div>}
+ <div style={{color:"#8899aa",fontSize:_mf(11),lineHeight:1.6,marginBottom:6}}>Labs let you research upgrades over multiple waves. Progress carries across runs.</div>
+ {[...LAB_UPGRADES].sort((a,b)=>(a.tier||1)-(b.tier||1)||(a.minWave-b.minWave)).map((lab,li,arr)=>{const curLvl=meta.lab?.completed?.[lab.id]||0;const _prevTier=li>0?(arr[li-1].tier||1):0;const _curTier=lab.tier||1;const _showTierH=_curTier!==_prevTier;const _unresVal=(()=>{if(lab.id==="boss_shard_drop")return "0%";if(lab.id==="intro_sprint")return "0%";if(lab.id==="sprint_efficiency")return "30%";if(lab.id==="cheaper_respec")return "0⬢ discount";if(lab.id==="phantom_enhance")return "+0.010 per wave";if(lab.id==="practise_enhance")return "+0.006 per wave";if(lab.id==="diffusion_chance")return "0%";if(lab.id==="diffusion_multi")return "+0.038 per diffuse";if(lab.id==="overheat_bot_mult")return "+0 overheat";if(lab.id==="overheat_wave_cost")return "-0%";if(lab.id==="labplus_slots")return "1 slot";if(lab.id==="overheat_chance")return "25%";return "";})();return(
+ <div key={lab.id}>{_showTierH&&<div style={{color:_curTier===3?"#ff5577":_curTier===2?"#bb99ff":"#44ccaa",fontSize:_mf(10),fontWeight:"bold",letterSpacing:1,marginTop:li>0?10:0,paddingBottom:4,borderBottom:"1px solid "+(_curTier===3?"#ff557722":_curTier===2?"#bb99ff22":"#44ccaa22")}}>TIER {_curTier}</div>}
  <div style={{padding:"6px 0",borderBottom:"1px solid #1a1a2e"}}>
- <div style={{color:"#44ccaa",fontSize:12,fontWeight:"bold"}}>{lab.name} <span style={{color:"#667788",fontSize:10}}>· Min wave: {lab.minWave} · Current: Lv{curLvl}/{lab.levels.length}</span></div>
- <div style={{color:"#8899aa",fontSize:10,marginTop:2}}>{lab.desc}</div>
- <div style={{color:"#667788",fontSize:9,marginTop:2}}>Unresearched value: <span style={{color:"#88aacc"}}>{_unresVal}</span></div>
+ <div style={{color:"#44ccaa",fontSize:_mf(12),fontWeight:"bold"}}>{lab.name} <span style={{color:"#667788",fontSize:_mf(10)}}>· Min wave: {lab.minWave} · Current: Lv{curLvl}/{lab.levels.length}</span></div>
+ <div style={{color:"#8899aa",fontSize:_mf(10),marginTop:2}}>{lab.desc}</div>
+ <div style={{color:"#667788",fontSize:_mf(9),marginTop:2}}>Unresearched value: <span style={{color:"#88aacc"}}>{_unresVal}</span></div>
  <div style={{marginTop:4,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))",gap:3}}>
- {lab.levels.map((lv,li)=>{const done=curLvl>li;const _lVal=(()=>{if(lab.id==="boss_shard_drop")return `${lv.pct}%`;if(lab.id==="intro_sprint")return `${lv.pct}%`;if(lab.id==="sprint_efficiency")return `${lv.pct}%`;if(lab.id==="cheaper_respec")return `-${lv.reduce}⬢`;if(lab.id==="phantom_enhance")return `+${((li+1)*0.001).toFixed(3)}`;if(lab.id==="practise_enhance")return `+${((li+1)*0.001).toFixed(3)}`;if(lab.id==="sprint_currency_lifespan")return `${li+2} waves`;if(lab.id==="diffusion_chance")return `${lv.pct}%`;if(lab.id==="diffusion_multi")return `+${((li+1)*0.009).toFixed(3)}`;if(lab.id==="overheat_bot_mult")return `+${li+1} overheat`;if(lab.id==="overheat_wave_cost")return `-${li+1}%`;if(lab.id==="overheat_chance")return `${lv.pct}%`;return "";})();return(
- <div key={li} style={{fontSize:9,padding:"2px 4px",background:done?"#0a1a1a":"#08080f",border:"1px solid "+(done?"#44ccaa33":"#22223322"),borderRadius:2,textAlign:"center"}}>
- <span style={{color:done?"#44ccaa":"#667788"}}>Lv{li+1}</span> <span style={{color:"#556677"}}>{lv.waves}w</span>{_lVal&&<span style={{color:done?"#88ddaa":"#778899",fontSize:8}}> {_lVal}</span>}
+ {lab.levels.map((lv,li)=>{const done=curLvl>li;const _lVal=(()=>{if(lab.id==="boss_shard_drop")return `${lv.pct}%`;if(lab.id==="intro_sprint")return `${lv.pct}%`;if(lab.id==="sprint_efficiency")return `${lv.pct}%`;if(lab.id==="cheaper_respec")return `-${lv.reduce}⬢`;if(lab.id==="phantom_enhance")return `+${((li+1)*0.001).toFixed(3)}`;if(lab.id==="practise_enhance")return `+${((li+1)*0.001).toFixed(3)}`;if(lab.id==="diffusion_chance")return `${lv.pct}%`;if(lab.id==="diffusion_multi")return `+${((li+1)*0.009).toFixed(3)}`;if(lab.id==="overheat_bot_mult")return `+${li+1} overheat`;if(lab.id==="overheat_wave_cost")return `-${li+1}%`;if(lab.id==="labplus_slots")return `${li+2} slots`;if(lab.id==="overheat_chance")return `${lv.pct}%`;return "";})();return(
+ <div key={li} style={{fontSize:_mf(9),padding:"2px 4px",background:done?"#0a1a1a":"#08080f",border:"1px solid "+(done?"#44ccaa33":"#22223322"),borderRadius:2,textAlign:"center"}}>
+ <span style={{color:done?"#44ccaa":"#667788"}}>Lv{li+1}</span> <span style={{color:"#556677"}}>{lv.waves}w</span>{_lVal&&<span style={{color:done?"#88ddaa":"#778899",fontSize:_mf(8)}}> {_lVal}</span>}
  </div>);})}
  </div>
  </div></div>);})}
  </CodexSec>
 <CodexSec id="bots" title={"META BOT UPGRADES"} color="#55ddaa">
-<div style={{color:"#8899aa",fontSize:11,lineHeight:1.6,marginBottom:6}}>Bots are deployable zones that activate during a run, each affecting enemies (or your bullets) inside its radius. Unlock them permanently with Echoes, then upgrade each bot's stats.</div>
-<div style={{color:"#667788",fontSize:9,lineHeight:1.7,marginBottom:4}}><b style={{color:"#55ddaa"}}>Unlocking:</b> Each new bot costs more than the last — <span style={{color:CUR.echoes.color}}>⬢ {BOT_UNLOCK.map(c=>c.toLocaleString()).join(" / ")}</span> echoes for your 1st through 4th bot.</div>
-<div style={{color:"#667788",fontSize:9,lineHeight:1.7,marginBottom:6}}><b style={{color:"#55ddaa"}}>Upgrading:</b> Every bot has three stats — <span style={{color:"#ccddee"}}>Size</span> (radius), <span style={{color:"#ccddee"}}>Time</span> (active duration) and a unique <span style={{color:"#ccddee"}}>custom</span> stat. Each goes up to <span style={{color:"#ccddee"}}>20</span> levels with Echoes; cost scales with level.</div>
+<div style={{color:"#8899aa",fontSize:_mf(11),lineHeight:1.6,marginBottom:6}}>Bots are deployable zones that activate during a run, each affecting enemies (or your bullets) inside its radius. Unlock them permanently with Echoes, then upgrade each bot's stats.</div>
+<div style={{color:"#667788",fontSize:_mf(9),lineHeight:1.7,marginBottom:4}}><b style={{color:"#55ddaa"}}>Unlocking:</b> Each new bot costs more than the last — <span style={{color:CUR.echoes.color}}>⬢ {BOT_UNLOCK.map(c=>c.toLocaleString()).join(" / ")}</span> echoes for your 1st through 4th bot.</div>
+<div style={{color:"#667788",fontSize:_mf(9),lineHeight:1.7,marginBottom:6}}><b style={{color:"#55ddaa"}}>Upgrading:</b> Every bot has three stats — <span style={{color:"#ccddee"}}>Size</span> (radius), <span style={{color:"#ccddee"}}>Time</span> (active duration) and a unique <span style={{color:"#ccddee"}}>custom</span> stat. Each goes up to <span style={{color:"#ccddee"}}>20</span> levels with Echoes; cost scales with level.</div>
 {BOTS.map((b,i)=>{const _owned=!!(meta.bots&&meta.bots[b.id]);return(
 <div key={b.id} style={{padding:"6px 0",borderBottom:"1px solid #1a1a2e"}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:b.col,fontSize:12,fontWeight:"bold"}}>{b.name}</span><span style={{color:_owned?"#55ddaa":"#667788",fontSize:9}}>{_owned?"Unlocked":"Locked"}</span></div>
-<div style={{color:"#8899aa",fontSize:10,marginTop:2}}>{b.desc}</div>
-<div style={{color:"#667788",fontSize:9,marginTop:2}}>Custom stat: <span style={{color:"#88aacc"}}>{b.custom.label}</span></div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:b.col,fontSize:_mf(12),fontWeight:"bold"}}>{b.name}</span><span style={{color:_owned?"#55ddaa":"#667788",fontSize:_mf(9)}}>{_owned?"Unlocked":"Locked"}</span></div>
+<div style={{color:"#8899aa",fontSize:_mf(10),marginTop:2}}>{b.desc}</div>
+<div style={{color:"#667788",fontSize:_mf(9),marginTop:2}}>Custom stat: <span style={{color:"#88aacc"}}>{b.custom.label}</span></div>
 </div>);})}
 </CodexSec>
 <CodexSec id="overheat" title={"META OVERHEAT UPGRADES"} color="#ff6622">
-<div style={{color:"#8899aa",fontSize:11,lineHeight:1.6,marginBottom:6}}>Overheat lets you push wave upgrades beyond their normal max level.</div>
-<div style={{color:"#667788",fontSize:9,lineHeight:1.7,marginBottom:4}}>
+<div style={{color:"#8899aa",fontSize:_mf(11),lineHeight:1.6,marginBottom:6}}>Overheat lets you push wave upgrades beyond their normal max level.</div>
+<div style={{color:"#667788",fontSize:_mf(9),lineHeight:1.7,marginBottom:4}}>
 <b style={{color:"#ff6622"}}>How to unlock:</b> Purchase the overheat system for <span style={{color:CUR.echoes.color}}>⬢ {OH_COSTS.unlock.toLocaleString()} echoes</span> in the Overheat Upgrades tab of Meta Upgrades.
 </div>
-<div style={{color:"#667788",fontSize:9,lineHeight:1.7,marginBottom:4}}>
+<div style={{color:"#667788",fontSize:_mf(9),lineHeight:1.7,marginBottom:4}}>
 <b style={{color:"#ff6622"}}>Earning ✹ Overheat:</b> When overheat is unlocked, enemies killed by flame (Flame Coating) or while burning have a <span style={{color:"#ccddee"}}>{(()=>{const _l=meta.lab?.completed?.overheat_chance||0;return _l>0?[30,35,40,45,50][Math.min(_l-1,4)]:25;})()}%</span> chance to earn 1 overheat point. Overheat is awarded at the end of a run (death or forfeit).
 </div>
-<div style={{color:"#667788",fontSize:9,lineHeight:1.7,marginBottom:4}}>
+<div style={{color:"#667788",fontSize:_mf(9),lineHeight:1.7,marginBottom:4}}>
 <b style={{color:"#ff6622"}}>Per-item unlock:</b> Each wave upgrade must be individually unlocked before overheating, costing both <span style={{color:CUR.echoes.color}}>⬢ echoes</span> and <span style={{color:"#ff6622"}}>✹ overheat</span> — costs vary per upgrade and are shown below. Rear Turret and Barrier Cell cannot be overheated.
 </div>
-<div style={{color:"#667788",fontSize:9,lineHeight:1.7,marginBottom:4}}>
+<div style={{color:"#667788",fontSize:_mf(9),lineHeight:1.7,marginBottom:4}}>
 <b style={{color:"#ff6622"}}>Overheating:</b> Spend <span style={{color:"#ff6622"}}>✹ overheat</span> to increase the max level, up to <span style={{color:"#ccddee"}}>+{OH_COSTS.maxLvl}</span> beyond the default max. Each level costs more than the last. Overheated levels cost significantly more in wave currencies during a run.
 </div>
-<div style={{color:"#ff6622",fontSize:10,fontWeight:"bold",letterSpacing:1,marginTop:8,marginBottom:4}}>AVAILABLE UPGRADES</div>
-<div style={{color:"#667788",fontSize:8,marginBottom:4}}>Each upgrade must be individually unlocked before overheating. Costs shown are per-upgrade.</div>
+<div style={{color:"#ff6622",fontSize:_mf(10),fontWeight:"bold",letterSpacing:1,marginTop:8,marginBottom:4}}>AVAILABLE UPGRADES</div>
+<div style={{color:"#667788",fontSize:_mf(8),marginBottom:4}}>Each upgrade must be individually unlocked before overheating. Costs shown are per-upgrade.</div>
 {SHOP.filter(u=>u.id!=="rear"&&u.id!=="shield").map(up=>{const _ohLvl=meta.overheatUpgrades?.[up.id]||0;const _ohUn=!!meta.overheatItemUnlocked?.[up.id];return(
 <div key={up.id} style={{padding:"5px 0",borderBottom:"1px solid #1a1a2e"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-<span style={{color:CC[up.cat],fontSize:10,fontWeight:"bold"}}>{up.name}</span>
-<span style={{color:_ohUn?"#ff6622":"#556677",fontSize:9}}>{_ohUn?`+${_ohLvl}/${OH_COSTS.maxLvl}`:"Locked"}</span>
+<span style={{color:CC[up.cat],fontSize:_mf(10),fontWeight:"bold"}}>{up.name}</span>
+<span style={{color:_ohUn?"#ff6622":"#556677",fontSize:_mf(9)}}>{_ohUn?`+${_ohLvl}/${OH_COSTS.maxLvl}`:"Locked"}</span>
 </div>
-<div style={{color:"#556677",fontSize:8,marginTop:2}}>Default max: {up.max} · Unlock: <span style={{color:CUR.echoes.color}}>⬢ {OH_COSTS.itemEc(up.id).toLocaleString()}</span> + <span style={{color:"#ff6622"}}>✹ {OH_COSTS.itemOhCost(up.id).toLocaleString()}</span> · First level: <span style={{color:"#ff6622"}}>✹ {OH_COSTS.lvlCost(up.id,0).toLocaleString()}</span></div>
+<div style={{color:"#556677",fontSize:_mf(8),marginTop:2}}>Default max: {up.max} · Unlock: <span style={{color:CUR.echoes.color}}>⬢ {OH_COSTS.itemEc(up.id).toLocaleString()}</span> + <span style={{color:"#ff6622"}}>✹ {OH_COSTS.itemOhCost(up.id).toLocaleString()}</span> · First level: <span style={{color:"#ff6622"}}>✹ {OH_COSTS.lvlCost(up.id,0).toLocaleString()}</span></div>
 </div>);})}
 </CodexSec>
 <CodexSec id="cargo" title={"CARGO & PATH UPGRADES"} color="#cc9955">
-<div style={{color:"#8899aa",fontSize:11,lineHeight:1.6,marginBottom:6}}>Cargo is an endless escort side mode. Instead of clearing waves you protect a multi-segment train that rolls continuously through the void, scored on the <span style={{color:"#ccddee"}}>distance</span> it survives.</div>
-<div style={{color:"#667788",fontSize:9,lineHeight:1.7,marginBottom:4}}><b style={{color:"#cc9955"}}>The train:</b> A chain of segments follows the track. Enemies attack the segments, not only you — lose every segment and the run ends. Base speed is <span style={{color:"#ccddee"}}>5 m/s</span> and creeps up the further you travel.</div>
-<div style={{color:"#667788",fontSize:9,lineHeight:1.7,marginBottom:4}}><b style={{color:"#cc9955"}}>Packages (▣):</b> Every <span style={{color:"#ccddee"}}>500m</span> the train crosses a checkpoint and banks packages. The payout is the number of <span style={{color:"#ccddee"}}>surviving segments</span> times a checkpoint multiplier that grows +0.5 each crossing (×1, ×1.5, ×2, ...). Keeping the train intact is worth far more than scraping by.</div>
-<div style={{color:"#667788",fontSize:9,lineHeight:1.7,marginBottom:4}}><b style={{color:"#cc9955"}}>Banking &amp; rules:</b> Packages are kept whether the train is destroyed or you forfeit from pause, so you can cash out any time. Best distance is tracked between runs. Cargo grants no Echoes and never advances labs.</div>
-<div style={{color:"#667788",fontSize:9,lineHeight:1.7,marginBottom:4}}><b style={{color:"#cc9955"}}>Paths:</b> A permanent upgrade tree opened from the main menu and bought with ▣ Packages. The central <span style={{color:"#ccddee"}}>Core</span> costs ▣ 20 and must be bought first — it opens the seven branches that surround it.</div>
-<div style={{color:"#667788",fontSize:9,lineHeight:1.7,marginBottom:4}}><b style={{color:"#cc9955"}}>Branches:</b> Each branch costs ▣ 50 to open and only becomes available once you have engaged with its mode at least once. Inside a branch, upgrades unlock in order — each needs the node before it and enough packages.</div>
-<div style={{color:"#667788",fontSize:8,lineHeight:1.8}}>
+<div style={{color:"#8899aa",fontSize:_mf(11),lineHeight:1.6,marginBottom:6}}>Cargo is an endless escort side mode. Instead of clearing waves you protect a multi-segment train that rolls continuously through the void, scored on the <span style={{color:"#ccddee"}}>distance</span> it survives.</div>
+<div style={{color:"#667788",fontSize:_mf(9),lineHeight:1.7,marginBottom:4}}><b style={{color:"#cc9955"}}>The train:</b> A chain of segments follows the track. Enemies attack the segments, not only you — lose every segment and the run ends. Base speed is <span style={{color:"#ccddee"}}>5 m/s</span> and creeps up the further you travel.</div>
+<div style={{color:"#667788",fontSize:_mf(9),lineHeight:1.7,marginBottom:4}}><b style={{color:"#cc9955"}}>Packages (▣):</b> Every <span style={{color:"#ccddee"}}>500m</span> the train crosses a checkpoint and banks packages. The payout is the number of <span style={{color:"#ccddee"}}>surviving segments</span> times a checkpoint multiplier that grows +1 each crossing (×1, ×2, ×3, ...). Keeping the train intact is worth far more than scraping by.</div>
+<div style={{color:"#667788",fontSize:_mf(9),lineHeight:1.7,marginBottom:4}}><b style={{color:"#cc9955"}}>Banking &amp; rules:</b> Packages are kept whether the train is destroyed or you forfeit from pause, so you can cash out any time. Best distance is tracked between runs. Cargo grants no Echoes and never advances labs.</div>
+<div style={{color:"#667788",fontSize:_mf(9),lineHeight:1.7,marginBottom:4}}><b style={{color:"#cc9955"}}>Paths:</b> A permanent upgrade tree opened from the main menu and bought with ▣ Packages. The central <span style={{color:"#ccddee"}}>Core</span> costs ▣ 20 and must be bought first — it opens the seven branches that surround it.</div>
+<div style={{color:"#667788",fontSize:_mf(9),lineHeight:1.7,marginBottom:4}}><b style={{color:"#cc9955"}}>Branches:</b> Each branch costs ▣ 50 to open and only becomes available once you have engaged with its mode at least once. Inside a branch, upgrades unlock in order — each needs the node before it and enough packages.</div>
+<div style={{color:"#667788",fontSize:_mf(8),lineHeight:1.8}}>
  <span style={{color:"#cc66cc"}}>Phantom</span> (play a Phantom run): a once-per-round Space shockwave that clears half the enemies on screen.<br/>
  <span style={{color:"#cc9966"}}>Practise</span> (play a Practise run): start with an extra shield; a permanent diffusion bonus if your best practise wave is a boss wave.<br/>
  <span style={{color:"#ff5577"}}>Enforcer</span> (reach meta Ship Tier 2): a one-use Space shield, plus the unlocks for each enemy’s Enforcer challenge (you must also beat that enemy in the Playground).<br/>
@@ -2317,37 +2445,41 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  <span style={{color:"#44ccaa"}}>Intro Sprint</span> (research Intro Sprint Lv 1): end the sprint early with Space; bosses are weaker and your ability damage is higher during the sprint.<br/>
 </div>
 </CodexSec>
+<CodexSec id="labplus" title="LAB+ UPGRADES" color="#44ddcc">
+ <div style={{color:"#8899aa",fontSize:_mf(11),lineHeight:1.6,marginBottom:8}}>Lab+ rewards long runs with bonus lab research. Unlock it in the Lab tab for <span style={{color:CUR.echoes.color}}>⬢100,000</span> once all three lab slots are open.</div>
+ {[["Wave Required","If a run reaches this wave, Lab+ triggers at the end. Starts at 55; each level lowers it by 1."],["Extra Waves","How many waves of research progress the trigger grants. Starts at 5; each level adds 1."],["Sprint Bonus","Adds a flat % to Sprint Lab Efficiency for exactly one following run. Starts at +0%; each level adds +1%."],["Lab+ Effect Quantity (Tier 3 lab)","Raises how many active lab slots the boost hits — 1 by default, up to all 3."],["Death screen","Reports exactly which labs gained levels from Lab+."]].map(([t,d],i)=><div key={i} style={{padding:"6px 0",borderBottom:"1px solid #1a1a2e"}}><div style={{color:"#44ccaa",fontSize:_mf(12),fontWeight:"bold"}}>{t}</div><div style={{color:"#8899aa",fontSize:_mf(10),marginTop:2}}>{d}</div></div>)}
+</CodexSec>
 
  </div>
  </div>
  );
  const TutPopup=({title,children,btnText,onBtn,banner})=>{
  if(banner)return(
- <div style={{position:"absolute",bottom:80,left:0,right:0,zIndex:25,display:"flex",justifyContent:"center",padding:"8px 12px",pointerEvents:"none"}}>
- <div style={{background:"rgba(12,12,26,0.95)",border:"2px solid #ffcc4466",borderRadius:8,padding:"12px 18px",maxWidth:360,width:"100%",textAlign:"center",pointerEvents:"auto",boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
- <div style={{color:"#ffcc44",fontSize:12,fontWeight:"bold",letterSpacing:2,marginBottom:6}}>{title}</div>
- <div style={{color:"#99aabb",fontSize:10,lineHeight:1.6}}>{children}</div>
+ <div data-noctl="1" style={{position:"absolute",bottom:80,left:0,right:0,zIndex:25,display:"flex",justifyContent:"center",padding:"8px 12px",pointerEvents:"none"}}>
+ <div style={{background:"rgba(12,12,26,0.95)",border:_mv("2px","1px")+" solid #ffcc4466",borderRadius:_mv(8,16),padding:"12px 18px",maxWidth:360,width:"100%",textAlign:"center",pointerEvents:"auto",boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
+ <div style={{color:"#ffcc44",fontSize:_mf(12),fontWeight:"bold",letterSpacing:2,marginBottom:6}}>{title}</div>
+ <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.6}}>{children}</div>
  </div>
  </div>);
  return(
- <div style={{position:"absolute",inset:0,background:"rgba(6,6,14,0.85)",zIndex:25,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
- <div style={{background:"#0c0c1a",border:"2px solid #ffcc4466",borderRadius:8,padding:"18px 22px",maxWidth:380,width:"100%",textAlign:"center"}}>
- <div style={{color:"#ffcc44",fontSize:14,fontWeight:"bold",letterSpacing:2,marginBottom:10}}>{title}</div>
- <div style={{color:"#99aabb",fontSize:10,lineHeight:1.7,marginBottom:14}}>{children}</div>
- {btnText&&<button onClick={onBtn} style={{padding:"8px 28px",background:"transparent",border:"2px solid #ffcc44",color:"#ffcc44",fontSize:12,fontFamily:"inherit",cursor:"pointer",letterSpacing:1,transition:"all 0.2s"}}
- onMouseOver={e=>{e.target.style.background="#ffcc44";e.target.style.color="#06060e";}} onMouseOut={e=>{e.target.style.background="transparent";e.target.style.color="#ffcc44";}}>{btnText}</button>}
+ <div data-noctl="1" style={{position:"absolute",inset:0,background:"rgba(6,6,14,0.85)",zIndex:25,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+ <div style={{background:"#0c0c1a",border:_mv("2px","1px")+" solid #ffcc4466",borderRadius:_mv(8,20),padding:_mv("18px 22px","22px 18px"),maxWidth:380,width:"100%",textAlign:"center"}}>
+ <div style={{color:"#ffcc44",fontSize:_mf(14),fontWeight:"bold",letterSpacing:2,marginBottom:10}}>{title}</div>
+ <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.7,marginBottom:14}}>{children}</div>
+ {btnText&&<button onClick={onBtn} style={{padding:_mv("8px 28px","15px 28px"),width:_mv("auto","100%"),background:"transparent",border:"2px solid #ffcc44",borderRadius:_mv(0,12),color:"#ffcc44",fontSize:_mv(_mf(12),15),fontWeight:_mv("normal","bold"),fontFamily:"inherit",cursor:"pointer",letterSpacing:1,transition:"all 0.2s"}}
+ onMouseOver={e=>{if(_mob)return;e.target.style.background="#ffcc44";e.target.style.color="#06060e";}} onMouseOut={e=>{if(_mob)return;e.target.style.background="transparent";e.target.style.color="#ffcc44";}}>{btnText}</button>}
  </div>
  </div>);
  };
  return(
- <div style={{width:"100%",height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace",position:"relative",background:"#06060e"}}>
+ <div style={{width:"100%",height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace",position:"relative",background:"#06060e",overscrollBehavior:"none",...(_devMob?{position:"fixed",inset:0,height:"auto"}:{})}}>
  <div style={{position:"absolute",inset:0,zIndex:0}} ref={(el)=>{if(el){const bgId=meta.bgDesign||"void";const bg=BG_DESIGNS.find(b=>b.id===bgId)||BG_DESIGNS[0];el.style.cssText=`position:absolute;inset:0;z-index:0;${bg.css}`;el.className=bg.id==="galaxy"?"vs-galaxy":"";}}} /> <style>{`
 @font-face{font-family:'DejaVu Sans Mono';font-style:normal;font-weight:400;src:local('DejaVu Sans Mono'),local('DejaVuSansMono'),local('DejaVu Sans Mono Book'),url('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSansMono.ttf') format('truetype');font-display:swap;}@font-face{font-family:'DejaVu Sans Mono';font-style:normal;font-weight:700;src:local('DejaVu Sans Mono Bold'),local('DejaVuSansMono-Bold'),local('DejaVu Sans Mono'),url('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSansMono-Bold.ttf') format('truetype');font-display:swap;}
  .vs-scroll::-webkit-scrollbar{width:5px;}
  .vs-scroll::-webkit-scrollbar-track{background:#0a0a14;}
  .vs-scroll::-webkit-scrollbar-thumb{background:#1a1a3a;border-radius:4px;}
  .vs-scroll::-webkit-scrollbar-thumb:hover{background:#2a2a5a;}
- .vs-scroll{scrollbar-width:thin;scrollbar-color:#1a1a3a #0a0a14;}
+ .vs-scroll{scrollbar-width:thin;scrollbar-color:#1a1a3a #0a0a14;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
  input,textarea{user-select:text;-webkit-user-select:text;cursor:text;}
  @keyframes goldShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
  @keyframes auroraShift{0%{filter:hue-rotate(0deg) brightness(1)}50%{filter:hue-rotate(20deg) brightness(1.15)}100%{filter:hue-rotate(-15deg) brightness(0.9)}}
@@ -2408,27 +2540,38 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
         @keyframes transOutRight{from{transform:translateX(0)}to{transform:translateX(100%)}}
         .gold-shimmer{position:absolute;inset:0;border-radius:3px;background:linear-gradient(105deg,transparent 30%,rgba(255,204,68,0.06) 45%,rgba(255,204,68,0.12) 50%,rgba(255,204,68,0.06) 55%,transparent 70%);background-size:200% 100%;animation:goldShimmer 4s ease-in-out infinite;pointer-events:none;z-index:0;}
         .platinum-shimmer{position:absolute;inset:0;border-radius:3px;background:linear-gradient(105deg,transparent 30%,rgba(180,210,255,0.06) 45%,rgba(180,210,255,0.14) 50%,rgba(180,210,255,0.06) 55%,transparent 70%);background-size:200% 100%;animation:goldShimmer 4s ease-in-out infinite;pointer-events:none;z-index:0;}
+        @keyframes scanMove{0%{background-position:0 0;}100%{background-position:0 4px;}}
+        .vs-scanlines{background:repeating-linear-gradient(0deg,rgba(0,229,255,0.05) 0px,rgba(0,229,255,0.05) 1px,transparent 1px,transparent 3px);animation:scanMove 0.3s linear infinite;}
+        @keyframes hudPulse{0%,100%{opacity:0.5;}50%{opacity:1;}}
+        .vs-hud-pulse{animation:hudPulse 2s ease-in-out infinite;}
+        @keyframes corePulse{0%,100%{box-shadow:0 0 30px #00e5ff66,0 0 60px #00e5ff22;transform:scale(1);}50%{box-shadow:0 0 44px #00e5ff99,0 0 80px #00e5ff33;transform:scale(1.03);}}
+        .vs-core-pulse{animation:corePulse 2.6s ease-in-out infinite;}
+        @keyframes cursorBlink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+        .vs-cursor-blink{animation:cursorBlink 1s step-end infinite;}
+        @keyframes termHighlight{0%,100%{background:rgba(0,229,255,0.08);}50%{background:rgba(0,229,255,0.18);}}
+        .vs-term-hl{animation:termHighlight 1.6s ease-in-out infinite;}
+
  `}</style> <div style={{position:"relative",flexShrink:0,width:GW,height:GH,transform:`scale(${sc2})`,transformOrigin:"center center",cursor:(phase==="play"&&!paused)?"none":"default",userSelect:"none",WebkitUserSelect:"none",outline:meta.showBorder!==false?"1px solid #2a2a3a":"none",border:"none",zIndex:1,overflow:"hidden",background:"#06060e"}}>
  <canvas ref={canvasRef} width={GW*(meta.resScale||2)} height={GH*(meta.resScale||2)} style={{width:"100%",height:"100%",display:"block"}} />
  {phase==="replay"&&(()=>{const _done=gsRef.current&&gsRef.current._replayIdx>=gsRef.current._replayFrames.length;
  if(_replayUiMin)return(
  <div style={{position:"absolute",bottom:10,right:10,zIndex:25}}>
- <button onClick={()=>_setReplayUiMin(false)} title="Show replay controls" style={{width:30,height:30,borderRadius:"50%",background:"rgba(10,10,24,0.82)",border:"1px solid #ffaa4488",color:"#ffcc44",cursor:"pointer",fontFamily:"inherit",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>▶</button>
+ <button onClick={()=>_setReplayUiMin(false)} title="Show replay controls" style={_mob?{width:44,height:44,..._gp("#ffaa44",22),color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}:{width:30,height:30,borderRadius:"50%",background:"rgba(10,10,24,0.82)",border:"1px solid #ffaa4488",color:"#ffcc44",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(13),display:"flex",alignItems:"center",justifyContent:"center"}}>▶</button>
  </div>);
  return(
  <div style={{position:"absolute",bottom:10,left:"50%",transform:"translateX(-50%)",zIndex:25,width:"min(440px,calc(100% - 24px))"}}>
- <div style={{background:"rgba(8,8,20,0.86)",border:"1px solid #ffaa4455",borderRadius:8,padding:"8px 10px",backdropFilter:"blur(2px)"}}>
+ <div style={_mob?{..._gp("#ffaa44",16),padding:"12px 12px",backdropFilter:"blur(3px)"}:{background:"rgba(8,8,20,0.86)",border:"1px solid #ffaa4455",borderRadius:8,padding:"8px 10px",backdropFilter:"blur(2px)"}}>
  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
- <div style={{color:"#ffcc44",fontSize:10,letterSpacing:1.5,fontWeight:"bold",flexShrink:0}}>▶ REPLAY · W{_currentReplayRef.current?.wave??(gsRef.current?.wave||"?")}</div>
+ <div style={{color:"#ffcc44",fontSize:_mf(10),letterSpacing:1.5,fontWeight:"bold",flexShrink:0}}>▶ REPLAY · W{_currentReplayRef.current?.wave??(gsRef.current?.wave||"?")}</div>
  <div style={{flex:1,height:5,background:"rgba(20,20,42,0.9)",borderRadius:3,overflow:"hidden"}}>
  <div style={{height:"100%",width:`${Math.round(_replayProgress*100)}%`,background:"linear-gradient(90deg,#ffcc44,#ff6644)",transition:"width 80ms linear"}} />
  </div>
- <div style={{color:"#998866",fontSize:8,flexShrink:0,minWidth:30,textAlign:"right"}}>{Math.round(_replayProgress*100)}%</div>
+ <div style={{color:"#998866",fontSize:_mf(8),flexShrink:0,minWidth:30,textAlign:"right"}}>{Math.round(_replayProgress*100)}%</div>
  </div>
  <div style={{display:"flex",gap:6,justifyContent:"center"}}>
- <button onClick={()=>{if(_done){_startReplay(_currentReplayRef.current);}else{_setReplayPaused(p=>!p);}}} style={{flex:1,background:"#1a1530",border:"1px solid #ffaa4466",color:"#ffcc88",padding:"6px 0",borderRadius:5,cursor:"pointer",fontFamily:"inherit",fontSize:11}}>{_done?"↻ REPLAY AGAIN":(_replayPaused?"▶ PLAY":"⏸ PAUSE")}</button>
- <button onClick={()=>_setReplayUiMin(true)} title="Minimise" style={{width:40,background:"#12121f",border:"1px solid #44556666",color:"#aabbcc",padding:"6px 0",borderRadius:5,cursor:"pointer",fontFamily:"inherit",fontSize:12}}>—</button>
- <button onClick={()=>_exitReplay()} style={{width:60,background:"#1a0e12",border:"1px solid #cc556666",color:"#ee8899",padding:"6px 0",borderRadius:5,cursor:"pointer",fontFamily:"inherit",fontSize:10}}>EXIT</button>
+ <button onClick={()=>{if(_done){_startReplay(_currentReplayRef.current);}else{_setReplayPaused(p=>!p);}}} style={{flex:1,background:"#1a1530",border:"1px solid #ffaa4466",color:"#ffcc88",padding:"6px 0",borderRadius:5,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(11)}}>{_done?"↻ REPLAY AGAIN":(_replayPaused?"▶ PLAY":"⏸ PAUSE")}</button>
+ <button onClick={()=>_setReplayUiMin(true)} title="Minimise" style={{width:40,background:"#12121f",border:"1px solid #44556666",color:"#aabbcc",padding:"6px 0",borderRadius:5,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(12)}}>—</button>
+ <button onClick={()=>_exitReplay()} style={{width:60,background:"#1a0e12",border:"1px solid #cc556666",color:"#ee8899",padding:"6px 0",borderRadius:5,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10)}}>EXIT</button>
  </div>
  </div>
  </div>);})()}
@@ -2436,9 +2579,9 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  {showWiki&&<div style={{position:"absolute",inset:0,zIndex:15,opacity:_wikiClosing?0:1,transition:"opacity 200ms ease"}}>{Wiki()}</div>}
  {}
  {tutStep===1&&phase==="playing"&&<TutPopup title="CONTROLS" btnText="BEGIN" onBtn={()=>setTutStep(2)}>
- Use <b style={{color:"#ccddee"}}>WASD</b> or <b style={{color:"#ccddee"}}>Arrow Keys</b> to move your ship.<br/>
+ {_mob?<><b style={{color:"#ccddee"}}>Touch and drag</b> to move your ship (you can change the control style in Settings).<br/></>:<>Use <b style={{color:"#ccddee"}}>WASD</b> or <b style={{color:"#ccddee"}}>Arrow Keys</b> to move your ship.<br/></>}
  Your ship <b style={{color:"#ccddee"}}>fires automatically</b> — just focus on dodging!<br/>
- Press <b style={{color:"#ffcc44"}}>P or Esc</b> to pause at any time.<br/><br/>
+ {_mob?<>Tap <b style={{color:"#ffcc44"}}>❙❙</b> in the top corner to pause at any time.<br/><br/></>:<>Press <b style={{color:"#ffcc44"}}>P or Esc</b> to pause at any time.<br/><br/></>}
  Destroying enemies drops <span style={{color:"#4499ff"}}>⬡ Scrap</span>, <span style={{color:"#44ff88"}}>◆ Cores</span>, and sometimes <span style={{color:"#ff8844"}}>✦ Plasma</span>. <b style={{color:"#ccddee"}}>Fly near them to pick them up</b> — they're pulled towards you automatically.<br/><br/>
  <b style={{color:"#ff6644"}}>Drones</b> are your first enemies. They fire single aimed shots directly at you. Keep moving to dodge!
  </TutPopup>}
@@ -2466,11 +2609,11 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  Upgrades only last for this run. When you die, you start fresh.
  </TutPopup>}
  {tutStep===4&&phase==="shop"&&gsRef.current?.isTutorial&&<TutPopup banner title="BUY HULL PLATING">
- Find <b style={{color:"#ff5577"}}>Hull Plating</b> (❤) in the upgrade grid and click it to continue.<br/>
- <span style={{color:"#667788",fontSize:9}}>Second row, on the left — costs 8 ⬡ scrap.</span>
+ Find <b style={{color:"#ff5577"}}>Hull Plating</b> (❤) in the upgrade grid and {_mob?"tap":"click"} it to continue.<br/>
+ <span style={{color:"#667788",fontSize:_mf(9)}}>Second row, on the left — costs 8 ⬡ scrap.</span>
  </TutPopup>}
  {tutStep===45&&phase==="shop"&&<TutPopup banner title="UPGRADE PURCHASED!">
- Your max HP increased and you were healed! Click <b style={{color:"#44ff88"}}>NEXT WAVE →</b> to continue.
+ Your max HP increased and you were healed! {_mob?"Tap":"Click"} <b style={{color:"#44ff88"}}>NEXT WAVE →</b> to continue.
  </TutPopup>}
  {tutStep===5&&phase==="ability"&&<TutPopup title="ABILITIES" btnText="CHOOSE ONE" onBtn={()=>setTutStep(6)}>
  Every 3 waves, you pick <b style={{color:"#ffcc44"}}>1 of 3 abilities</b>.<br/><br/>
@@ -2492,7 +2635,7 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  </TutPopup>}
  {tutStep===10&&phase==="metashop"&&metaTab==="ship"&&(meta.levels?.m_dmg||0)===0&&<TutPopup banner title="BUY GUNPOWDER DENSITY">
  Find <b style={{color:"#ccddee"}}>Gunpowder Density</b> in the list below and click to buy it.<br/>
- <span style={{color:"#667788",fontSize:9}}>Costs 15 echoes.</span>
+ <span style={{color:"#667788",fontSize:_mf(9)}}>Costs 15 echoes.</span>
  </TutPopup>}
  {tutStep===10&&phase==="metashop"&&metaTab==="ship"&&(meta.levels?.m_dmg||0)>0&&<TutPopup title="ABILITY UPGRADES" btnText="SHOW ME" onBtn={()=>{setTutStep(11);(()=>{_setMetaTabFrom(metaTab);setMetaTab("abilities");})();}}>
  Nice! That damage boost applies to every future run.<br/><br/>
@@ -2510,69 +2653,70 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  Use the same code on another device to pick up where you left off — your data saves automatically every 2 minutes and on every death.<br/><br/>You can <b style={{color:"#44ccaa"}}>lock</b> your account so the code alone can't overwrite your save from another device, and you'll be warned if a different device signs in with your code.<br/><br/>Set a <b style={{color:"#ccddee"}}>username</b> to appear on the global leaderboard, ranked by total Echoes earned.<br/><br/>
  <b style={{color:"#ccddee"}}>Good luck out there, pilot.</b>
  </TutPopup>}
- {paused&&phase==="playing"&&!showWiki&&(
- <div className="vs-scroll vs-fade" style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"rgba(6,6,14,0.88)",zIndex:15,overflow:"auto",padding:"20px 0"}}>
- <h2 style={{color:"#ccddee",fontSize:20,letterSpacing:4,margin:0}}>PAUSED</h2>
+ {phase==="playing"&&_mob&&!paused&&!showWiki&&<MobHud/>}
+{paused&&phase==="playing"&&!showWiki&&(
+ <div className="vs-scroll vs-fade" style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:_mv("rgba(6,6,14,0.88)","rgba(2,2,8,0.93)"),backdropFilter:_mv("none","blur(3px)"),zIndex:15,overflow:"auto",padding:"20px 0"}}>
+ <h2 style={{color:_mv("#ccddee","#fff"),fontSize:_mf(20),letterSpacing:4,margin:0,textShadow:_mv("none","0 0 14px #44ff8866")}}>PAUSED</h2>
  {(()=>{const _mr=metaRef.current;const _t=_mr.metaTier||1;const _gsSide=gsRef.current;if(_t<2||(_gsSide&&(_gsSide.isPlayground||_gsSide.isNewMode||_gsSide.isPractise||_gsSide.isCargo||_gsSide.isTutorial)))return null;const _phW=_mr.phantomHighWave||0;const _prW=_mr.practiseHighWave||0;const _phL=(_mr.lab?.completed?.phantom_enhance||0)*0.001;const _prL=(_mr.lab?.completed?.practise_enhance||0)*0.001;const _tv=_t===3?2.5:_t===2?1.5:1;const _enf2=_t>=2?1+(_mr.enforcerKills||0)*0.025:1;const _des3=_t>=2?1+((_mr.ownedDesigns||[]).length)*0.004:1;const _em=_tv*(_t>=2?(1+_phW*(0.01+_phL)):1)*(_t>=2?(1+_prW*(0.006+_prL)):1)*_enf2*_des3*((gsRef.current?._diffuseMult||1)+((metaRef.current.pathsUpg?.pr_diff&&(metaRef.current.practiseHighWave||0)>0&&(metaRef.current.practiseHighWave||0)%5===0)?0.045:0));return(
  <div style={{display:"flex",alignItems:"center",gap:5,marginTop:6}}>
- <span style={{color:"#ffcc44",fontSize:10,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>Echo ×{_em.toFixed(3)}</span>
- <div onClick={()=>setHeInfoId(heInfoId==="pause_echo"?null:"pause_echo")} style={{width:13,height:13,borderRadius:"50%",border:"1px solid #ffcc4466",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#ffcc4488",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#ffcc44"} onMouseOut={e=>e.currentTarget.style.color="#ffcc4488"}>?</div>
+ <span style={{color:"#ffcc44",fontSize:_mf(10),fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>Echo ×{_em.toFixed(3)}</span>
+ <div onClick={()=>setHeInfoId(heInfoId==="pause_echo"?null:"pause_echo")} style={{width:_mv(13,30),height:_mv(13,30),borderRadius:"50%",border:"1px solid #ffcc4466",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mv(_mf(8),16),color:"#ffcc4488",flexShrink:0}} onMouseOver={e=>{if(!_mob)e.currentTarget.style.color="#ffcc44";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.color="#ffcc4488";}}>?</div>
  </div>);})()}
  {(heInfoId==="pause_echo"||(heInfoId&&heInfoId.startsWith("ph_")))&&(()=>{const _mr2=metaRef.current;const _t2=_mr2.metaTier||1;const _phW2=_mr2.phantomHighWave||0;const _prW2=_mr2.practiseHighWave||0;const _phL2=(_mr2.lab?.completed?.phantom_enhance||0)*0.001;const _prL2=(_mr2.lab?.completed?.practise_enhance||0)*0.001;const _phV2=1+_phW2*(0.01+_phL2);const _prV2=1+_prW2*(0.006+_prL2);const _pMults=[{name:"Tier Bonus",color:"#bb99ff",val:_t2===3?2.5:_t2===2?1.5:1,desc:""},{name:"Phantom",color:"#cc66cc",val:_t2>=2?_phV2:1,desc:"+" + (0.01+_phL2).toFixed(3) + " per phantom max wave."},{name:"Practise",color:"#cc9966",val:_t2>=2?_prV2:1,desc:"+" + (0.006+_prL2).toFixed(3) + " per practise max wave."},{name:"Enforcer",color:"#ff5577",val:_t2>=2?1+(_mr2.enforcerKills||0)*0.025:1,desc:"+0.025 per enforcer defeated."},{name:"Designer",color:"#cc7744",val:_t2>=2?1+((_mr2.ownedDesigns||[]).length)*0.004:1,desc:"+0.004 per custom design owned."},{name:"Diffusion",color:"#44ddcc",val:(gsRef.current?._diffuseMult||1)+((metaRef.current.pathsUpg?.pr_diff&&(metaRef.current.practiseHighWave||0)>0&&(metaRef.current.practiseHighWave||0)%5===0)?0.045:0),desc:"Per-run bonus from diffusing ability slots."+((metaRef.current.pathsUpg?.pr_diff&&(metaRef.current.practiseHighWave||0)>0&&(metaRef.current.practiseHighWave||0)%5===0)?" Includes a permanent +0.045 because your best practise wave is a boss wave.":"")}];const _pTot=_pMults.reduce((a,m)=>a*m.val,1);return(
  <div onClick={()=>setHeInfoId(null)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
  <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #ffcc4433",borderRadius:6,padding:"16px 14px",maxWidth:340,width:"100%"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
- <div style={{color:"#ffcc44",fontSize:15,fontWeight:"bold",letterSpacing:2}}>HYPERECHO</div>
- <button onClick={()=>setHeInfoId(null)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ <div style={{color:"#ffcc44",fontSize:_mf(15),fontWeight:"bold",letterSpacing:2}}>HYPERECHO</div>
+ <button onClick={()=>setHeInfoId(null)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
  </div>
  <div style={{display:"flex",flexDirection:"column",gap:4}}>
- {_pMults.map(m=><div key={m.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0"}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{color:m.color,fontSize:12,fontWeight:"bold"}}>{m.name}</span>{m.desc&&<div onClick={(e)=>{e.stopPropagation();setHeInfoId(heInfoId==="ph_"+m.name?null:"ph_"+m.name);}} style={{width:11,height:11,borderRadius:"50%",border:"1px solid "+m.color+"44",display:"inline-flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:6,color:m.color+"88",flexShrink:0}}>?</div>}</div><div style={{color:"#ccddee",fontSize:16,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>×{m.val.toFixed(3)}</div></div>)}
+ {_pMults.map(m=><div key={m.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0"}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{color:m.color,fontSize:_mf(12),fontWeight:"bold"}}>{m.name}</span>{m.desc&&<div onClick={(e)=>{e.stopPropagation();setHeInfoId(heInfoId==="ph_"+m.name?null:"ph_"+m.name);}} style={{width:11,height:11,borderRadius:"50%",border:"1px solid "+m.color+"44",display:"inline-flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mf(6),color:m.color+"88",flexShrink:0}}>?</div>}</div><div style={{color:"#ccddee",fontSize:_mf(16),fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>×{m.val.toFixed(3)}</div></div>)}
  </div>
- {(()=>{const _hd=_pMults.find(m=>heInfoId==="ph_"+m.name);if(!_hd||!_hd.desc)return null;return <div style={{background:"#0a0e14",border:"1px solid "+_hd.color+"33",borderRadius:4,padding:"6px 10px",marginTop:4}}><span style={{color:_hd.color,fontSize:9}}>{_hd.desc}</span></div>;})()}
- <div style={{borderTop:"1px solid #44556644",marginTop:10,paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{color:"#ffcc44",fontSize:13,fontWeight:"bold"}}>TOTAL</div><div style={{color:"#ffcc44",fontSize:22,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>×{_pTot.toFixed(3)}</div></div>
+ {(()=>{const _hd=_pMults.find(m=>heInfoId==="ph_"+m.name);if(!_hd||!_hd.desc)return null;return <div style={{background:"#0a0e14",border:"1px solid "+_hd.color+"33",borderRadius:4,padding:"6px 10px",marginTop:4}}><span style={{color:_hd.color,fontSize:_mf(9)}}>{_hd.desc}</span></div>;})()}
+ <div style={{borderTop:"1px solid #44556644",marginTop:10,paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{color:"#ffcc44",fontSize:_mf(13),fontWeight:"bold"}}>TOTAL</div><div style={{color:"#ffcc44",fontSize:_mf(22),fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>×{_pTot.toFixed(3)}</div></div>
  </div>
  </div>);})()}
  {(()=>{const gs=gsRef.current;if(!gs)return null;const p=gs.player;const rawHp=Math.round(BASE_HP*hpScale(gs.wave));const rawDmg=Math.round((7+gs.wave*1.8)*dmgScale(gs.wave)*0.35);return(
- <div style={{color:"#8899aa",fontSize:10,marginTop:10,textAlign:"center",lineHeight:1.8}}>
+ <div style={{color:"#8899aa",fontSize:_mf(10),marginTop:10,textAlign:"center",lineHeight:1.8}}>
  {gs.isCargo?<>{gs.kills} killed · {gs.enemies.length} alive</>:<><span style={{color:"#99aabb"}}>WAVE {gs.wave}</span> · {gs.waveKilled}/{gs.waveTotal} killed · {gs.enemies.length} alive</>}<br/>
  Enemy base HP: {rawHp} · Base dmg: {rawDmg}<br/>
  {!gs.isPlayground&&!gs.isNewMode&&!gs.isPractise&&!gs.isCargo&&!gs.isTutorial&&<><span style={{color:CUR.scrap.color}}>⬡{gs.scrap}</span> · <span style={{color:CUR.cores.color}}>◆{gs.cores}</span> · <span style={{color:CUR.plasma.color}}>✦{gs.plasma}</span></>}
  </div>
  );})()}
  <div style={{marginTop:14}}><ShipDisplay onClick={()=>setShowShipStats(true)} size={50} /></div>
- {showShipStats&&(()=>{const _live=!!(gsRef.current&&gsRef.current.player&&phase!=="menu"&&phase!=="leaderboard"&&phase!=="settings"&&phase!=="metashop");return(<div onClick={()=>closePopup(setShowShipStats)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:32,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #00e5ff33",borderRadius:6,padding:"14px 16px",maxWidth:340,width:"100%",maxHeight:"80vh",overflow:"auto"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><div style={{color:"#00e5ff",fontSize:13,fontWeight:"bold",letterSpacing:1}}>SHIP STATS</div><button onClick={()=>closePopup(setShowShipStats)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button></div><ShipStats metaData={meta} gsData={_live?gsRef.current:null} homeMode={!_live} /></div></div>);})()}
+ {showShipStats&&(()=>{const _live=!!(gsRef.current&&gsRef.current.player&&phase!=="menu"&&phase!=="leaderboard"&&phase!=="settings"&&phase!=="metashop");return(<div onClick={()=>closePopup(setShowShipStats)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:32,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid "+_mv("#00e5ff33","#00e5ff66"),borderRadius:_mv(6,20),padding:_mv("14px 16px","18px 16px"),maxWidth:_mv(340,400),width:"100%",maxHeight:"80vh",overflow:"auto"}}><div style={{display:"flex",justifyContent:_mv("space-between","center"),alignItems:"center",marginBottom:8}}><div style={{color:"#00e5ff",fontSize:_mv(_mf(13),15),fontWeight:"bold",letterSpacing:_mv(1,2)}}>SHIP STATS</div>{!_mob&&<button onClick={()=>closePopup(setShowShipStats)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>}</div><ShipStats metaData={meta} gsData={_live?gsRef.current:null} homeMode={!_live} /></div></div>);})()}
  
  
- <div style={{display:"flex",gap:10,marginTop:16,flexDirection:"column",alignItems:"center"}}>
- <button onClick={()=>setPaused(false)} style={{...bs2("#44ff88"),padding:"10px 40px",fontSize:14}} {...hv("#44ff88")}>CONTINUE</button>
- <div style={{display:"flex",gap:8,marginTop:2}}>
- <button onClick={()=>{setShowWiki(true);setCodexOpen({controls:false,mechanics:false,currencies:false,enemies:false,abilities:false,scrap:false,cores:false,plasma:false,meta:false,metaab:false,designs:false,labs:false,overheat:false})}} style={{...bs2("#55667744"),padding:"8px 16px",fontSize:11,borderWidth:1,color:"#8899aa"}}>CODEX</button>
- <button onClick={()=>setShowPauseLabs(true)} style={{...bs2("#55667744"),padding:"8px 16px",fontSize:11,borderWidth:1,color:"#8899aa"}}>LABS</button>
- <button onClick={()=>setShowPauseCards(true)} style={{...bs2("#55667744"),padding:"8px 16px",fontSize:11,borderWidth:1,color:"#8899aa"}}>CARDS</button>
- <button onClick={()=>{_returnToPauseRef.current=true;goToFast("settings");}} style={{...bs2("#55667744"),padding:"8px 16px",fontSize:11,borderWidth:1,color:"#8899aa"}}>SETTINGS</button>
+ <div style={{display:"flex",gap:10,marginTop:16,flexDirection:"column",alignItems:"center",width:_mv("auto","100%")}}>
+ <button onClick={()=>setPaused(false)} style={{...bs2("#44ff88"),padding:_mv("10px 40px","18px 40px"),fontSize:_mf(14),width:_mv("auto","82%")}} {...hv("#44ff88")}>CONTINUE</button>
+ <div style={{display:_mv("flex","grid"),gridTemplateColumns:_mv("none","1fr 1fr"),gap:_mv(8,10),marginTop:_mv(2,10),width:_mv("auto","82%"),justifyContent:"center"}}>
+ <button onClick={()=>{setShowWiki(true);setCodexOpen({controls:false,mechanics:false,currencies:false,enemies:false,abilities:false,scrap:false,cores:false,plasma:false,meta:false,metaab:false,designs:false,labs:false,overheat:false})}} style={{...bs2("#55667744"),padding:_mv("8px 16px","16px 12px"),fontSize:_mv(_mf(11),13),borderWidth:1,color:_mv("#8899aa","#fff")}}>CODEX</button>
+ <button onClick={()=>setShowPauseLabs(true)} style={{...bs2("#55667744"),padding:_mv("8px 16px","16px 12px"),fontSize:_mv(_mf(11),13),borderWidth:1,color:_mv("#8899aa","#fff")}}>LABS</button>
+ <button onClick={()=>setShowPauseCards(true)} style={{...bs2("#55667744"),padding:_mv("8px 16px","16px 12px"),fontSize:_mv(_mf(11),13),borderWidth:1,color:_mv("#8899aa","#fff")}}>CARDS</button>
+ <button onClick={()=>{_returnToPauseRef.current=true;goToFast("settings");}} style={{...bs2("#55667744"),padding:_mv("8px 16px","16px 12px"),fontSize:_mv(_mf(11),13),borderWidth:1,color:_mv("#8899aa","#fff")}}>SETTINGS</button>
  </div>
  </div>
- {(gsRef.current?.isPlayground||gsRef.current?.isNewMode||gsRef.current?.isCargo)?<button onClick={forfeit} style={{background:"none",border:"none",color:"#554444",fontSize:9,cursor:"pointer",fontFamily:"inherit",padding:"4px 8px",marginTop:8}}>EXIT TO MENU</button>
+ {(gsRef.current?.isPlayground||gsRef.current?.isNewMode||gsRef.current?.isCargo)?<button onClick={forfeit} style={_mob?{...bs2("#ff3344"),width:"82%",padding:"15px",fontSize:12,marginTop:10,color:"#fff"}:{background:"none",border:"none",color:"#554444",fontSize:_mf(9),cursor:"pointer",fontFamily:"inherit",padding:"4px 8px",marginTop:8}}>EXIT TO MENU</button>
  :gsRef.current?.isTutorial&&tutStep!==7?null
- :<>{!confirmForfeit?<button onClick={()=>setConfirmForfeit(true)} style={{background:"none",border:"none",color:"#554444",fontSize:9,cursor:"pointer",fontFamily:"inherit",padding:"4px 8px",marginTop:8}}>FORFEIT RUN</button>
- :<div style={{textAlign:"center",marginTop:8}}><div style={{color:"#cc5555",fontSize:9,marginBottom:4}}>End this run? You'll receive <span style={{color:CUR.echoes.color}}>⬢ {calcEchoes(gsRef.current)}</span> echoes.</div>
- <div style={{display:"flex",gap:8,justifyContent:"center"}}><button onClick={forfeit} style={{...bs2("#ff3344"),padding:"5px 14px",fontSize:10,borderWidth:1}} {...hv("#ff3344")}>FORFEIT</button><button onClick={()=>setConfirmForfeit(false)} style={{...bs2("#55667744"),padding:"5px 14px",fontSize:10,borderWidth:1,color:"#8899aa"}}>CANCEL</button></div></div>}</>}
- <div style={{color:"#556677",fontSize:9,marginTop:10}}>P / Esc to resume</div>
+ :<>{!confirmForfeit?<button onClick={()=>setConfirmForfeit(true)} style={_mob?{...bs2("#ff3344"),width:"82%",padding:"15px",fontSize:12,marginTop:10,color:"#fff"}:{background:"none",border:"none",color:"#554444",fontSize:_mf(9),cursor:"pointer",fontFamily:"inherit",padding:"4px 8px",marginTop:8}}>FORFEIT RUN</button>
+ :<div style={{textAlign:"center",marginTop:8,width:_mv("auto","100%")}}><div style={{color:_mv("#cc5555","#ffb0b0"),fontSize:_mv(_mf(9),13),marginBottom:_mv(4,10)}}>End this run? You'll receive <span style={{color:CUR.echoes.color}}>⬢ {calcEchoes(gsRef.current)}</span> echoes.</div>
+ <div style={{display:"flex",gap:8,justifyContent:"center",width:_mv("auto","82%"),margin:_mv(0,"0 auto")}}><button onClick={forfeit} style={{...bs2("#ff3344"),padding:_mv("5px 14px","15px 8px"),fontSize:_mv(_mf(10),13),borderWidth:1,flex:_mv("0 0 auto",1),color:_mv(undefined,"#fff")}} {...hv("#ff3344")}>FORFEIT</button><button onClick={()=>setConfirmForfeit(false)} style={{...bs2("#55667744"),padding:_mv("5px 14px","15px 8px"),fontSize:_mv(_mf(10),13),borderWidth:1,color:_mv("#8899aa","#fff"),flex:_mv("0 0 auto",1)}}>CANCEL</button></div></div>}</>}
+ {!_mob&&<div style={{color:"#556677",fontSize:_mf(9),marginTop:10}}>P / Esc to resume</div>}
 {showPauseCards&&(
  <div onClick={()=>closePopup(setShowPauseCards)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
  <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #9955dd33",borderRadius:6,padding:"16px 14px",maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
- <div style={{color:"#bb77ff",fontSize:15,fontWeight:"bold",letterSpacing:2}}>CARDS</div>
- <button onClick={()=>closePopup(setShowPauseCards)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ <div style={{color:"#bb77ff",fontSize:_mf(15),fontWeight:"bold",letterSpacing:2}}>CARDS</div>
+ <button onClick={()=>closePopup(setShowPauseCards)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
  </div>
- <div style={{color:"#667788",fontSize:8,textAlign:"center",marginBottom:10}}>View only — Dealer cards affecting this run.</div>
+ <div style={{color:"#667788",fontSize:_mf(8),textAlign:"center",marginBottom:10}}>View only — Dealer cards affecting this run.</div>
  {(()=>{const cards=gsRef.current?._dealerCards||[];const cap=t=>t.charAt(0).toUpperCase()+t.slice(1);
- if(!cards.length)return <div style={{color:"#556677",fontSize:10,textAlign:"center",padding:"16px 0"}}>No Dealer cards active this run.</div>;
+ if(!cards.length)return <div style={{color:"#556677",fontSize:_mf(10),textAlign:"center",padding:"16px 0"}}>No Dealer cards active this run.</div>;
  return <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center"}}>{cards.map((c,ci)=>(
  <div key={ci} style={{width:128,background:"#160a30",border:"1px solid #6633aa55",borderRadius:6,padding:6}}>
  <canvas width={384} height={534} style={{width:"100%",height:"auto",borderRadius:4,display:"block"}} ref={el=>{if(el){const cx=el.getContext("2d");if(cx)drawDealerCard(cx,c,el.width,el.height);}}} />
- <div style={{color:"#7dffc0",fontSize:8,lineHeight:1.3,marginTop:5}}>− {cap(c.nerf.enemy)}: {c.nerf.label}</div>
- <div style={{color:"#ff9a8a",fontSize:8,lineHeight:1.3,marginTop:2}}>+ {cap(c.buff.enemy)}: {c.buff.label}</div>
+ <div style={{color:"#7dffc0",fontSize:_mf(8),lineHeight:1.3,marginTop:5}}>− {cap(c.nerf.enemy)}: {c.nerf.label}</div>
+ <div style={{color:"#ff9a8a",fontSize:_mf(8),lineHeight:1.3,marginTop:2}}>+ {cap(c.buff.enemy)}: {c.buff.label}</div>
  </div>))}</div>;})()}
  </div>
  </div>
@@ -2581,10 +2725,10 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  <div onClick={()=>closePopup(setShowPauseLabs)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
  <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #ff884433",borderRadius:6,padding:"16px 14px",maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
- <div style={{color:"#ff9966",fontSize:15,fontWeight:"bold",letterSpacing:2}}>LABS</div>
- <button onClick={()=>closePopup(setShowPauseLabs)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ <div style={{color:"#ff9966",fontSize:_mf(15),fontWeight:"bold",letterSpacing:2}}>LABS</div>
+ <button onClick={()=>closePopup(setShowPauseLabs)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
  </div>
- <div style={{color:"#667788",fontSize:8,textAlign:"center",marginBottom:10}}>View only — labs cannot be changed during a run.</div>
+ <div style={{color:"#667788",fontSize:_mf(8),textAlign:"center",marginBottom:10}}>View only — labs cannot be changed during a run.</div>
  {(()=>{const lab=meta.lab||{slots:0,active:[],completed:{}};const slotsUnlocked=lab.slots||0;const activeResearch=lab.active||[];const completedLevels=lab.completed||{};
  return [0,1,2].map(slotIdx=>{
  const unlocked=slotsUnlocked>slotIdx;
@@ -2594,57 +2738,112 @@ useEffect(()=>{try{const _fc=document.createElement("canvas");_fc.width=64;_fc.h
  const pct=research?Math.min(100,(research.wavesProgress/research.wavesNeeded)*100):0;
  return <div key={slotIdx} style={{borderRadius:5,overflow:"hidden",marginBottom:6,border:`1px solid ${unlocked?"#ff884422":"#1a1a2e"}`}}>
  <div style={{padding:"3px 10px",background:unlocked?"#0e1420":"#08080f"}}>
- <span style={{color:unlocked?"#ff9966":"#445566",fontSize:8,fontWeight:"bold",letterSpacing:1}}>Lab {slotIdx+1}</span>
+ <span style={{color:unlocked?"#ff9966":"#445566",fontSize:_mf(8),fontWeight:"bold",letterSpacing:1}}>Lab {slotIdx+1}</span>
  </div>
- {!unlocked?<div style={{padding:"14px",background:"#0a0a14",textAlign:"center"}}><div style={{color:"#445566",fontSize:10}}>Locked</div></div>
- :!research?<div style={{padding:"14px",background:"#0a0a14",textAlign:"center"}}><div style={{color:"#556677",fontSize:10}}>Lab Offline</div></div>
+ {!unlocked?<div style={{padding:"14px",background:"#0a0a14",textAlign:"center"}}><div style={{color:"#445566",fontSize:_mf(10)}}>Locked</div></div>
+ :!research?<div style={{padding:"14px",background:"#0a0a14",textAlign:"center"}}><div style={{color:"#556677",fontSize:_mf(10)}}>Lab Offline</div></div>
  :<div style={{padding:"14px",background:"#0a0a14"}}>
- <div style={{color:"#ccddee",fontSize:11,fontWeight:"bold"}}>{lu?.name||"?"} <span style={{color:"#667788",fontSize:8}}>Lv.{curLvl} → Lv.{curLvl+1}</span></div>
- <div style={{color:"#8899aa",fontSize:8,marginTop:3}}>{lu?.desc||""}</div>
+ <div style={{color:"#ccddee",fontSize:_mf(11),fontWeight:"bold"}}>{lu?.name||"?"} <span style={{color:"#667788",fontSize:_mf(8)}}>Lv.{curLvl} → Lv.{curLvl+1}</span></div>
+ <div style={{color:"#8899aa",fontSize:_mf(8),marginTop:3}}>{lu?.desc||""}</div>
  <div style={{height:8,background:"#14142a",borderRadius:4,marginTop:8}}><div style={{height:8,background:"linear-gradient(90deg, #ff8844, #ffaa66)",borderRadius:4,width:pct+"%",transition:"width 0.3s"}} /></div>
- <div style={{color:"#778899",fontSize:8,marginTop:4}}>{research.wavesProgress}/{research.wavesNeeded} waves</div>
+ <div style={{color:"#778899",fontSize:_mf(8),marginTop:4}}>{research.wavesProgress}/{research.wavesNeeded} waves</div>
  </div>}
  </div>;
  });
  })()}
+{(()=>{const lab=meta.lab||{};if(!lab.plusUnlocked)return null;
+ const _lpUp=lab.plusUp||{waves:0,thresh:0,sprint:0};
+ const _lpWavesVal=5+(_lpUp.waves||0);const _lpThreshVal=55-(_lpUp.thresh||0);const _lpSprintVal=_lpUp.sprint||0;
+ const _lpActive=(gsRef.current?._sprintBonusActive||0)>0;
+ return <div style={{borderRadius:5,overflow:"hidden",marginTop:6,border:"1px solid #44ddcc33",padding:"8px 10px",background:"#0a0a14"}}>
+  <div style={{color:"#44ddcc",fontSize:_mf(8),fontWeight:"bold",letterSpacing:1,marginBottom:6}}>LAB+</div>
+  <div style={{color:"#8899aa",fontSize:_mf(8),lineHeight:1.6}}>If a run reaches wave <span style={{color:"#44ddcc"}}>{_lpThreshVal}</span> or higher, Lab+ grants <span style={{color:"#44ddcc"}}>{_lpWavesVal}</span> extra waves of progress to{(()=>{const _sl=[1,2,3][Math.min(meta.lab?.completed?.labplus_slots||0,2)];return _sl>1?` ${_sl} random active labs`:" a random active lab";})()} at the end of the run{_lpSprintVal>0?<>, and boosts Sprint Lab Efficiency by an extra <span style={{color:"#44ddcc"}}>+{_lpSprintVal}%</span> for your next run</>:null}.</div>
+  <div style={{color:"#778899",fontSize:_mf(8),marginTop:6}}>Lab+ intro sprint efficiency boost active: <span style={{color:_lpActive?"#44ddaa":"#cc6666"}}>{_lpActive?"Yes":"No"}</span></div>
+ </div>;
+})()}
  </div>
  </div>
  )}
  </div>
  )}
- {phase==="menu"&&(
+ {phase==="menu"&&_mob&&(()=>{
+ const _te=meta.totalEchoesEarned||0;
+ const _doLaunch=()=>{if(_launching)return;if(metaRef.current.autoDealerOn&&((metaRef.current.totalEchoesEarned||0)>=1500)&&!_dealerAuto&&(metaRef.current._dealerActive||[]).length<(metaRef.current._dealerSlots||1)){if(!_dealerOffers)_genDealerOffers();_setDealerAuto(true);goTo("dealer");return;}_setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);};
+ const _navAll=[
+  {id:"META",c:"#bb99ff",o:()=>goTo("metashop"),dot:(()=>{const _am=_affordMeta();return _am.any||_am.labEmpty;})(),grp:"prime"},
+  {id:"PATHS",c:"#cc8844",o:()=>goTo("paths"),dot:_affordPaths,grp:"prime"},
+  {id:"PLAYGROUND",c:"#44bbdd",req:100,o:()=>{if(_te<100){_setSideLockPopup({mode:"PLAYGROUND",required:100,current:_te});return;}setEnforcerMode(false);goTo("playground");},grp:"mode"},
+  {id:"PRACTISE",c:"#cc9966",req:250,o:()=>{if(_te<250){_setSideLockPopup({mode:"PRACTISE",required:250,current:_te});return;}goTo("practise");},grp:"mode"},
+  {id:"PHANTOM",c:"#cc66cc",req:500,o:()=>{if(_te<500){_setSideLockPopup({mode:"PHANTOM",required:500,current:_te});return;}goTo("phantom_info");},grp:"mode"},
+  {id:"CARGO",c:"#55cc88",req:1000,o:()=>{if(_te<1000){_setSideLockPopup({mode:"CARGO",required:1000,current:_te});return;}goTo("cargo");},grp:"mode"},
+  {id:"HYPERECHO",c:"#ffcc44",req:0,o:()=>{setHeInfoId(null);setAbInfoId(null);setSprintInfo(false);if((metaRef.current.metaTier||1)>=2&&!metaRef.current._heSeen){setMeta(prev=>{const nx={...prev,_heSeen:true};saveMeta(nx);return nx;});}goTo("hyperecho");},dot:(meta.metaTier||1)>=2&&!meta._heSeen,grp:"econ"},
+  {id:"DEALER",c:"#ff6688",req:1500,o:()=>{if(_te<1500){_setSideLockPopup({mode:"DEALER",required:1500,current:_te});return;}_setDealerAuto(false);if(!_dealerOffers&&(meta._dealerActive||[]).length<(meta._dealerSlots||1))_genDealerOffers();goTo("dealer");},grp:"econ"},
+  {id:"CODEX",c:"#88bbdd",req:0,o:()=>setShowWiki(true),grp:"ref"},
+  {id:"SANDBOX",c:"#66ccaa",req:0,o:()=>goTo("tutorials"),grp:"ref"},
+  {id:"HISTORY",c:"#8899aa",req:0,o:()=>goTo("history"),grp:"ref"},
+  {id:"LEADERBOARD",c:"#ffaa66",req:0,o:()=>goTo("leaderboard"),grp:"ref"},
+ ];
+ const _toggles=[
+  {u:(meta.lab?.completed?.intro_sprint||0)>0,on:!meta.introSprintOff,lbl:"INTRO SPRINT",col:"#44ccaa",tog:()=>setMeta(prev=>{const nx={...prev,introSprintOff:!prev.introSprintOff};saveMeta(nx);return nx;}),inf:()=>setSprintInfo(true)},
+  {u:(meta.totalEchoesEarned||0)>=1500,on:!!meta.autoDealerOn,lbl:"AUTO DEALER",col:"#bb77ff",tog:()=>setMeta(prev=>{const nx={...prev,autoDealerOn:!prev.autoDealerOn};saveMeta(nx);return nx;}),inf:()=>setAutoDealerInfo(true)},
+ ];
+ const _sync=(()=>{const _off=!_online&&!!syncCode;return{dot:syncCode?(_off?"#ffaa44":"#44ff88"):"#ff4455",txt:syncCode?(_off?"SYNCED · OFFLINE":"PROGRESS SYNCED"):"NOT SYNCED",col:syncCode?(_off?"#ddaa66":"#88ccaa"):"#cc6666",lockDot:meta.locked?"#ffaa44":"#556677",lockTxt:meta.locked?"ACCOUNT LOCKED":"ACCOUNT UNLOCKED",lockCol:meta.locked?"#ddaa66":"#8899aa"};})();
+ const _ind=(n,_locked,top,right,sz)=>_locked?<span style={{position:"absolute",top:top,right:right,fontSize:sz+2}}>🔒</span>:(_dotsOn&&n.dot?<span style={{position:"absolute",top:top,right:right,width:sz,height:sz,borderRadius:"50%",background:"#ff4455",boxShadow:"0 0 5px #ff4455"}} />:null);
+ const _infoBtn=(t,col)=>t.u?<div onClick={e=>{e.stopPropagation();t.inf();}} style={{width:32,height:32,minWidth:32,minHeight:32,borderRadius:"50%",border:`2px solid ${col}`,background:"#00000044",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,lineHeight:1,color:col,flexShrink:0,cursor:"pointer",fontStyle:"italic",fontWeight:"bold",boxSizing:"border-box"}}>i</div>:null;
+ return(
+ <div style={{position:"absolute",inset:0,zIndex:10,overflow:"hidden",background:"#04040a"}}><MenuBG/><div style={{position:"relative",zIndex:1,height:"100%",display:"flex",flexDirection:"column",padding:"10px 10px 26px",boxSizing:"border-box",gap:7,animation:_launching?"menuFadeOut 400ms ease-out forwards":"none"}}>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,padding:"0 4px"}}>
+   <span style={{color:"#f2f4ff",fontSize:15,fontWeight:"bold",letterSpacing:2}}>VOID STORM</span>
+   <div style={{display:"flex",alignItems:"center",gap:9}}>{meta.echoes>0&&<span style={{color:CUR.echoes.color,fontSize:12,fontWeight:"bold"}}>⬢ {meta.echoes}</span>}<button onClick={()=>goTo("settings")} style={{background:"#ffffff14",border:"1px solid #ffffff2e",borderRadius:20,padding:"7px 12px",display:"flex",alignItems:"center",gap:5,cursor:"pointer",fontFamily:"inherit",backdropFilter:"blur(6px)"}}><MenuIcon id="SETTINGS" size={13} color="#d8dfff" /><span style={{fontSize:9,color:"#d8dfff"}}>Settings</span></button></div>
+  </div>
+  <div onClick={_doLaunch} style={{flex:"2.5 1 0",position:"relative",overflow:"hidden",display:"flex",alignItems:"center",gap:14,padding:"0 18px",background:"radial-gradient(145% 155% at 16% 22%,#00e5ffe6 0%,#00c8ec9e 26%,#0090b858 48%,#00485028 64%,transparent 84%),#020204",border:"1.5px solid #00e5ff",borderRadius:20,cursor:"pointer",boxShadow:"0 10px 30px #00e5ff55,inset 0 1px 0 #ffffff66,inset 0 -18px 26px -14px #00e5ff88"}}>
+   <div style={{position:"absolute",top:-30,left:-60,width:"55%",height:"220%",background:"linear-gradient(100deg,transparent 0%,transparent 30%,#ffffff10 45%,#ffffff1c 50%,#ffffff10 55%,transparent 70%,transparent 100%)",transform:"rotate(18deg)",pointerEvents:"none"}} />
+   <div onClick={e=>{e.stopPropagation();setShowShipStats(true);}} style={{zIndex:1}}><ShipDisplay size={50} /></div>
+   <div style={{flex:1,zIndex:1}}><div style={{color:"#fff",fontSize:38,fontWeight:"bold",letterSpacing:1,lineHeight:1,textShadow:"0 2px 10px #00344022"}}>Launch</div><div style={{color:"#eaffff",fontSize:11,marginTop:4,fontWeight:"bold"}}>Best · Wave {meta.highWave||0}</div></div>
+   <span style={{color:"#fff",fontSize:38,zIndex:1,textShadow:"0 0 14px #00e5ff"}}>›</span>
+  </div>
+  <div style={{flex:"1.0 1 0",display:"flex",gap:7}}>{_toggles.map((t,ti)=>{const _on=t.u&&t.on;return <div key={ti} onClick={t.u?t.tog:undefined} style={{flex:1,position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:_on?`radial-gradient(150% 165% at 20% 28%,${t.col}cc 0%,${t.col}66 32%,${t.col}26 56%,transparent 84%),#020204`:"#ffffff0c",border:`1px solid ${_on?t.col:"#ffffff20"}`,borderRadius:16,cursor:t.u?"pointer":"default",opacity:t.u?1:0.45,boxShadow:_on?`0 6px 18px ${t.col}44,inset 0 1px 0 #ffffff33`:"none"}}>{_on&&<div style={{position:"absolute",top:-20,left:-30,width:"50%",height:"200%",background:"linear-gradient(100deg,transparent 0%,transparent 30%,#ffffff0c 45%,#ffffff16 50%,#ffffff0c 55%,transparent 70%,transparent 100%)",transform:"rotate(18deg)",pointerEvents:"none"}} />}<span style={{width:32,height:18,borderRadius:9,background:_on?t.col:"#3a3a52",position:"relative",flexShrink:0,zIndex:1,boxShadow:_on?`0 0 10px ${t.col}88`:"none"}}><span style={{position:"absolute",top:3,left:_on?17:3,width:12,height:12,borderRadius:6,background:"#fff",transition:"all .2s"}} /></span><span style={{fontSize:9.5,color:"#fff",fontWeight:"bold",zIndex:1}}>{!t.u&&"🔒 "}{t.lbl}</span><div style={{zIndex:1,position:"relative",display:"flex",alignItems:"center"}}>{_infoBtn(t,_on?"#fff":"#9aa4c0")}</div></div>;})}</div>
+  <div style={{flex:"1.4 1 0",display:"flex",gap:7}}>{_navAll.filter(n=>n.grp==="prime").map(n=><div key={n.id} onClick={n.o} style={{flex:1,position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",gap:9,background:`radial-gradient(140% 150% at 22% 20%,${n.c}e0 0%,${n.c}96 26%,${n.c}46 46%,${n.c}1e 60%,transparent 82%),#020204`,border:`1.5px solid ${n.c}`,borderRadius:18,cursor:"pointer",boxShadow:`0 8px 22px ${n.c}55,inset 0 1px 0 #ffffff44`}}><div style={{position:"absolute",top:-24,left:-40,width:"55%",height:"210%",background:"linear-gradient(100deg,transparent 0%,transparent 30%,#ffffff0e 45%,#ffffff1a 50%,#ffffff0e 55%,transparent 70%,transparent 100%)",transform:"rotate(18deg)",pointerEvents:"none"}} /><span style={{zIndex:1}}><MenuIcon id={n.id} size={28} color="#fff" /></span><span style={{fontSize:14,color:"#fff",fontWeight:"bold",zIndex:1,textShadow:`0 0 10px ${n.c}`}}>{n.id}</span>{_ind(n,false,9,11,9)}</div>)}</div>
+  <div style={{flex:"1.4 1 0",display:"flex",gap:7}}>{_navAll.filter(n=>n.grp==="mode").map(n=>{const _locked=n.req>0&&_te<n.req;return <div key={n.id} onClick={n.o} style={{flex:1,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,background:`radial-gradient(145% 155% at 24% 22%,${n.c}c8 0%,${n.c}78 28%,${n.c}32 48%,${n.c}14 62%,transparent 84%),#020204`,border:`1px solid ${n.c}dd`,borderRadius:16,cursor:"pointer",opacity:_locked?0.45:1,boxShadow:`0 6px 16px ${n.c}40`}}><div style={{position:"absolute",top:-16,left:-24,width:"55%",height:"200%",background:"linear-gradient(100deg,transparent 0%,transparent 30%,#ffffff0c 45%,#ffffff16 50%,#ffffff0c 55%,transparent 70%,transparent 100%)",transform:"rotate(18deg)",pointerEvents:"none"}} /><span style={{zIndex:1}}><MenuIcon id={n.id} size={23} color="#fff" /></span><span style={{fontSize:8,color:"#fff",fontWeight:"bold",zIndex:1}}>{n.id}</span>{_ind(n,_locked,6,6,8)}</div>;})}</div>
+  <div style={{flex:"1.15 1 0",display:"flex",gap:7}}>{_navAll.filter(n=>n.grp==="econ").map(n=><div key={n.id} onClick={n.o} style={{flex:1,position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:`radial-gradient(145% 155% at 24% 22%,${n.c}c8 0%,${n.c}78 28%,${n.c}32 48%,${n.c}14 62%,transparent 84%),#020204`,border:`1px solid ${n.c}dd`,borderRadius:16,cursor:"pointer",boxShadow:`0 6px 16px ${n.c}40`}}><div style={{position:"absolute",top:-16,left:-24,width:"55%",height:"200%",background:"linear-gradient(100deg,transparent 0%,transparent 30%,#ffffff0c 45%,#ffffff16 50%,#ffffff0c 55%,transparent 70%,transparent 100%)",transform:"rotate(18deg)",pointerEvents:"none"}} /><span style={{zIndex:1}}><MenuIcon id={n.id} size={21} color="#fff" /></span><span style={{fontSize:10.5,color:"#fff",fontWeight:"bold",zIndex:1}}>{n.id}</span>{_ind(n,false,7,8,8)}</div>)}</div>
+  <div style={{flex:"1.0 1 0",display:"flex",gap:7}}>{_navAll.filter(n=>n.grp==="ref").map(n=><div key={n.id} onClick={n.o} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,background:"#ffffff12",border:"1px solid #ffffff28",borderRadius:14,cursor:"pointer"}}><MenuIcon id={n.id} size={18} color={n.c} /><span style={{fontSize:7,color:"#c4cae2"}}>{n.id}</span></div>)}</div>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,flexShrink:0}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:7,height:7,borderRadius:"50%",background:_sync.dot}} /><span style={{fontSize:9,color:_sync.col,letterSpacing:1}}>{_sync.txt}</span></div>{syncCode&&<div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:7,height:7,borderRadius:"50%",background:_sync.lockDot}} /><span style={{fontSize:9,color:_sync.lockCol,letterSpacing:1}}>{_sync.lockTxt}</span></div>}</div>
+ </div></div>);
+ })()}
+
+{phase==="menu"&&!_mob&&(
  <div className={"vs-scroll "+(_launching?"":_phaseClass("menu"))} style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#06060e",zIndex:10,overflow:"auto",padding:"20px 0",animation:_launching?"menuFadeOut 400ms ease-out forwards":"none"}}>
  <MenuBG/>
- <h1 className="vs-title-glow" style={{color:"#00e5ff",fontSize:40,fontWeight:"bold",letterSpacing:6,margin:0,zIndex:1,position:"relative"}}>VOID STORM</h1>
- <p style={{color:"#8899bb",fontSize:11,marginTop:8,letterSpacing:2,zIndex:1,position:"relative"}}>BULLET HELL ROGUELITE</p>
+ <h1 className="vs-title-glow" style={{color:"#00e5ff",fontSize:_mf(40),fontWeight:"bold",letterSpacing:6,margin:0,zIndex:1,position:"relative"}}>VOID STORM</h1>
+ <p style={{color:"#8899bb",fontSize:_mf(11),marginTop:8,letterSpacing:2,zIndex:1,position:"relative"}}>BULLET HELL ROGUELITE</p>
  <div ref={_menuShipRef} style={{marginTop:14,zIndex:_launching?20:1,position:"relative",animation:_launching?"shipLaunch 400ms cubic-bezier(0.5,0,0.5,1) forwards":"none"}}><ShipDisplay onClick={_launching?undefined:()=>setShowShipStats(true)} size={56} /></div>
  
  
- {meta.echoes>0&&<p style={{color:CUR.echoes.color,fontSize:13,marginTop:8,zIndex:1,position:"relative"}}>⬢ {meta.echoes} Echoes</p>}
- {meta.highWave>0&&<p style={{color:"#667788",fontSize:10,marginTop:meta.echoes>0?2:8,zIndex:1,position:"relative"}}>Best: <span style={{color:"#ccddee"}}>Wave {meta.highWave}</span></p>}
+ {meta.echoes>0&&<p style={{color:CUR.echoes.color,fontSize:_mf(13),marginTop:8,zIndex:1,position:"relative"}}>⬢ {meta.echoes} Echoes</p>}
+ {meta.highWave>0&&<p style={{color:"#667788",fontSize:_mf(10),marginTop:meta.echoes>0?2:8,zIndex:1,position:"relative"}}>Best: <span style={{color:"#ccddee"}}>Wave {meta.highWave}</span></p>}
  {meta.highWave>0&&(()=>{const _isUnlocked=(meta.lab?.completed?.intro_sprint||0)>0;const _isOn=_isUnlocked&&!meta.introSprintOff;return(
  <div style={{marginTop:4,zIndex:1,position:"relative",display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:_isUnlocked?1:0.35}}>
- <div onClick={_isUnlocked?()=>setMeta(prev=>{const nx={...prev,introSprintOff:!prev.introSprintOff};saveMeta(nx);return nx;}):undefined} style={{width:26,height:13,borderRadius:7,background:_isOn?"#44ccaa22":"#1a1a2e",border:"1px solid "+(_isOn?"#44ccaa66":"#33445566"),position:"relative",transition:"all 0.2s",flexShrink:0,cursor:_isUnlocked?"pointer":"default"}}>
- <div style={{width:9,height:9,borderRadius:5,background:_isOn?"#44ccaa":"#556677",position:"absolute",top:1,left:_isOn?15:1,transition:"all 0.2s"}} />
+ <div onClick={_isUnlocked?()=>setMeta(prev=>{const nx={...prev,introSprintOff:!prev.introSprintOff};saveMeta(nx);return nx;}):undefined} style={{width:_mv(26,44),height:_mv(13,22),borderRadius:_mv(7,11),background:_isOn?"#44ccaa22":"#1a1a2e",border:"1px solid "+(_isOn?"#44ccaa66":"#33445566"),position:"relative",transition:"all 0.2s",flexShrink:0,cursor:_isUnlocked?"pointer":"default"}}>
+ <div style={{width:_mv(9,16),height:_mv(9,16),borderRadius:_mv(5,8),background:_isOn?"#44ccaa":"#556677",position:"absolute",top:_mv(1,3),left:_isOn?_mv(15,25):_mv(1,3),transition:"all 0.2s"}} />
  </div>
- <span style={{fontSize:8,color:_isUnlocked?(_isOn?"#88ccaa":"#778899"):"#556677",display:"inline-block",width:84,textAlign:"left",whiteSpace:"nowrap"}}>{!_isUnlocked?"🔒 ":""}Intro Sprint{_isUnlocked?(_isOn?" ON":" OFF"):""}</span>
- {_isUnlocked?<div onClick={()=>setSprintInfo(true)} style={{width:13,height:13,borderRadius:"50%",border:"1px solid #44667788",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#667788",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#88aacc"} onMouseOut={e=>e.currentTarget.style.color="#667788"}>i</div>:<div style={{width:13,flexShrink:0}} />}
+ <span style={{fontSize:_mf(8),color:_isUnlocked?(_isOn?"#88ccaa":"#778899"):"#556677",display:"inline-block",width:84,textAlign:"left",whiteSpace:"nowrap"}}>{!_isUnlocked?"🔒 ":""}Intro Sprint{_isUnlocked?(_isOn?" ON":" OFF"):""}</span>
+ {_isUnlocked?<div onClick={()=>setSprintInfo(true)} style={{width:_mv(13,30),height:_mv(13,30),borderRadius:"50%",border:"1px solid #44667788",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mv(_mf(8),16),color:"#667788",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#88aacc"} onMouseOut={e=>e.currentTarget.style.color="#667788"}>i</div>:<div style={{width:13,flexShrink:0}} />}
  </div>);})()}
  {meta.highWave>0&&(()=>{const _adUnlocked=(meta.totalEchoesEarned||0)>=1500;const _adOn=_adUnlocked&&!!meta.autoDealerOn;return(
  <div style={{marginTop:4,zIndex:1,position:"relative",display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:_adUnlocked?1:0.35}}>
- <div onClick={_adUnlocked?()=>setMeta(prev=>{const nx={...prev,autoDealerOn:!prev.autoDealerOn};saveMeta(nx);return nx;}):undefined} style={{width:26,height:13,borderRadius:7,background:_adOn?"#bb77ff22":"#1a1a2e",border:"1px solid "+(_adOn?"#bb77ff66":"#33445566"),position:"relative",transition:"all 0.2s",flexShrink:0,cursor:_adUnlocked?"pointer":"default"}}>
- <div style={{width:9,height:9,borderRadius:5,background:_adOn?"#bb77ff":"#556677",position:"absolute",top:1,left:_adOn?15:1,transition:"all 0.2s"}} />
+ <div onClick={_adUnlocked?()=>setMeta(prev=>{const nx={...prev,autoDealerOn:!prev.autoDealerOn};saveMeta(nx);return nx;}):undefined} style={{width:_mv(26,44),height:_mv(13,22),borderRadius:_mv(7,11),background:_adOn?"#bb77ff22":"#1a1a2e",border:"1px solid "+(_adOn?"#bb77ff66":"#33445566"),position:"relative",transition:"all 0.2s",flexShrink:0,cursor:_adUnlocked?"pointer":"default"}}>
+ <div style={{width:_mv(9,16),height:_mv(9,16),borderRadius:_mv(5,8),background:_adOn?"#bb77ff":"#556677",position:"absolute",top:_mv(1,3),left:_adOn?_mv(15,25):_mv(1,3),transition:"all 0.2s"}} />
  </div>
- <span style={{fontSize:8,color:_adUnlocked?(_adOn?"#bb99ff":"#778899"):"#556677",display:"inline-block",width:84,textAlign:"left",whiteSpace:"nowrap"}}>{!_adUnlocked?"🔒 ":""}Auto Dealer{_adUnlocked?(_adOn?" ON":" OFF"):""}</span>
- {_adUnlocked?<div onClick={()=>setAutoDealerInfo(true)} style={{width:13,height:13,borderRadius:"50%",border:"1px solid #44667788",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#667788",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#bb99ff"} onMouseOut={e=>e.currentTarget.style.color="#667788"}>i</div>:<div style={{width:13,flexShrink:0}} />}
+ <span style={{fontSize:_mf(8),color:_adUnlocked?(_adOn?"#bb99ff":"#778899"):"#556677",display:"inline-block",width:84,textAlign:"left",whiteSpace:"nowrap"}}>{!_adUnlocked?"🔒 ":""}Auto Dealer{_adUnlocked?(_adOn?" ON":" OFF"):""}</span>
+ {_adUnlocked?<div onClick={()=>setAutoDealerInfo(true)} style={{width:_mv(13,30),height:_mv(13,30),borderRadius:"50%",border:"1px solid #44667788",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mv(_mf(8),16),color:"#667788",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#bb99ff"} onMouseOut={e=>e.currentTarget.style.color="#667788"}>i</div>:<div style={{width:13,flexShrink:0}} />}
  </div>);})()}
- {(()=>{const _off=!_online&&!!syncCode;const _dot=syncCode?(_off?"#ffaa44":"#44ff88"):"#ff4455";const _txt=syncCode?(_off?"Synced, no connection":"Progress synced"):"Progress not synced";const _tc=syncCode?(_off?"#ddaa66":"#88ccaa"):"#cc6666";return <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4,zIndex:1,position:"relative"}}><div style={{width:8,height:8,borderRadius:"50%",background:_dot,flexShrink:0}} /><span style={{fontSize:8,color:_tc}}>{_txt}</span></div>;})()}
- {syncCode&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:3,zIndex:1,position:"relative"}}><div style={{width:8,height:8,borderRadius:"50%",background:"#556677",flexShrink:0}} /><span style={{fontSize:8,color:"#778899"}}>{meta.locked?"Account locked":"Account unlocked"}</span></div>}
+ {(()=>{const _off=!_online&&!!syncCode;const _dot=syncCode?(_off?"#ffaa44":"#44ff88"):"#ff4455";const _txt=syncCode?(_off?"Synced, no connection":"Progress synced"):"Progress not synced";const _tc=syncCode?(_off?"#ddaa66":"#88ccaa"):"#cc6666";return <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4,zIndex:1,position:"relative"}}><div style={{width:8,height:8,borderRadius:"50%",background:_dot,flexShrink:0}} /><span style={{fontSize:_mf(8),color:_tc}}>{_txt}</span></div>;})()}
+ {syncCode&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:3,zIndex:1,position:"relative"}}><div style={{width:8,height:8,borderRadius:"50%",background:"#556677",flexShrink:0}} /><span style={{fontSize:_mf(8),color:"#778899"}}>{meta.locked?"Account locked":"Account unlocked"}</span></div>}
  <button onClick={()=>{if(_launching)return;
 if(metaRef.current.autoDealerOn&&((metaRef.current.totalEchoesEarned||0)>=1500)&&!_dealerAuto&&(metaRef.current._dealerActive||[]).length<(metaRef.current._dealerSlots||1)){if(!_dealerOffers)_genDealerOffers();_setDealerAuto(true);goTo("dealer");return;}
 const _cv=canvasRef.current;if(_cv){const _cx=_cv.getContext("2d");_cx.fillStyle="#06060e";_cx.fillRect(0,0,GW,GH);}
 const _ship=metaRef.current;
-gsRef.current={player:{x:GW/2,y:GH-80,size:14,hp:100,maxHp:100,speed:3,alive:true,shields:0,goldenShields:0,invTimer:0,color:_ship.shipColor||"#00e5ff",bulletColor:_ship.bulletColor||"teal",damage:0,fireTimer:0,fireDelay:9999,pierce:1,magnetRange:80,pickupLife:0},stars:gsRef.current?.stars||Array.from({length:60},(_,i)=>({x:(i*97)%GW,y:(i*137)%GH,sp:0.3+i%4*0.3,color:"#aabbcc"})),enemies:[],bullets:[],eBullets:[],pickups:[],particles:[],gravWells:[],hitTexts:[],_slices:[],novaRings:[],time:0,flashTimer:0,screenShake:0,wave:0,waveActive:false,isTutorial:false,isPractise:false,isPlayground:false,_isEnforcer:false};
+gsRef.current={player:{x:GW/2,y:GH-80,size:14,hp:100,maxHp:100,speed:3,alive:true,shields:0,goldenShields:0,invTimer:0,color:_ship.shipColor||"#00e5ff",bulletColor:_ship.bulletColor||"teal",damage:0,fireTimer:0,fireDelay:9999,pierce:1,magnetRange:80,pickupLife:0},stars:gsRef.current?.stars||Array.from({length:60},(_,i)=>({x:(i*97)%GW,y:(i*137)%GH,sp:0.3+i%4*0.3,color:"#aabbcc"})),_launchPh:true,enemies:[],bullets:[],pBullets:[],orbitals:[],homingMissiles:[],drones:[],eBullets:[],pickups:[],particles:[],gravWells:[],hitTexts:[],_slices:[],novaRings:[],time:0,flashTimer:0,screenShake:0,wave:0,waveActive:false,isTutorial:false,isPractise:false,isPlayground:false,_isEnforcer:false};
 const _cont=_cv?.parentElement;
 if(_menuShipRef.current&&_cont){
   const _sr=_menuShipRef.current.getBoundingClientRect();
@@ -2657,89 +2856,177 @@ if(_menuShipRef.current&&_cont){
   _cont.style.setProperty("--vs-sy",`${_ty}px`);
   _cont.style.setProperty("--vs-ss",`${_ts}`);
 }
-_setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} style={{...bs2("#00e5ff"),marginTop:8,padding:"12px 40px",fontSize:16,zIndex:1,position:"relative",animation:_launching?"menuFadeOut 400ms ease-out forwards":"none"}} {...hv("#00e5ff")}>LAUNCH</button>
+_setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} style={{...bs2("#00e5ff"),marginTop:8,padding:"12px 40px",fontSize:_mf(16),zIndex:1,position:"relative",animation:_launching?"menuFadeOut 400ms ease-out forwards":"none"}} {...hv("#00e5ff")}>LAUNCH</button>
  {showShipStats&&(()=>{const _live=!!(gsRef.current&&gsRef.current.player&&phase!=="menu"&&phase!=="leaderboard"&&phase!=="settings"&&phase!=="metashop");return(
  <div onClick={()=>closePopup(setShowShipStats)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:32,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
  <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #00e5ff33",borderRadius:6,padding:"14px 16px",maxWidth:340,width:"100%",maxHeight:"80vh",overflow:"auto",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
- <div style={{color:"#00e5ff",fontSize:13,fontWeight:"bold",letterSpacing:1}}>SHIP STATS</div>
- <button onClick={()=>closePopup(setShowShipStats)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ <div style={{color:"#00e5ff",fontSize:_mf(13),fontWeight:"bold",letterSpacing:1}}>SHIP STATS</div>
+ <button onClick={()=>closePopup(setShowShipStats)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
  </div>
  <ShipStats metaData={meta} gsData={_live?gsRef.current:null} homeMode={!_live} />
  </div>
  </div>);})()}
- {autoDealerInfo&&(
- <div onClick={()=>closePopup(setAutoDealerInfo)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
- <div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:"1px solid #bb77ff44",borderRadius:6,padding:"14px 16px",maxWidth:320,width:"100%"}}>
- <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
- <div style={{color:"#bb99ff",fontSize:13,fontWeight:"bold"}}>AUTO DEALER</div>
- <button onClick={()=>closePopup(setAutoDealerInfo)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ 
+ 
+ {_modeUnlock&&_modeUnlock.length>0&&<TutPopup title="NEW GAMEMODE UNLOCKED" btnText="GOT IT" onBtn={()=>_setModeUnlock(null)}>{(()=>{const _MD={PLAYGROUND:"A free sandbox — spawn any enemy and test builds at no cost. Beat the Enforcer challenge for a permanent echo multiplier.",PRACTISE:"Risk-free practice runs that never touch your main stats. Your best practice wave adds to your echo multiplier.",PHANTOM:"A harder endless gauntlet. Your highest Phantom wave permanently boosts your echo multiplier.",CARGO:"Escort a cargo train as far as you can — distance and delivered packages earn ▣ Packages for the Paths tree.",DEALER:"Gamble echoes on risk/reward cards that reshape your next run."};return _modeUnlock.map((m,_i)=><div key={_i} style={{marginBottom:_i<_modeUnlock.length-1?12:0}}><div style={{color:"#44ddcc",fontWeight:"bold",letterSpacing:1,marginBottom:3,fontSize:_mf(12)}}>{m}</div><div style={{color:"#99aabb"}}>{_MD[m]||""}</div></div>);})()}<div style={{color:"#667788",fontSize:_mf(9),marginTop:12}}>You can play it any time from the main menu.</div></TutPopup>}
+ {showTutPrompt&&<TutPopup title="FIRST TIME?">
+ Welcome to Void Storm! Would you like a guided tutorial?<br/>You'll play through 5 waves and learn the basics.<br/><br/>
+ <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:_mv("nowrap","wrap"),marginBottom:10}}>
+ <button onClick={()=>{setShowTutPrompt(false);goTo("settings");}} style={{padding:"8px 18px",background:"transparent",border:"2px solid #44ccaa",color:"#44ccaa",fontSize:_mf(11),fontFamily:"inherit",cursor:"pointer",letterSpacing:1,transition:"all 0.2s"}} onMouseOver={e=>{e.target.style.background="#44ccaa";e.target.style.color="#06060e";}} onMouseOut={e=>{e.target.style.background="transparent";e.target.style.color="#44ccaa";}}>I HAVE AN ACCOUNT</button>
+ <button onClick={()=>initTutorial()} style={{padding:"8px 28px",background:"transparent",border:"2px solid #ffcc44",color:"#ffcc44",fontSize:_mf(12),fontFamily:"inherit",cursor:"pointer",letterSpacing:1,transition:"all 0.2s"}} onMouseOver={e=>{e.target.style.background="#ffcc44";e.target.style.color="#06060e";}} onMouseOut={e=>{e.target.style.background="transparent";e.target.style.color="#ffcc44";}}>START TUTORIAL</button>
  </div>
- <div style={{color:"#bbccdd",fontSize:10,lineHeight:1.6}}>When enabled, launching a main run opens the Dealer card screen first so you can choose your loadout, then start straight from there with "Play With This Loadout". If every card slot is already filled, the run begins immediately with no detour.</div>
+ <span style={{color:"#667788",fontSize:_mf(9),cursor:"pointer"}} onClick={(e)=>{e.stopPropagation();setShowTutPrompt(false);}}>No thanks, I'll figure it out →</span>
+ </TutPopup>}
+ <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:10,zIndex:1,position:"relative",alignItems:"center",width:"100%"}}>
+ <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:_mv("nowrap","wrap")}}>
+ <button onClick={()=>goTo("metashop")} style={{...bs2("#bb77ff44"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#bb99ff",position:"relative"}}>META{_dotsOn&&(()=>{const _am=_affordMeta();return _am.any?<span style={_affDot} />:_am.labEmpty?<span style={_affDotBlue} />:null;})()}</button>
+ <button onClick={()=>{setHeInfoId(null);setAbInfoId(null);setSprintInfo(false);if((metaRef.current.metaTier||1)>=2&&!metaRef.current._heSeen){setMeta(prev=>{const nx={...prev,_heSeen:true};saveMeta(nx);return nx;});}goTo("hyperecho");}} style={{...bs2("#ffcc4433"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#ffcc44",position:"relative"}}>HYPERECHO{(meta.metaTier||1)>=2&&!meta._heSeen&&<span style={_affDot} />}</button>
+ <button onClick={()=>{const _cur=meta.totalEchoesEarned||0;if(_cur<1500){_setSideLockPopup({mode:"DEALER",required:1500,current:_cur});return;}_setDealerAuto(false);if(!_dealerOffers&&(meta._dealerActive||[]).length<(meta._dealerSlots||1))_genDealerOffers();goTo("dealer");}} style={{...bs2("#ff668844"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#ff6688"}}>DEALER</button>
+ <button onClick={()=>goTo("paths")} style={{...bs2("#cc884444"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#cc8844",position:"relative"}}>PATHS{_dotsOn&&_affordPaths&&<span style={_affDot} />}</button>
  </div>
+ <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:_mv("nowrap","wrap")}}>
+ <button onClick={()=>{const _cur=meta.totalEchoesEarned||0;if(_cur<100){_setSideLockPopup({mode:"PLAYGROUND",required:100,current:_cur});return;}setEnforcerMode(false);goTo("playground");}} style={{...bs2("#44bbdd44"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#44bbdd"}}>PLAYGROUND</button>
+ <button onClick={()=>{const _cur=meta.totalEchoesEarned||0;if(_cur<250){_setSideLockPopup({mode:"PRACTISE",required:250,current:_cur});return;}goTo("practise");}} style={{...bs2("#cc884433"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#cc9966"}}>PRACTISE</button>
+ <button onClick={()=>{const _cur=meta.totalEchoesEarned||0;if(_cur<500){_setSideLockPopup({mode:"PHANTOM",required:500,current:_cur});return;}goTo("phantom_info");}} style={{...bs2("#cc66cc44"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#cc66cc"}}>PHANTOM</button>
+ <button onClick={()=>{const _cur=meta.totalEchoesEarned||0;if(_cur<1000){_setSideLockPopup({mode:"CARGO",required:1000,current:_cur});return;}goTo("cargo");}} style={{...bs2("#eebb4444"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#eebb44"}}>CARGO</button>
+ </div>
+ <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:_mv("nowrap","wrap")}}>
+ <button onClick={()=>{setShowWiki(true);setCodexOpen({controls:false,mechanics:false,currencies:false,enemies:false,abilities:false,scrap:false,cores:false,plasma:false,meta:false,metaab:false,designs:false,labs:false,overheat:false})}} style={{...bs2("#44aacc33"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#66bbcc"}}>CODEX</button>
+ <button onClick={()=>{setTutSel({mode:null,ab:null,bot:null,enemy:null,fx:null});goTo("tutorials");}} style={{...bs2("#55cc9944"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#55cc99"}}>SANDBOX</button>
+ <button onClick={()=>{setHistoryMode("waves");goTo("history");}} style={{...bs2("#ff884466"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#ffaa66"}}>HISTORY</button>
+ <button onClick={()=>goTo("settings")} style={{...bs2("#55667744"),padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10),borderWidth:1,color:"#778899",position:"relative"}}>SETTINGS{_dotsOn&&_affordDesign&&<span style={_affDot} />}</button>
+ </div>
+ </div>
+ {(leaderboardData.length>0||!_online)&&(()=>{const sorted=_online?[...leaderboardData].sort((a,b)=>lbSort==="echoes"?(b.echoes-a.echoes):(b.wave-a.wave)):[];const top3=sorted.slice(0,3);while(top3.length<3)top3.push(null);return <div style={{width:"100%",maxWidth:300,marginTop:14,zIndex:1,position:"relative"}}>
+ <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+ <span style={{color:!_online?"#aa7744":_isCheater(meta)?"#ff5566":"#556677",fontSize:_mf(8),letterSpacing:2}}>{!_online?"LEADERBOARD - NO CONNECTION":_isCheater(meta)?"LEADERBOARD - ACCOUNT BANNED":"LEADERBOARD"}</span>
+ <div style={{display:"flex",gap:3}}>
+ <button onClick={()=>setLbSort("echoes")} style={{padding:"2px 8px",background:lbSort==="echoes"?"#bb77ff22":"transparent",border:"1px solid "+(lbSort==="echoes"?"#bb77ff66":"#33445544"),borderRadius:3,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(7),color:lbSort==="echoes"?"#bb99ff":"#667788",letterSpacing:1}}>ECHOES</button>
+ <button onClick={()=>setLbSort("wave")} style={{padding:"2px 8px",background:lbSort==="wave"?"#44ccaa22":"transparent",border:"1px solid "+(lbSort==="wave"?"#44ccaa66":"#33445544"),borderRadius:3,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(7),color:lbSort==="wave"?"#88ccaa":"#667788",letterSpacing:1}}>WAVES</button>
+ </div>
+ </div>
+ {top3.map((p,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 8px",borderRadius:3,marginBottom:2}}>
+ <span style={{color:i===0?"#ffcc44":"#99aabb",fontSize:_mf(9)}}><span style={{color:"#556677",fontSize:_mf(8),marginRight:4}}>{i+1}.</span>{p?p.username:"-"}</span>
+ <span style={{color:lbSort==="echoes"?"#bb77ff":"#44ccaa",fontSize:_mf(9),fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{p?(lbSort==="echoes"?"⬢ "+p.echoes.toLocaleString():"W"+p.wave):""}</span>
+ </div>)}
+ <button onClick={_online?()=>goTo("leaderboard"):undefined} disabled={!_online} style={{width:"100%",marginTop:4,padding:"4px 8px",background:"none",border:"1px solid #33445544",borderRadius:3,cursor:_online?"pointer":"default",fontFamily:"inherit",fontSize:_mf(8),color:_online?"#667788":"#445566",letterSpacing:1,opacity:_online?1:0.5}}>VIEW ALL →</button>
+ </div>;})()}
  </div>
  )}
- {sprintInfo&&(()=>{const _isLvl=(meta.lab?.completed?.intro_sprint||0);const _isPct=_isLvl>0?[10,20,30,40,50][Math.min(_isLvl-1,4)]:0;const _isMax=meta.highWave||0;const _dur=Math.floor(_isMax*_isPct/100);const _seLvl=meta.lab?.completed?.sprint_efficiency||0;const _sePct=_seLvl>0?[40,50,60,70,80][Math.min(_seLvl-1,4)]:30;return(
- <div onClick={()=>closePopup(setSprintInfo)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
- <div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:"1px solid #44ccaa44",borderRadius:6,padding:"14px 16px",maxWidth:320,width:"100%"}}>
- <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
- <div style={{color:"#44ccaa",fontSize:13,fontWeight:"bold"}}>INTRO SPRINT</div>
- <button onClick={()=>closePopup(setSprintInfo)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ {showTutPrompt&&_mob&&phase==="menu"&&<div style={{position:"absolute",inset:0,background:"rgba(2,2,10,0.82)",backdropFilter:"blur(3px)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:22,animation:"popupBgEnter 200ms ease-out both"}}>
+ <div style={{..._gp("#ffcc44",22),padding:"26px 20px 18px",width:"100%",maxWidth:380,textAlign:"center",display:"flex",flexDirection:"column",gap:10,animation:"popupEnter 220ms cubic-bezier(0.22,1,0.36,1) both"}}>
+  <div style={{color:"#fff",fontSize:21,fontWeight:"bold",letterSpacing:3,textShadow:"0 0 12px #ffcc4488"}}>FIRST TIME?</div>
+  <div style={{color:"#fff4dd",fontSize:13,lineHeight:1.55,marginBottom:6}}>Welcome to Void Storm! Want a guided tutorial? You'll play through 5 waves and learn the basics.</div>
+  <button onClick={()=>initTutorial()} style={{..._gBtn("#ffcc44",true),padding:"17px",fontSize:15}}>START TUTORIAL</button>
+  <button onClick={()=>{setShowTutPrompt(false);goTo("settings");_setSetSec("account");}} style={{..._gBtn("#44ccaa",false),padding:"14px",fontSize:12}}>I HAVE AN ACCOUNT</button>
+  <div onClick={()=>setShowTutPrompt(false)} style={{color:"#d8d0c0",fontSize:11.5,padding:"8px",cursor:"pointer"}}>No thanks, I'll figure it out →</div>
  </div>
- <div style={{color:"#99aabb",fontSize:10,lineHeight:1.6}}>
+</div>}
+{confirmRespec&&_mob&&phase==="metashop"&&<div onClick={()=>setConfirmRespec(false)} style={{position:"absolute",inset:0,background:"rgba(2,2,10,0.82)",backdropFilter:"blur(3px)",zIndex:35,display:"flex",alignItems:"center",justifyContent:"center",padding:22}}>
+ <div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:"1px solid #ff886688",borderRadius:20,padding:"22px 18px",width:"100%",maxWidth:380,textAlign:"center",display:"flex",flexDirection:"column",gap:12}}>
+  <div style={{color:"#ff9977",fontSize:17,fontWeight:"bold",letterSpacing:2}}>RESPEC ABILITIES?</div>
+  <div style={{color:"#e6dcd8",fontSize:13,lineHeight:1.5}}>All ability upgrades are cleared and every shard you spent is refunded to respend.</div>
+  <div style={{display:"flex",gap:8}}>
+   <button onClick={()=>{const _respecCost=Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20));if(meta.echoes<_respecCost)return;const au=meta.abUpgrades||{};let refund=0;ABILITIES.forEach(ab=>{if(au[ab.id+"_sub1"])refund++;if(au[ab.id+"_sub2"])refund++;if(au[ab.id+"_mastery"])refund+=3;});setMeta(prev=>{const _rc=Math.max(0,200-((prev.lab?.completed?.cheaper_respec||0)*20));const nx={...prev,echoes:prev.echoes-_rc,shards:(prev.shards||0)+refund,abUpgrades:{}};saveMeta(nx);return nx;});setConfirmRespec(false);setAbInfoId(null);}} disabled={meta.echoes<Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))} style={{flex:1,..._gpBuy("#ff8866",12),padding:"15px 8px",color:"#fff",fontSize:13,fontWeight:"bold",fontFamily:"inherit",cursor:"pointer",opacity:meta.echoes>=Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))?1:0.45}}>RESPEC · ⬢{Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))}</button>
+   <button onClick={()=>setConfirmRespec(false)} style={{flex:1,..._gpDim("#8899aa",12),padding:"15px 8px",color:"#fff",fontSize:13,fontWeight:"bold",fontFamily:"inherit",cursor:"pointer"}}>CANCEL</button>
+  </div>
+ </div>
+</div>}
+{showShipStats&&_mob&&phase==="menu"&&<div onClick={()=>closePopup(setShowShipStats)} style={{position:"absolute",inset:0,background:"rgba(2,2,10,0.8)",backdropFilter:"blur(3px)",zIndex:32,display:"flex",alignItems:"center",justifyContent:"center",padding:20,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both"}}>
+ <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",border:"1px solid #00e5ff66",borderRadius:20,padding:"18px 16px",maxWidth:400,width:"100%",maxHeight:"80%",overflow:"auto",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both"}}>
+  <div style={{color:"#00e5ff",fontSize:15,fontWeight:"bold",letterSpacing:2,textAlign:"center",marginBottom:8}}>SHIP STATS</div>
+  <ShipStats metaData={meta} gsData={null} homeMode={true} wide />
+ </div>
+</div>}
+{abInfoId&&_mob&&phase==="metashop"&&(()=>{const ab=ABILITIES.find(a=>a.id===abInfoId);if(!ab)return null;const abUp=meta.abUpgrades||{};const shards=meta.shards||0;const s1=!!abUp[ab.id+"_sub1"],s2=!!abUp[ab.id+"_sub2"],mas=!!abUp[ab.id+"_mastery"];
+ const buy=(type)=>{if(type==="mastery"){if(mas||!s1||!s2||shards<3)return;setMeta(prev=>{const nx={...prev,shards:(prev.shards||0)-3,abUpgrades:{...(prev.abUpgrades||{}),[ab.id+"_mastery"]:true}};saveMeta(nx);return nx;});}else{const k=ab.id+"_sub"+type;if(abUp[k]||shards<1)return;setMeta(prev=>{const nx={...prev,shards:(prev.shards||0)-1,abUpgrades:{...(prev.abUpgrades||{}),[k]:true}};saveMeta(nx);return nx;});}};
+ const rows=[["SUB-UPGRADE 1",AB_DESCS[ab.id+"_sub1"],s1,1,!s1&&shards>=1,1,null],["SUB-UPGRADE 2",AB_DESCS[ab.id+"_sub2"],s2,2,!s2&&shards>=1,1,null],["MASTERY",AB_DESCS[ab.id+"_mastery"],mas,"mastery",!mas&&s1&&s2&&shards>=3,3,!(s1&&s2)?"needs both subs":null]];
+ return _mPop("#44ddcc",()=>setAbInfoId(null),<>
+  {_mPopHead(<AbilityIcon id={ab.id} size={38} color={mas&&s1&&s2?"#ffcc44":"#44ddcc"}/>,ab.name,"#fff",ab.desc,<span style={{color:"#44ddcc",fontSize:14,fontWeight:"bold",flexShrink:0}}>◈ {shards}</span>)}
+  {rows.map(([t,d,own,type,can,cost,why],i)=>_mRow(i,t+(why&&!own?" · "+why:""),own?"#ffcc44":"#44ddcc",d,own?_mAct("owned","OWNED"):_mAct(can?"buy":"no",why?"LOCKED":"BUY","◈ "+cost,()=>buy(type),"#44ddcc"),own))}
+  {_mClose(()=>setAbInfoId(null))}
+ </>);})()}
+{sprintInfo&&(()=>{const _isLvl=(meta.lab?.completed?.intro_sprint||0);const _isPct=_isLvl>0?[10,20,30,40,50][Math.min(_isLvl-1,4)]:0;const _isMax=meta.highWave||0;const _dur=Math.floor(_isMax*_isPct/100);const _seLvl=meta.lab?.completed?.sprint_efficiency||0;const _sePct=_seLvl>0?[40,50,60,70,80][Math.min(_seLvl-1,4)]:30;return(
+ <div onClick={()=>closePopup(setSprintInfo)} style={{position:"absolute",inset:0,background:_mv("rgba(0,0,0,0.6)","rgba(2,2,10,0.78)"),backdropFilter:_mv("none","blur(3px)"),zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+ <div onClick={e=>e.stopPropagation()} style={_mob?{..._gp("#44ccaa",20),padding:"20px 18px",maxWidth:340,width:"100%",position:"relative",overflow:"hidden"}:{background:"#0c0c1a",border:"1px solid #44ccaa44",borderRadius:6,padding:"14px 16px",maxWidth:320,width:"100%"}}>
+ <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+ <div style={{color:"#44ccaa",fontSize:_mf(13),fontWeight:"bold"}}>INTRO SPRINT</div>
+ <button onClick={()=>closePopup(setSprintInfo)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
+ </div>
+ <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.6}}>
  Sprint rapidly progresses through the first <span style={{color:"#44ccaa"}}>{_isPct}%</span> of your best wave (<span style={{color:"#44ccaa"}}>{_isMax}</span>), auto-progressing through <span style={{color:"#44ccaa"}}>{_dur} waves</span>.<br/><br/>
  <span style={{color:"#bbccdd"}}>Lab Efficiency:</span> Each sprint wave has a <span style={{color:"#44ccaa"}}>{_sePct}%</span> chance of contributing progress to active labs.{_seLvl>0?` (Level ${_seLvl})`:""}
  </div>
  </div>
  </div>);})()}
- {_modeUnlock&&_modeUnlock.length>0&&<TutPopup title="NEW GAMEMODE UNLOCKED" btnText="GOT IT" onBtn={()=>_setModeUnlock(null)}>{(()=>{const _MD={PLAYGROUND:"A free sandbox — spawn any enemy and test builds at no cost. Beat the Enforcer challenge for a permanent echo multiplier.",PRACTISE:"Risk-free practice runs that never touch your main stats. Your best practice wave adds to your echo multiplier.",PHANTOM:"A harder endless gauntlet. Your highest Phantom wave permanently boosts your echo multiplier.",CARGO:"Escort a cargo train as far as you can — distance and delivered packages earn ▣ Packages for the Paths tree.",DEALER:"Gamble echoes on risk/reward cards that reshape your next run."};return _modeUnlock.map((m,_i)=><div key={_i} style={{marginBottom:_i<_modeUnlock.length-1?12:0}}><div style={{color:"#44ddcc",fontWeight:"bold",letterSpacing:1,marginBottom:3,fontSize:12}}>{m}</div><div style={{color:"#99aabb"}}>{_MD[m]||""}</div></div>);})()}<div style={{color:"#667788",fontSize:9,marginTop:12}}>You can play it any time from the main menu.</div></TutPopup>}
- {showTutPrompt&&<TutPopup title="FIRST TIME?">
- Welcome to Void Storm! Would you like a guided tutorial?<br/>You'll play through 5 waves and learn the basics.<br/><br/>
- <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:10}}>
- <button onClick={()=>{setShowTutPrompt(false);goTo("settings");}} style={{padding:"8px 18px",background:"transparent",border:"2px solid #44ccaa",color:"#44ccaa",fontSize:11,fontFamily:"inherit",cursor:"pointer",letterSpacing:1,transition:"all 0.2s"}} onMouseOver={e=>{e.target.style.background="#44ccaa";e.target.style.color="#06060e";}} onMouseOut={e=>{e.target.style.background="transparent";e.target.style.color="#44ccaa";}}>I HAVE AN ACCOUNT</button>
- <button onClick={()=>initTutorial()} style={{padding:"8px 28px",background:"transparent",border:"2px solid #ffcc44",color:"#ffcc44",fontSize:12,fontFamily:"inherit",cursor:"pointer",letterSpacing:1,transition:"all 0.2s"}} onMouseOver={e=>{e.target.style.background="#ffcc44";e.target.style.color="#06060e";}} onMouseOut={e=>{e.target.style.background="transparent";e.target.style.color="#ffcc44";}}>START TUTORIAL</button>
+{autoDealerInfo&&(
+ <div onClick={()=>closePopup(setAutoDealerInfo)} style={{position:"absolute",inset:0,background:_mv("rgba(0,0,0,0.6)","rgba(2,2,10,0.78)"),backdropFilter:_mv("none","blur(3px)"),zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+ <div onClick={e=>e.stopPropagation()} style={_mob?{..._gp("#bb77ff",20),padding:"20px 18px",maxWidth:340,width:"100%",position:"relative",overflow:"hidden"}:{background:"#0c0c1a",border:"1px solid #bb77ff44",borderRadius:6,padding:"14px 16px",maxWidth:320,width:"100%"}}>
+ <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+ <div style={{color:"#bb99ff",fontSize:_mf(13),fontWeight:"bold"}}>AUTO DEALER</div>
+ <button onClick={()=>closePopup(setAutoDealerInfo)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
  </div>
- <span style={{color:"#667788",fontSize:9,cursor:"pointer"}} onClick={(e)=>{e.stopPropagation();setShowTutPrompt(false);}}>No thanks, I'll figure it out →</span>
- </TutPopup>}
- <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:10,zIndex:1,position:"relative",alignItems:"center",width:"100%"}}>
- <div style={{display:"flex",gap:8,justifyContent:"center"}}>
- <button onClick={()=>goTo("metashop")} style={{...bs2("#bb77ff44"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#bb99ff",position:"relative"}}>META{_dotsOn&&_affordMeta().any&&<span style={_affDot} />}</button>
- <button onClick={()=>{setHeInfoId(null);setAbInfoId(null);setSprintInfo(false);if((metaRef.current.metaTier||1)>=2&&!metaRef.current._heSeen){setMeta(prev=>{const nx={...prev,_heSeen:true};saveMeta(nx);return nx;});}goTo("hyperecho");}} style={{...bs2("#ffcc4433"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#ffcc44",position:"relative"}}>HYPERECHO{(meta.metaTier||1)>=2&&!meta._heSeen&&<span style={_affDot} />}</button>
- <button onClick={()=>{const _cur=meta.totalEchoesEarned||0;if(_cur<1500){_setSideLockPopup({mode:"DEALER",required:1500,current:_cur});return;}_setDealerAuto(false);if(!_dealerOffers&&(meta._dealerActive||[]).length<(meta._dealerSlots||1))_genDealerOffers();goTo("dealer");}} style={{...bs2("#ff668844"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#ff6688"}}>DEALER</button>
- <button onClick={()=>goTo("paths")} style={{...bs2("#cc884444"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#cc8844",position:"relative"}}>PATHS{_dotsOn&&_affordPaths&&<span style={_affDot} />}</button>
+ <div style={{color:"#bbccdd",fontSize:_mf(10),lineHeight:1.6}}>When enabled, launching a main run opens the Dealer card screen first so you can choose your loadout, then start straight from there with "Play With This Loadout". If every card slot is already filled, the run begins immediately with no detour.</div>
  </div>
- <div style={{display:"flex",gap:8,justifyContent:"center"}}>
- <button onClick={()=>{const _cur=meta.totalEchoesEarned||0;if(_cur<100){_setSideLockPopup({mode:"PLAYGROUND",required:100,current:_cur});return;}setEnforcerMode(false);goTo("playground");}} style={{...bs2("#44bbdd44"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#44bbdd"}}>PLAYGROUND</button>
- <button onClick={()=>{const _cur=meta.totalEchoesEarned||0;if(_cur<250){_setSideLockPopup({mode:"PRACTISE",required:250,current:_cur});return;}goTo("practise");}} style={{...bs2("#cc884433"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#cc9966"}}>PRACTISE</button>
- <button onClick={()=>{const _cur=meta.totalEchoesEarned||0;if(_cur<500){_setSideLockPopup({mode:"PHANTOM",required:500,current:_cur});return;}goTo("phantom_info");}} style={{...bs2("#cc66cc44"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#cc66cc"}}>PHANTOM</button>
- <button onClick={()=>{const _cur=meta.totalEchoesEarned||0;if(_cur<1000){_setSideLockPopup({mode:"CARGO",required:1000,current:_cur});return;}goTo("cargo");}} style={{...bs2("#eebb4444"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#eebb44"}}>CARGO</button>
- </div>
- <div style={{display:"flex",gap:8,justifyContent:"center"}}>
- <button onClick={()=>{setShowWiki(true);setCodexOpen({controls:false,mechanics:false,currencies:false,enemies:false,abilities:false,scrap:false,cores:false,plasma:false,meta:false,metaab:false,designs:false,labs:false,overheat:false})}} style={{...bs2("#44aacc33"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#66bbcc"}}>CODEX</button>
- <button onClick={()=>{setTutSel({mode:null,ab:null,bot:null,enemy:null,fx:null});goTo("tutorials");}} style={{...bs2("#55cc9944"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#55cc99"}}>SANDBOX</button>
- <button onClick={()=>{setHistoryMode("waves");goTo("history");}} style={{...bs2("#ff884466"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#ffaa66"}}>HISTORY</button>
- <button onClick={()=>goTo("settings")} style={{...bs2("#55667744"),padding:"5px 12px",fontSize:10,borderWidth:1,color:"#778899",position:"relative"}}>SETTINGS{_dotsOn&&_affordDesign&&<span style={_affDot} />}</button>
- </div>
- </div>
- {(leaderboardData.length>0||!_online)&&(()=>{const sorted=_online?[...leaderboardData].sort((a,b)=>lbSort==="echoes"?(b.echoes-a.echoes):(b.wave-a.wave)):[];const top3=sorted.slice(0,3);while(top3.length<3)top3.push(null);return <div style={{width:"100%",maxWidth:300,marginTop:14,zIndex:1,position:"relative"}}>
- <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
- <span style={{color:!_online?"#aa7744":_isCheater(meta)?"#ff5566":"#556677",fontSize:8,letterSpacing:2}}>{!_online?"LEADERBOARD - NO CONNECTION":_isCheater(meta)?"LEADERBOARD - ACCOUNT BANNED":"LEADERBOARD"}</span>
- <div style={{display:"flex",gap:3}}>
- <button onClick={()=>setLbSort("echoes")} style={{padding:"2px 8px",background:lbSort==="echoes"?"#bb77ff22":"transparent",border:"1px solid "+(lbSort==="echoes"?"#bb77ff66":"#33445544"),borderRadius:3,cursor:"pointer",fontFamily:"inherit",fontSize:7,color:lbSort==="echoes"?"#bb99ff":"#667788",letterSpacing:1}}>ECHOES</button>
- <button onClick={()=>setLbSort("wave")} style={{padding:"2px 8px",background:lbSort==="wave"?"#44ccaa22":"transparent",border:"1px solid "+(lbSort==="wave"?"#44ccaa66":"#33445544"),borderRadius:3,cursor:"pointer",fontFamily:"inherit",fontSize:7,color:lbSort==="wave"?"#88ccaa":"#667788",letterSpacing:1}}>WAVES</button>
- </div>
- </div>
- {top3.map((p,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 8px",borderRadius:3,marginBottom:2}}>
- <span style={{color:i===0?"#ffcc44":"#99aabb",fontSize:9}}><span style={{color:"#556677",fontSize:8,marginRight:4}}>{i+1}.</span>{p?p.username:"-"}</span>
- <span style={{color:lbSort==="echoes"?"#bb77ff":"#44ccaa",fontSize:9,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{p?(lbSort==="echoes"?"⬢ "+p.echoes.toLocaleString():"W"+p.wave):""}</span>
- </div>)}
- <button onClick={_online?()=>goTo("leaderboard"):undefined} disabled={!_online} style={{width:"100%",marginTop:4,padding:"4px 8px",background:"none",border:"1px solid #33445544",borderRadius:3,cursor:_online?"pointer":"default",fontFamily:"inherit",fontSize:8,color:_online?"#667788":"#445566",letterSpacing:1,opacity:_online?1:0.5}}>VIEW ALL →</button>
- </div>;})()}
  </div>
  )}
- {phase==="paths"&&(()=>{
- const _zb={width:30,height:30,borderRadius:"50%",background:"#12100a",border:"1px solid #cc995566",color:"#cc9955",fontSize:16,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1};
- const CX=550,CY=550;
+{phase==="paths"&&_mob&&(()=>{const _featOK={phantom:(meta.phantomHighWave||0)>0,practise:(meta.practiseHighWave||0)>0,cargo:(meta.cargoHighDistance||0)>0,enforcer:(meta.metaTier||1)>=2,dealer:!!meta._dealerPlayed,bots:Object.keys(meta.bots||{}).length>0,intro_sprint:(meta.lab?.completed?.intro_sprint||0)>=1};const _FEATREQ={phantom:"Play a Phantom run to unlock this path.",practise:"Play a Practise run to unlock this path.",cargo:"Play a Cargo run to unlock this path.",enforcer:"Reach meta Ship Tier 2 to unlock this path.",dealer:"Play a run with a Dealer card active to unlock this path.",bots:"Unlock a Bot to unlock this path.",intro_sprint:"Research Intro Sprint (Lv 1) to unlock this path."};const _pk=meta.packages||0;const _core=!!meta.pathsCore;const _pd=PATH_DEFS.find(d=>d.id===_mobPathCat)||PATH_DEFS[0];const _ups=PATH_UPG[_pd.id]||[];const _catOwned=!!(meta.pathsCat&&meta.pathsCat[_pd.id]);
+ const _depthOf=(u)=>{let d=1,cur=u;while(cur&&cur.parent){cur=_ups.find(x=>x.id===cur.parent);d++;}return d;};const _maxD=_ups.reduce((m,u)=>Math.max(m,_depthOf(u)),0);const _rows=[];for(let d=1;d<=_maxD;d++)_rows.push(_ups.filter(u=>_depthOf(u)===d));
+ return <div style={{position:"absolute",inset:0,zIndex:6,overflow:"hidden",background:"#04040a"}}><MenuBG/><div style={{position:"relative",zIndex:1,height:"100%",display:"flex",flexDirection:"column",padding:"10px 10px 12px",boxSizing:"border-box",gap:7}}>
+  {_gHead("PATHS","#cc9955",()=>goTo("menu"),<span style={{color:"#ffcc77",fontSize:13,fontWeight:"bold"}}>▣ {_pk}</span>)}
+  <button onClick={()=>_setPathSel({core:true})} style={{...(_core?_gpMax(12):_pk>=20?_gpBuy("#cc9955",12):_gpDim("#cc9955",12)),padding:"9px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontFamily:"inherit",flexShrink:0,position:"relative",overflow:"hidden"}}>{_core&&<div className="gold-shimmer"/>}<span style={{color:_core?"#ffcc44":"#fff",fontSize:12,fontWeight:"bold",letterSpacing:1.5}}>▣ TRAIN CORE</span><span style={{color:_core?"#ffcc44":"#dde",fontSize:10.5}}>{_core?"OWNED · unlocks all branches":"Buy first · 20 ▣"}</span></button>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,flexShrink:0}}>{PATH_DEFS.map(d=>{const _own=!!(meta.pathsCat&&meta.pathsCat[d.id]);const _feat=_featOK[d.id]!==false;const _tot=(PATH_UPG[d.id]||[]).length;const _got=(PATH_UPG[d.id]||[]).filter(u=>meta.pathsUpg&&meta.pathsUpg[u.id]).length;const _on=d.id===_pd.id;return <button key={d.id} onClick={()=>_setMobPathCat(d.id)} style={{...(_on?_gp(d.col,10):_gpDim(d.col,10)),padding:"8px 3px",cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:0}}><span style={{color:"#fff",fontSize:8.5,fontWeight:"bold",letterSpacing:0.3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>{d.name}</span><span style={{color:_own?"#fff":"#aab",fontSize:9}}>{_own?`${_got}/${_tot}`:_feat?"🔒":"✕"}</span></button>;})}</div>
+  <button onClick={()=>_setPathSel({catId:_pd.id})} style={{...(_catOwned?_gpMax(12):_core?_gpBuy(_pd.col,12):_gpDim(_pd.col,12)),padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontFamily:"inherit",flexShrink:0,position:"relative",overflow:"hidden"}}>{_catOwned&&<div className="gold-shimmer"/>}<span style={{color:_catOwned?"#ffcc44":"#fff",fontSize:13,fontWeight:"bold",letterSpacing:1.5}}>{_pd.name} BRANCH</span><span style={{color:_catOwned?"#ffcc44":"#dde",fontSize:10.5}}>{_catOwned?"UNLOCKED":_core?"Tap to unlock":"Needs Train Core"}</span></button>
+  <div style={{flex:1,minHeight:0,background:"#07070f",border:`1px solid ${_pd.col}44`,borderRadius:14,position:"relative",overflow:"hidden"}}>{(()=>{
+   const _BW=GW-44;const _kids=id=>_ups.filter(u=>u.parent===id);const _roots=_ups.filter(u=>!u.parent);
+   const _leafD=_ups.filter(u=>_depthOf(u)===_maxD);const _stack=_maxD>=3&&_leafD.length>6;const _colD=_stack?_maxD-1:_maxD;
+   const _wt=(u)=>{if(_depthOf(u)>=_colD)return 1;const k=_kids(u.id);return k.length?k.reduce((a,c)=>a+_wt(c),0):1;};
+   const _tot=Math.max(1,_roots.reduce((a,r)=>a+_wt(r),0));const pos={};
+   const place=(u,x0)=>{pos[u.id]={x:(x0+_wt(u)/2)/_tot*_BW,lv:_depthOf(u)};if(_depthOf(u)<_colD){let xx=x0;_kids(u.id).forEach(c=>{place(c,xx);xx+=_wt(c);});}};
+   {let x0=0;_roots.forEach(r=>{place(r,x0);x0+=_wt(r);});}
+   let _lv=_colD;if(_stack){let mk=0;_ups.filter(u=>_depthOf(u)===_colD).forEach(p=>{_kids(p.id).forEach((c,i)=>{pos[c.id]={x:pos[p.id].x,lv:_colD+1+i,stack:p.id};});mk=Math.max(mk,_kids(p.id).length);});_lv=_colD+mk;}
+   const _colW=_BW/_tot;const _nw=Math.min(150,Math.max(58,_colW-10));const _nh=_lv<=1?120:_lv===2?104:_lv===3?88:_lv===4?78:66;const _isz=_nh>=100?40:_nh>=85?30:_nh>=75?26:22;
+   const _y=lv=>((lv-0.5)/_lv*100)+"%";const _yn=lv=>(lv-0.5)/_lv*100;
+   const _st=(u)=>{const own=!!(meta.pathsUpg&&meta.pathsUpg[u.id]);const pOk=u.parent?!!(meta.pathsUpg&&meta.pathsUpg[u.parent]):_catOwned;return own?"own":pOk?"avail":"lock";};
+   const _lc=st=>st==="own"?"#ffcc44":st==="avail"?_pd.col:"#3a4458";
+   const lines=[];
+   _ups.forEach(u=>{if(!u.parent||!pos[u.id]||!pos[u.parent])return;const a=pos[u.parent],b=pos[u.id];const c=_lc(_st(u));const sw=_st(u)==="lock"?1.5:2.5;
+    if(b.stack){const sx=a.x-_nw/2+6;lines.push(<line key={u.id+"s"} x1={sx} y1={_y(a.lv)} x2={sx} y2={_y(b.lv)} stroke={c} strokeWidth={sw}/>);lines.push(<line key={u.id+"t"} x1={sx} y1={_y(b.lv)} x2={b.x-(_nw-18)/2} y2={_y(b.lv)} stroke={c} strokeWidth={sw}/>);}
+    else{const my=((_yn(a.lv)+_yn(b.lv))/2)+"%";lines.push(<line key={u.id+"a"} x1={a.x} y1={_y(a.lv)} x2={a.x} y2={my} stroke={c} strokeWidth={sw}/>);lines.push(<line key={u.id+"b"} x1={a.x} y1={my} x2={b.x} y2={my} stroke={c} strokeWidth={sw}/>);lines.push(<line key={u.id+"c"} x1={b.x} y1={my} x2={b.x} y2={_y(b.lv)} stroke={c} strokeWidth={sw}/>);}});
+   return <>
+    <svg style={{position:"absolute",left:12,top:0,width:_BW,height:"100%",overflow:"visible",pointerEvents:"none"}}>{lines}</svg>
+    {_ups.map(u=>{const p=pos[u.id];if(!p)return null;const st=_st(u);const _owned=st==="own",_avail=st==="avail";const _can=_avail&&_pk>=u.cost;const w=p.stack?_nw-18:_nw;
+     const _lbl=u.enemy?(u.enemy.charAt(0).toUpperCase()+u.enemy.slice(1)):("Upgrade "+((u.name.match(/(\d+)\s*$/)||[])[1]||""));const _ic=_owned?"#ffcc44":_avail?_pd.col:"#778899";
+     return <button key={u.id} onClick={()=>_setPathSel({upId:u.id,cat:_pd.id})} style={{position:"absolute",left:12+p.x-w/2+(p.stack?9:0),top:`calc(${_y(p.lv)} - ${_nh/2}px)`,width:w,height:_nh,boxSizing:"border-box",background:_owned?"#16130a":"#0b0b16",border:`1px solid ${_owned?"#ffcc4488":_can?_pd.col:_avail?_pd.col+"77":"#ffffff1a"}`,borderRadius:12,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,cursor:"pointer",fontFamily:"inherit",padding:2,opacity:_owned||_avail?1:0.6}}>
+      {u.enemy?<EnemyIcon type={u.enemy} size={_isz} color={_owned||_avail?undefined:"#778899"} />:<canvas width={_isz*3} height={_isz*3} style={{width:_isz,height:_isz}} ref={el=>{if(el){const c2=el.getContext("2d");c2.setTransform(3,0,0,3,0,0);c2.clearRect(0,0,_isz,_isz);drawUpgIcon(c2,u.id,_isz,_ic);}}} />}
+      <span style={{color:_owned?"#ffcc44":"#fff",fontSize:_nh>=100?12:9.5,fontWeight:"bold",textAlign:"center",lineHeight:1.1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%",padding:"0 2px"}}>{_lbl}</span>
+      {!_owned&&<span style={{color:_can?"#ffcc77":"#8899aa",fontSize:_nh>=100?11:9}}>{u.cost}▣</span>}
+      {_dotsOn&&_can&&<span style={_affDot}/>}
+     </button>;})}
+   </>;})()}
+  </div>
+  <div style={{color:"#8899aa",fontSize:9.5,textAlign:"center",flexShrink:0}}>Tap any node for details and to buy · Packages (▣) drop in Cargo runs</div>
+ </div>
+ {_pathSel&&(()=>{const _pk2=meta.packages||0;let col="#cc9955",title="",sub="",desc="",icon=null,cost=0,own=false,can=false,why="",onBuy=null,req=null,leads=null;
+   if(_pathSel.core){col="#cc9955";title="TRAIN CORE";sub="Root of the whole tree";desc="Multiplies the cargo train's speed by 2.5×. Must be bought before any branch can be opened.";icon=<span style={{color:"#ffcc77",fontSize:28}}>▣</span>;cost=20;own=!!meta.pathsCore;can=!own&&_pk2>=20;why=own?"":"need "+cost+" ▣";onBuy=()=>setMeta(prev=>{const nx={...prev,packages:(prev.packages||0)-20,pathsCore:true};saveMeta(nx);return nx;});leads="Every branch below";}
+   else if(_pathSel.catId){const pd=PATH_DEFS.find(p=>p.id===_pathSel.catId);if(!pd)return null;col=pd.col;title=pd.name+" BRANCH";sub="Opens this branch's upgrades";own=!!(meta.pathsCat&&meta.pathsCat[pd.id]);const _nc=!meta.pathsCore;const _feat=!!_featOK[pd.id];cost=50;can=!own&&!_nc&&_feat&&_pk2>=50;desc=own?"Unlocked — its upgrades are available below.":!_feat?_FEATREQ[pd.id]:"Unlock the "+pd.name+" branch. It has no effect on its own; it opens access to the branch's upgrades.";why=_nc?"needs Train Core":!_feat?"locked":"need 50 ▣";icon=<canvas width={132} height={132} style={{width:40,height:40}} ref={el=>{if(el){const cx=el.getContext("2d");if(cx){cx.setTransform(3,0,0,3,0,0);cx.clearRect(0,0,44,44);drawPathIcon(cx,pd.id,22,22,18,pd.col);}}}} />;req="Train Core";leads=(PATH_UPG[pd.id]||[]).filter(u=>!u.parent).map(u=>u.enemy?u.enemy.charAt(0).toUpperCase()+u.enemy.slice(1):"Upgrade "+((u.name.match(/(\d+)\s*$/)||[])[1]||"")).join(", ");onBuy=()=>setMeta(prev=>{const nx={...prev,packages:(prev.packages||0)-50,pathsCat:{...(prev.pathsCat||{}),[pd.id]:true}};saveMeta(nx);return nx;});}
+   else{const _all=PATH_UPG[_pathSel.cat]||[];const _u=_all.find(u=>u.id===_pathSel.upId);const pd=PATH_DEFS.find(p=>p.id===_pathSel.cat);if(!_u||!pd)return null;const _nm=u=>u.enemy?u.enemy.charAt(0).toUpperCase()+u.enemy.slice(1)+" enforcer":"Upgrade "+((u.name.match(/(\d+)\s*$/)||[])[1]||"");
+    col=pd.col;title=_u.enemy?_nm(_u).toUpperCase():_u.name.toUpperCase();sub=pd.name+" branch";desc=_u.desc;cost=_u.cost;own=!!(meta.pathsUpg&&meta.pathsUpg[_u.id]);const _co=!!(meta.pathsCat&&meta.pathsCat[pd.id]);const _po=_u.parent?!!(meta.pathsUpg&&meta.pathsUpg[_u.parent]):_co;can=!own&&_co&&_po&&_pk2>=_u.cost;
+    const _par=_u.parent?_all.find(x=>x.id===_u.parent):null;req=_par?_nm(_par)+(meta.pathsUpg&&meta.pathsUpg[_par.id]?" ✓":""):pd.name+" branch"+(_co?" ✓":"");const _ch=_all.filter(x=>x.parent===_u.id);leads=_ch.length?_ch.map(_nm).join(", "):null;
+    why=!_co?"needs branch":!_po?"locked":"need "+_u.cost+" ▣";icon=_u.enemy?<EnemyIcon type={_u.enemy} size={36} color={pd.col} cardMode/>:<canvas width={120} height={120} style={{width:36,height:36}} ref={el=>{if(el){const _x=el.getContext("2d");if(_x){_x.setTransform(3,0,0,3,0,0);_x.clearRect(0,0,40,40);drawUpgIcon(_x,_u.id,40,pd.col);}}}} />;
+    onBuy=()=>setMeta(prev=>{const nx={...prev,packages:(prev.packages||0)-_u.cost,pathsUpg:{...(prev.pathsUpg||{}),[_u.id]:true},...(_u.id==="dl_s3"?{_dealerSlots:3}:_u.id==="dl_s2"?{_dealerSlots:Math.max(2,prev._dealerSlots||1)}:{})};saveMeta(nx);return nx;});}
+   return _mPop(col,()=>_setPathSel(null),<>
+    {_mPopHead(icon,title,own?"#ffcc44":col,sub,<span style={{color:"#ffcc77",fontSize:13,fontWeight:"bold",flexShrink:0}}>▣ {_pk2}</span>)}
+    <div style={{color:"#e0e4f0",fontSize:12,lineHeight:1.5}}>{desc}</div>
+    {(req||leads)&&<div style={{display:"flex",flexDirection:"column",gap:4,background:"#ffffff08",borderRadius:10,padding:"8px 10px"}}>{req&&<div style={{fontSize:10.5,color:"#9aa3b8"}}>REQUIRES <span style={{color:"#fff"}}>{req}</span></div>}{leads&&<div style={{fontSize:10.5,color:"#9aa3b8"}}>UNLOCKS <span style={{color:"#fff"}}>{leads}</span></div>}</div>}
+    <div style={{display:"flex",alignItems:"center",gap:10,marginTop:2}}><div style={{flex:1,color:"#ffcc77",fontSize:14,fontWeight:"bold"}}>{own?"":"▣ "+cost.toLocaleString()}</div>{own?_mAct("owned","OWNED"):_mAct(can?"buy":"no",(why&&!why.startsWith("need "))?"LOCKED":"UNLOCK","▣ "+cost,()=>{if(can){onBuy();}},col)}</div>
+    {_mClose(()=>_setPathSel(null))}
+   </>);})()}
+ </div>;})()}
+{phase==="paths"&&!_mob&&(()=>{
+ const _zb=_mob?{width:44,height:44,..._gpDim("#cc9955",22),borderRadius:22,color:"#fff",fontSize:20,fontWeight:"bold",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}:{width:30,height:30,borderRadius:"50%",background:"#12100a",border:"1px solid #cc995566",color:"#cc9955",fontSize:_mf(16),cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1};
+ const CX=650,CY=650;
  const links=[];const catNodes=[];const upNodes=[];
  const _featOK={phantom:(meta.phantomHighWave||0)>0,practise:(meta.practiseHighWave||0)>0,cargo:(meta.cargoHighDistance||0)>0,enforcer:(meta.metaTier||1)>=2,dealer:!!meta._dealerPlayed,bots:Object.keys(meta.bots||{}).length>0,intro_sprint:(meta.lab?.completed?.intro_sprint||0)>=1};
  const _FEATREQ={phantom:"Play a Phantom run to unlock this path.",practise:"Play a Practise run to unlock this path.",cargo:"Play a Cargo run to unlock this path.",enforcer:"Reach meta Ship Tier 2 to unlock this path.",dealer:"Play a run with a Dealer card active to unlock this path.",bots:"Unlock a Bot to unlock this path.",intro_sprint:"Research Intro Sprint (Lv 1) to unlock this path."};
@@ -2754,12 +3041,12 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  });
  const _pick=(pd)=>{if(_pathMovedRef.current){return;}_setPathSel({catId:pd.id});};
  const _pickUp=(n)=>{if(_pathMovedRef.current){return;}_setPathSel({upId:n.up.id,cat:n.cat});};
- const _clpPan=(p,z)=>{const e=560*(z==null?pathsZoom:z)+100;return{x:Math.max(-e,Math.min(e,p.x)),y:Math.max(-e,Math.min(e,p.y))};};
+ const _clpPan=(p,z)=>{const _z=(z==null?pathsZoom:z);const half=650*_z;const lx=Math.max(0,half-GW/2+20);const ly=Math.max(0,half-(GH-70)/2+20);return{x:Math.max(-lx,Math.min(lx,p.x)),y:Math.max(-ly,Math.min(ly,p.y))};};
  return <div className={_phaseClass("paths")} style={{position:"absolute",inset:0,zIndex:6,display:"flex",flexDirection:"column",background:"rgba(7,7,15,0.84)"}}>
   <div style={{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:"1px solid #1a1a2e",zIndex:3,background:"#08080e"}}>
-   <button onClick={()=>goTo("menu")} style={{...bs2("#44556644"),borderWidth:1,color:"#778899",padding:"5px 12px",fontSize:10}} {...hv("#778899")}>← BACK</button>
-   <div style={{color:"#cc9955",fontSize:13,fontWeight:"bold",letterSpacing:4}}>PATHS</div>
-   <div style={{display:"flex",alignItems:"center",gap:5,color:"#ccaa66",fontSize:13,fontWeight:"bold"}}><span style={{fontSize:15,color:"#cc9955"}}>▣</span>{(meta.packages||0).toLocaleString()}</div>
+   <button onClick={()=>goTo("menu")} style={{...bs2("#44556644"),borderWidth:1,color:"#778899",padding:_mv("5px 12px","12px 10px"),fontSize:_mf(10)}} {...hv("#778899")}>← BACK</button>
+   <div style={{color:"#cc9955",fontSize:_mf(13),fontWeight:"bold",letterSpacing:4}}>PATHS</div>
+   <div style={{display:"flex",alignItems:"center",gap:5,color:"#ccaa66",fontSize:_mf(13),fontWeight:"bold"}}><span style={{fontSize:_mf(15),color:"#cc9955"}}>▣</span>{(meta.packages||0).toLocaleString()}</div>
   </div>
   <div
    onWheel={e=>{const _r=e.currentTarget.getBoundingClientRect();const _rx=e.clientX-(_r.left+_r.width/2),_ry=e.clientY-(_r.top+_r.height/2);const _z0=pathsZoom;const _z1=Math.max(0.35,Math.min(2.4,_z0-(e.deltaY>0?0.12:-0.12)));setPathsZoom(_z1);setPathsPan(p=>_clpPan({x:_rx-(_rx-p.x)*(_z1/_z0),y:_ry-(_ry-p.y)*(_z1/_z0)},_z1));}}
@@ -2768,96 +3055,114 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
    onPointerUp={()=>{_pathDragRef.current=null;setTimeout(()=>{_pathMovedRef.current=false;},60);}}
    onPointerLeave={()=>{_pathDragRef.current=null;}}
    style={{flex:"1 1 0",minHeight:0,overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",cursor:"grab",touchAction:"none"}}>
-   <div style={{position:"relative",width:1100,height:1100,transform:`translate(${pathsPan.x}px,${pathsPan.y}px) scale(${pathsZoom})`,transformOrigin:"center center",transition:_pathDragRef.current?"none":"transform 90ms linear"}}>
+   <div style={{position:"relative",width:1300,height:1300,transform:`translate(${pathsPan.x}px,${pathsPan.y}px) scale(${pathsZoom})`,transformOrigin:"center center",transition:_pathDragRef.current?"none":"transform 90ms linear"}}>
     <svg width={1100} height={1100} style={{position:"absolute",inset:0,pointerEvents:"none"}}>
      {links.map((l,i)=>{const _ddx=l.x2-l.x1,_ddy=l.y2-l.y1,_dln=Math.hypot(_ddx,_ddy)||1,_ux=_ddx/_dln,_uy=_ddy/_dln;const _X1=l.x1+_ux*(l.r1||0),_Y1=l.y1+_uy*(l.r1||0),_X2=l.x2-_ux*(l.r2||0),_Y2=l.y2-_uy*(l.r2||0);return <line key={"pl"+i} x1={_X1} y1={_Y1} x2={_X2} y2={_Y2} stroke={l.col} strokeWidth={l.main?3:2} strokeOpacity={l.main?0.5:0.25} strokeDasharray={l.main?"":"6 6"}/>;})}
     </svg>
-    {upNodes.map((n,i)=>{const _catOwned=!!(meta.pathsCat&&meta.pathsCat[n.cat]);const _owned=!!(meta.pathsUpg&&meta.pathsUpg[n.up.id]);const _po=n.up.parent?!!(meta.pathsUpg&&meta.pathsUpg[n.up.parent]):_catOwned;const _av=_catOwned&&_po;return <div key={"up"+i} onClick={()=>_pickUp(n)} style={{position:"absolute",left:n.x-n.r,top:n.y-n.r,width:n.r*2,height:n.r*2,borderRadius:"50%",border:`2px solid ${_owned?"#66ff88":_av?n.pd.col:"#3b3b4d"}`,background:_owned?"#08200e":"#0c0c16",boxShadow:_owned?"0 0 10px #66ff8855":(_av?`0 0 8px ${n.pd.col}33`:"none"),opacity:_owned?1:_av?0.95:0.34,cursor:"pointer",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"center"}}>{n.up.enemy?<EnemyIcon type={n.up.enemy} size={n.r*1.45} color={_owned?"#88ff99":(_av?n.pd.col:"#55556a")} cardMode/>:<canvas width={44} height={44} style={{width:n.r*1.62,height:n.r*1.62,display:"block"}} ref={el=>{if(el){const _x=el.getContext("2d");if(_x)drawUpgIcon(_x,n.up.id,44,_owned?"#88ff99":(_av?n.pd.col:"#55556a"));}}} />}{_owned&&<span style={{position:"absolute",top:-3,right:-3,width:13,height:13,borderRadius:"50%",background:"#44dd66",color:"#06180a",fontSize:9,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 6px #44dd66"}}>✓</span>}</div>;})}
+    {upNodes.map((n,i)=>{const _catOwned=!!(meta.pathsCat&&meta.pathsCat[n.cat]);const _owned=!!(meta.pathsUpg&&meta.pathsUpg[n.up.id]);const _po=n.up.parent?!!(meta.pathsUpg&&meta.pathsUpg[n.up.parent]):_catOwned;const _av=_catOwned&&_po;return <div key={"up"+i} onClick={()=>_pickUp(n)} style={{position:"absolute",left:n.x-n.r,top:n.y-n.r,width:n.r*2,height:n.r*2,borderRadius:"50%",border:`2px solid ${_owned?"#66ff88":_av?n.pd.col:"#3b3b4d"}`,background:_owned?"#08200e":"#0c0c16",boxShadow:_owned?"0 0 10px #66ff8855":(_av?`0 0 8px ${n.pd.col}33`:"none"),opacity:_owned?1:_av?0.95:0.34,cursor:"pointer",boxSizing:"border-box",display:"flex",alignItems:"center",justifyContent:"center"}}>{n.up.enemy?<EnemyIcon type={n.up.enemy} size={n.r*1.45} color={_owned?"#88ff99":(_av?n.pd.col:"#55556a")} cardMode/>:<canvas width={44} height={44} style={{width:n.r*1.62,height:n.r*1.62,display:"block"}} ref={el=>{if(el){const _x=el.getContext("2d");if(_x)drawUpgIcon(_x,n.up.id,44,_owned?"#88ff99":(_av?n.pd.col:"#55556a"));}}} />}{_owned&&<span style={{position:"absolute",top:-3,right:-3,width:_mv(13,30),height:_mv(13,30),borderRadius:"50%",background:"#44dd66",color:"#06180a",fontSize:_mv(_mf(9),16),fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 6px #44dd66"}}>✓</span>}</div>;})}
     {catNodes.map((n,i)=>{const _co=!!(meta.pathsCat&&meta.pathsCat[n.pd.id]);const _hx=n.pd.id==="intro_sprint"?Math.sin(n.ang):-Math.sin(n.ang);const _lxo=n.pd.id==="intro_sprint"?-16:0;const _lyo=n.pd.id==="intro_sprint"?12:0;return <div key={"mn"+i} onClick={()=>_pick(n.pd)} style={{position:"absolute",left:n.x-n.r,top:n.y-n.r,width:n.r*2,height:n.r*2,cursor:"pointer",opacity:meta.pathsCore?1:0.4}}>
       <div style={{width:n.r*2,height:n.r*2,borderRadius:"50%",border:`2px solid ${_co?"#66ff88":n.pd.col}`,background:_co?"#0d0d18":"rgba(10,10,22,0.22)",boxShadow:`0 0 ${_co?16:12}px ${_co?"#66ff8855":n.pd.col+"44"}`,display:"flex",alignItems:"center",justifyContent:"center",boxSizing:"border-box"}}>
        <canvas width={168} height={168} style={{width:n.r*1.5,height:n.r*1.5}} ref={el=>{if(el){const cx=el.getContext("2d");if(cx){cx.setTransform(3,0,0,3,0,0);cx.clearRect(0,0,56,56);drawPathIcon(cx,n.pd.id,28,28,24,n.pd.col);}}}} />
       </div>
-      {_co&&<span style={{position:"absolute",top:-2,right:-2,width:18,height:18,borderRadius:"50%",background:"#44dd66",color:"#06180a",fontSize:11,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 8px #44dd66",border:"2px solid #08180c",zIndex:3}}>✓</span>}<div style={{position:"absolute",left:n.r+(_hx)*(n.r+13)+_lxo,top:n.r+(Math.cos(n.ang))*(n.r+13)+_lyo,transform:`translate(${_hx>0.34?"0%":(_hx<-0.34?"-100%":"-50%")},-50%)`,color:_co?"#88ff99":n.pd.col,fontSize:13,fontWeight:"bold",fontFamily:"monospace",whiteSpace:"nowrap",textShadow:"0 0 6px #000,0 0 4px #000",pointerEvents:"none"}}>{n.pd.name}</div>
+      {_co&&<span style={{position:"absolute",top:-2,right:-2,width:18,height:18,borderRadius:"50%",background:"#44dd66",color:"#06180a",fontSize:_mf(11),fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 8px #44dd66",border:"2px solid #08180c",zIndex:3}}>✓</span>}<div style={{position:"absolute",left:n.r+(_hx)*(n.r+13)+_lxo,top:n.r+(Math.cos(n.ang))*(n.r+13)+_lyo,transform:`translate(${_hx>0.34?"0%":(_hx<-0.34?"-100%":"-50%")},-50%)`,color:_co?"#88ff99":n.pd.col,fontSize:_mf(13),fontWeight:"bold",fontFamily:"monospace",whiteSpace:"nowrap",textShadow:"0 0 6px #000,0 0 4px #000",pointerEvents:"none"}}>{n.pd.name}</div>
      </div>;})}
     <div onClick={()=>{if(!_pathMovedRef.current)_setPathSel({core:true});}} style={{position:"absolute",left:CX-50,top:CY-50,width:100,height:100,borderRadius:"50%",border:`1px solid ${meta.pathsCore?"#66ff8855":((meta.packages||0)>=20?"#ffcc7799":"#cc995544")}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
      <div style={{width:80,height:80,borderRadius:"50%",border:`3px solid ${meta.pathsCore?"#66ff88":"#cc9955"}`,background:meta.pathsCore?"#08200e":"#1a1206",boxShadow:`0 0 18px ${meta.pathsCore?"#66ff8866":"#cc995566"}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-      <span style={{color:meta.pathsCore?"#88ff99":"#ffcc77",fontSize:30,fontFamily:"monospace",fontWeight:"bold"}}>▣</span>
-      <span style={{color:meta.pathsCore?"#88dd99":"#ccaa66",fontSize:9,fontFamily:"monospace",letterSpacing:2}}>CORE</span>{meta.pathsCore&&<span style={{position:"absolute",top:6,right:6,width:24,height:24,borderRadius:"50%",background:"#44dd66",color:"#06180a",fontSize:14,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 10px #44dd66",border:"2px solid #08180c",zIndex:2}}>✓</span>}
+      <span style={{color:meta.pathsCore?"#88ff99":"#ffcc77",fontSize:_mf(30),fontFamily:"monospace",fontWeight:"bold"}}>▣</span>
+      <span style={{color:meta.pathsCore?"#88dd99":"#ccaa66",fontSize:_mf(9),fontFamily:"monospace",letterSpacing:2}}>CORE</span>{meta.pathsCore&&<span style={{position:"absolute",top:6,right:6,width:24,height:24,borderRadius:"50%",background:"#44dd66",color:"#06180a",fontSize:_mf(14),fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 10px #44dd66",border:"2px solid #08180c",zIndex:2}}>✓</span>}
      </div>
     </div>
    </div>
-   <div style={{position:"absolute",top:8,left:"50%",transform:"translateX(-50%)",maxWidth:"calc(100% - 130px)",textAlign:"center",color:"#aab7c7",fontSize:10,lineHeight:1.4,pointerEvents:"none",background:"rgba(8,8,17,0.78)",padding:"6px 12px",borderRadius:7,border:"1px solid #21213a"}}>Path upgrades are permanent boosts bought with packages (▣) earned across your runs. Each branch strengthens a different mode or system, and its effect lasts forever once unlocked.</div>
+   <button onClick={()=>_setPathsInfo(true)} style={{position:"absolute",top:10,left:10,width:_mv(28,40),height:_mv(28,40),borderRadius:"50%",..._gpDim("#cc9955",20),color:"#cc9955",fontSize:_mv(13,18),fontStyle:"italic",fontWeight:"bold",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",zIndex:3}}>i</button>
+   {_pathsInfo&&<div onClick={()=>_setPathsInfo(false)} style={{position:"absolute",inset:0,background:"rgba(2,2,10,0.78)",zIndex:9,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div onClick={e=>e.stopPropagation()} style={{..._gp("#cc9955",18),padding:"20px 18px",maxWidth:380,width:"100%"}}><div style={{color:"#fff",fontSize:_mv(14,16),fontWeight:"bold",letterSpacing:2,marginBottom:10}}>PATH UPGRADES</div><div style={{color:"#fff4e6",fontSize:_mv(11,13),lineHeight:1.55}}>Permanent boosts bought with packages (▣) earned across your runs. Each branch strengthens a different mode or system, and its effect lasts forever once unlocked. Pan and pinch/scroll to explore the tree; tap a node for details.</div><button onClick={()=>_setPathsInfo(false)} style={{..._gBtn("#cc9955",false),marginTop:14,width:"100%",padding:"12px"}}>GOT IT</button></div></div>}
    <div style={{position:"absolute",right:10,top:24,display:"flex",flexDirection:"column",gap:6}}>
     <button onClick={()=>{const _nz=Math.min(2.4,pathsZoom+0.2);setPathsZoom(_nz);setPathsPan(p=>_clpPan(p,_nz));}} style={_zb}>+</button>
-    <button onClick={()=>{const _nz=Math.max(0.35,pathsZoom-0.2);setPathsZoom(_nz);setPathsPan(p=>_clpPan(p,_nz));}} style={{..._zb,fontSize:18}}>−</button>
-    <button onClick={()=>{setPathsPan({x:0,y:0});setPathsZoom(0.7);}} style={{..._zb,fontSize:13}}>⤢</button>
+    <button onClick={()=>{const _nz=Math.max(0.35,pathsZoom-0.2);setPathsZoom(_nz);setPathsPan(p=>_clpPan(p,_nz));}} style={{..._zb,fontSize:_mf(18)}}>−</button>
+    <button onClick={()=>{setPathsPan({x:0,y:0});setPathsZoom(0.7);}} style={{..._zb,fontSize:_mf(13)}}>⤢</button>
    </div>
-   {_pathSel&&(()=>{if(_pathSel.core){const _owned=!!meta.pathsCore;const _canBuy=!_owned&&(meta.packages||0)>=20;return <div style={{position:"absolute",left:10,right:10,bottom:10,background:"#0c0c1a",border:"1px solid #cc995566",borderRadius:6,padding:"12px 14px",zIndex:4,boxShadow:"0 0 22px #cc995522",animation:"popupBgEnter 150ms ease-out both"}}>
+   {_pathSel&&(()=>{if(_pathSel.core){const _owned=!!meta.pathsCore;const _canBuy=!_owned&&(meta.packages||0)>=20;return <div style={_mob?{position:"absolute",left:10,right:10,bottom:10,..._gpBuy("#cc9955",18),padding:"14px 14px",zIndex:4,animation:"popupBgEnter 150ms ease-out both"}:{position:"absolute",left:10,right:10,bottom:10,background:"#0c0c1a",border:"1px solid #cc995566",borderRadius:6,padding:"12px 14px",zIndex:4,boxShadow:"0 0 22px #cc995522",animation:"popupBgEnter 150ms ease-out both"}}>
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-     <div style={{width:30,height:30,borderRadius:"50%",border:"2px solid #cc9955",display:"flex",alignItems:"center",justifyContent:"center",color:"#ffcc77",fontSize:15,flexShrink:0}}>▣</div>
-     <div style={{flex:1,minWidth:0}}><div style={{color:"#cc9955",fontSize:12,fontWeight:"bold",letterSpacing:1}}>TRAIN CORE</div><div style={{color:"#667788",fontSize:8}}>Root upgrade · unlocks the tree</div></div>
-     <div onClick={()=>_setPathSel(null)} style={{color:"#778899",fontSize:16,cursor:"pointer",padding:"0 4px",lineHeight:1}}>×</div>
+     <div style={{width:30,height:30,borderRadius:"50%",border:"2px solid #cc9955",display:"flex",alignItems:"center",justifyContent:"center",color:"#ffcc77",fontSize:_mf(15),flexShrink:0}}>▣</div>
+     <div style={{flex:1,minWidth:0}}><div style={{color:"#cc9955",fontSize:_mf(12),fontWeight:"bold",letterSpacing:1}}>TRAIN CORE</div><div style={{color:"#667788",fontSize:_mf(8)}}>Root upgrade · unlocks the tree</div></div>
+     <div onClick={()=>_setPathSel(null)} style={{color:"#778899",fontSize:_mf(16),cursor:"pointer",padding:"0 4px",lineHeight:1}}>×</div>
     </div>
-    <div style={{color:"#bbccdd",fontSize:9,lineHeight:1.5,marginBottom:8}}>Multiply the train's speed by 2.5x. Must be purchased before any other path upgrade can be unlocked.</div>
+    <div style={{color:"#bbccdd",fontSize:_mf(9),lineHeight:1.5,marginBottom:8}}>Multiply the train's speed by 2.5x. Must be purchased before any other path upgrade can be unlocked.</div>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-     <div style={{color:"#ccaa66",fontSize:11,fontWeight:"bold"}}><span style={{color:"#cc9955"}}>▣</span> 20</div>
-     <button onClick={()=>{if(_canBuy)setMeta(prev=>{const nx={...prev,packages:(prev.packages||0)-20,pathsCore:true};saveMeta(nx);return nx;});}} disabled={!_canBuy} style={{padding:"6px 18px",background:_owned?"#0c1a0c":_canBuy?"#1a1206":"#0a0a14",border:`1px solid ${_owned?"#66ff8866":_canBuy?"#cc9955":"#33445544"}`,borderRadius:4,color:_owned?"#88ff99":_canBuy?"#ffcc77":"#556677",fontFamily:"inherit",fontSize:9,letterSpacing:1,cursor:_canBuy?"pointer":"default"}}>{_owned?"✓ OWNED":_canBuy?"UNLOCK":"NEED 20 ▣"}</button>
+     <div style={{color:"#ccaa66",fontSize:_mf(11),fontWeight:"bold"}}><span style={{color:"#cc9955"}}>▣</span> 20</div>
+     <button onClick={()=>{if(_canBuy)setMeta(prev=>{const nx={...prev,packages:(prev.packages||0)-20,pathsCore:true};saveMeta(nx);return nx;});}} disabled={!_canBuy} style={{padding:"6px 18px",background:_owned?"#0c1a0c":_canBuy?"#1a1206":"#0a0a14",border:`1px solid ${_owned?"#66ff8866":_canBuy?"#cc9955":"#33445544"}`,borderRadius:4,color:_owned?"#88ff99":_canBuy?"#ffcc77":"#556677",fontFamily:"inherit",fontSize:_mf(9),letterSpacing:1,cursor:_canBuy?"pointer":"default"}}>{_owned?"✓ OWNED":_canBuy?"UNLOCK":"NEED 20 ▣"}</button>
     </div>
    </div>;}
-   if(_pathSel.catId){const pd=PATH_DEFS.find(p=>p.id===_pathSel.catId);if(!pd)return null;const _co=!!(meta.pathsCat&&meta.pathsCat[pd.id]);const _nc=!meta.pathsCore;const _feat=!!_featOK[pd.id];const _cb=!_co&&!_nc&&_feat&&(meta.packages||0)>=50;return <div style={{position:"absolute",left:10,right:10,bottom:10,background:"#0c0c1a",border:`1px solid ${pd.col}66`,borderRadius:6,padding:"12px 14px",zIndex:4,boxShadow:`0 0 22px ${pd.col}22`,animation:"popupBgEnter 150ms ease-out both"}}>
+   if(_pathSel.catId){const pd=PATH_DEFS.find(p=>p.id===_pathSel.catId);if(!pd)return null;const _co=!!(meta.pathsCat&&meta.pathsCat[pd.id]);const _nc=!meta.pathsCore;const _feat=!!_featOK[pd.id];const _cb=!_co&&!_nc&&_feat&&(meta.packages||0)>=50;return <div style={_mob?{position:"absolute",left:10,right:10,bottom:10,..._gpBuy(pd.col,18),padding:"14px 14px",zIndex:4,animation:"popupBgEnter 150ms ease-out both"}:{position:"absolute",left:10,right:10,bottom:10,background:"#0c0c1a",border:`1px solid ${pd.col}66`,borderRadius:6,padding:"12px 14px",zIndex:4,boxShadow:`0 0 22px ${pd.col}22`,animation:"popupBgEnter 150ms ease-out both"}}>
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
      <canvas width={132} height={132} style={{width:30,height:30,flexShrink:0}} ref={el=>{if(el){const cx=el.getContext("2d");if(cx){cx.setTransform(3,0,0,3,0,0);cx.clearRect(0,0,44,44);drawPathIcon(cx,pd.id,22,22,18,pd.col);}}}} />
-     <div style={{flex:1,minWidth:0}}><div style={{color:pd.col,fontSize:12,fontWeight:"bold",letterSpacing:1}}>{pd.name} PATH</div><div style={{color:"#667788",fontSize:8}}>Category entry · 50 ▣</div></div>
-     <div onClick={()=>_setPathSel(null)} style={{color:"#778899",fontSize:16,cursor:"pointer",padding:"0 4px",lineHeight:1}}>×</div>
+     <div style={{flex:1,minWidth:0}}><div style={{color:pd.col,fontSize:_mf(12),fontWeight:"bold",letterSpacing:1}}>{pd.name} PATH</div><div style={{color:"#667788",fontSize:_mf(8)}}>Category entry · 50 ▣</div></div>
+     <div onClick={()=>_setPathSel(null)} style={{color:"#778899",fontSize:_mf(16),cursor:"pointer",padding:"0 4px",lineHeight:1}}>×</div>
     </div>
-    <div style={{color:"#bbccdd",fontSize:9,lineHeight:1.5,marginBottom:8}}>{_co?("The "+pd.name+" path is unlocked — its upgrades are now available."):(_nc?"Unlock the Core before any path can be opened.":(!_feat?_FEATREQ[pd.id]:("Unlock the "+pd.name+" path for 50 ▣. This opens access to the category's upgrades — it has no effect on its own.")))}</div>
+    <div style={{color:"#bbccdd",fontSize:_mf(9),lineHeight:1.5,marginBottom:8}}>{_co?("The "+pd.name+" path is unlocked — its upgrades are now available."):(_nc?"Unlock the Core before any path can be opened.":(!_feat?_FEATREQ[pd.id]:("Unlock the "+pd.name+" path for 50 ▣. This opens access to the category's upgrades — it has no effect on its own.")))}</div>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-     <div style={{color:"#ccaa66",fontSize:11,fontWeight:"bold"}}><span style={{color:"#cc9955"}}>▣</span> 50</div>
-     <button onClick={()=>{if(_cb)setMeta(prev=>{const nx={...prev,packages:(prev.packages||0)-50,pathsCat:{...(prev.pathsCat||{}),[pd.id]:true}};saveMeta(nx);return nx;});}} disabled={!_cb} style={{padding:"6px 18px",background:_co?"#0c1a0c":_cb?"#1a1206":"#0a0a14",border:`1px solid ${_co?"#66ff8866":_cb?pd.col:"#33445544"}`,borderRadius:4,color:_co?"#88ff99":_cb?pd.col:"#556677",fontFamily:"inherit",fontSize:9,letterSpacing:1,cursor:_cb?"pointer":"default"}}>{_co?"✓ OWNED":_nc?"🔒 NEEDS CORE":!_feat?"🔒 LOCKED":_cb?"UNLOCK":"NEED 50 ▣"}</button>
+     <div style={{color:"#ccaa66",fontSize:_mf(11),fontWeight:"bold"}}><span style={{color:"#cc9955"}}>▣</span> 50</div>
+     <button onClick={()=>{if(_cb)setMeta(prev=>{const nx={...prev,packages:(prev.packages||0)-50,pathsCat:{...(prev.pathsCat||{}),[pd.id]:true}};saveMeta(nx);return nx;});}} disabled={!_cb} style={{padding:"6px 18px",background:_co?"#0c1a0c":_cb?"#1a1206":"#0a0a14",border:`1px solid ${_co?"#66ff8866":_cb?pd.col:"#33445544"}`,borderRadius:4,color:_co?"#88ff99":_cb?pd.col:"#556677",fontFamily:"inherit",fontSize:_mf(9),letterSpacing:1,cursor:_cb?"pointer":"default"}}>{_co?"✓ OWNED":_nc?"🔒 NEEDS CORE":!_feat?"🔒 LOCKED":_cb?"UNLOCK":"NEED 50 ▣"}</button>
     </div>
    </div>;}
-   const _u=(PATH_UPG[_pathSel.cat]||[]).find(u=>u.id===_pathSel.upId);if(!_u)return null;const pd=PATH_DEFS.find(p=>p.id===_pathSel.cat);if(!pd)return null;const _catOwned=!!(meta.pathsCat&&meta.pathsCat[pd.id]);const _owned=!!(meta.pathsUpg&&meta.pathsUpg[_u.id]);const _po=_u.parent?!!(meta.pathsUpg&&meta.pathsUpg[_u.parent]):_catOwned;const _pName=_u.parent?(((PATH_UPG[_pathSel.cat]||[]).find(x=>x.id===_u.parent)||{}).name||"PREVIOUS"):(pd.name+" CATEGORY");const _cb=!_owned&&_catOwned&&_po&&(meta.packages||0)>=_u.cost;return <div style={{position:"absolute",left:10,right:10,bottom:10,background:"#0c0c1a",border:`1px solid ${pd.col}66`,borderRadius:6,padding:"12px 14px",zIndex:4,boxShadow:`0 0 22px ${pd.col}22`,animation:"popupBgEnter 150ms ease-out both"}}>
+   const _u=(PATH_UPG[_pathSel.cat]||[]).find(u=>u.id===_pathSel.upId);if(!_u)return null;const pd=PATH_DEFS.find(p=>p.id===_pathSel.cat);if(!pd)return null;const _catOwned=!!(meta.pathsCat&&meta.pathsCat[pd.id]);const _owned=!!(meta.pathsUpg&&meta.pathsUpg[_u.id]);const _po=_u.parent?!!(meta.pathsUpg&&meta.pathsUpg[_u.parent]):_catOwned;const _pName=_u.parent?(((PATH_UPG[_pathSel.cat]||[]).find(x=>x.id===_u.parent)||{}).name||"PREVIOUS"):(pd.name+" CATEGORY");const _cb=!_owned&&_catOwned&&_po&&(meta.packages||0)>=_u.cost;return <div style={_mob?{position:"absolute",left:10,right:10,bottom:10,..._gpBuy(pd.col,18),padding:"14px 14px",zIndex:4,animation:"popupBgEnter 150ms ease-out both"}:{position:"absolute",left:10,right:10,bottom:10,background:"#0c0c1a",border:`1px solid ${pd.col}66`,borderRadius:6,padding:"12px 14px",zIndex:4,boxShadow:`0 0 22px ${pd.col}22`,animation:"popupBgEnter 150ms ease-out both"}}>
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
      <div style={{width:30,height:30,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{_u.enemy?<EnemyIcon type={_u.enemy} size={28} color={pd.col} cardMode/>:<canvas width={48} height={48} style={{width:28,height:28,display:"block"}} ref={el=>{if(el){const _x=el.getContext("2d");if(_x)drawUpgIcon(_x,_u.id,48,pd.col);}}} />}</div>
-     <div style={{flex:1,minWidth:0}}><div style={{color:pd.col,fontSize:12,fontWeight:"bold",letterSpacing:1}}>{_u.name}</div><div style={{color:"#667788",fontSize:8}}>{pd.name} path upgrade</div></div>
-     <div onClick={()=>_setPathSel(null)} style={{color:"#778899",fontSize:16,cursor:"pointer",padding:"0 4px",lineHeight:1}}>×</div>
+     <div style={{flex:1,minWidth:0}}><div style={{color:pd.col,fontSize:_mf(12),fontWeight:"bold",letterSpacing:1}}>{_u.name}</div><div style={{color:"#667788",fontSize:_mf(8)}}>{pd.name} path upgrade</div></div>
+     <div onClick={()=>_setPathSel(null)} style={{color:"#778899",fontSize:_mf(16),cursor:"pointer",padding:"0 4px",lineHeight:1}}>×</div>
     </div>
-    <div style={{color:"#bbccdd",fontSize:12,lineHeight:1.45,marginBottom:8}}>{_u.desc}</div>
+    <div style={{color:"#bbccdd",fontSize:_mf(12),lineHeight:1.45,marginBottom:8}}>{_u.desc}</div>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-     <div style={{color:"#ccaa66",fontSize:11,fontWeight:"bold"}}><span style={{color:"#cc9955"}}>▣</span> {_u.cost.toLocaleString()}</div>
-     <button onClick={()=>{if(_cb)setMeta(prev=>{const nx={...prev,packages:(prev.packages||0)-_u.cost,pathsUpg:{...(prev.pathsUpg||{}),[_u.id]:true},...(_u.id==="dl_s3"?{_dealerSlots:3}:_u.id==="dl_s2"?{_dealerSlots:Math.max(2,prev._dealerSlots||1)}:{})};saveMeta(nx);return nx;});}} disabled={!_cb} style={{padding:"6px 18px",background:_owned?"#0c1a0c":_cb?"#1a1206":"#0a0a14",border:`1px solid ${_owned?"#66ff8866":_cb?pd.col:"#33445544"}`,borderRadius:4,color:_owned?"#88ff99":_cb?pd.col:"#556677",fontFamily:"inherit",fontSize:9,letterSpacing:1,cursor:_cb?"pointer":"default"}}>{_owned?"✓ OWNED":!_catOwned?"🔒 NEEDS CATEGORY":!_po?("🔒 NEEDS "+_pName.toUpperCase()):_cb?"UNLOCK":("NEED "+_u.cost+" ▣")}</button>
+     <div style={{color:"#ccaa66",fontSize:_mf(11),fontWeight:"bold"}}><span style={{color:"#cc9955"}}>▣</span> {_u.cost.toLocaleString()}</div>
+     <button onClick={()=>{if(_cb)setMeta(prev=>{const nx={...prev,packages:(prev.packages||0)-_u.cost,pathsUpg:{...(prev.pathsUpg||{}),[_u.id]:true},...(_u.id==="dl_s3"?{_dealerSlots:3}:_u.id==="dl_s2"?{_dealerSlots:Math.max(2,prev._dealerSlots||1)}:{})};saveMeta(nx);return nx;});}} disabled={!_cb} style={{padding:"6px 18px",background:_owned?"#0c1a0c":_cb?"#1a1206":"#0a0a14",border:`1px solid ${_owned?"#66ff8866":_cb?pd.col:"#33445544"}`,borderRadius:4,color:_owned?"#88ff99":_cb?pd.col:"#556677",fontFamily:"inherit",fontSize:_mf(9),letterSpacing:1,cursor:_cb?"pointer":"default"}}>{_owned?"✓ OWNED":!_catOwned?"🔒 NEEDS CATEGORY":!_po?("🔒 NEEDS "+_pName.toUpperCase()):_cb?"UNLOCK":("NEED "+_u.cost+" ▣")}</button>
     </div>
    </div>;})()}
   </div>
  </div>;
 })()}
-{phase==="leaderboard"&&(
+{phase==="leaderboard"&&_mob&&(()=>{const _sorted=(()=>{if(!_online)return [];let _lb=[...leaderboardData];return _lb.sort((a,b)=>lbSort==="echoes"?(b.echoes-a.echoes):(b.wave-a.wave));})();const _top=_sorted.slice(0,3);const _rest=_sorted.slice(3,13);const _val=p=>lbSort==="echoes"?"⬢ "+p.echoes.toLocaleString():"W"+p.wave;const _acc=lbSort==="echoes"?"#bb77ff":"#44ccaa";const _title=!_online?"NO CONNECTION":_isCheater(meta)?"ACCOUNT BANNED":"LEADERBOARD";const _tc=!_online?"#cc9955":_isCheater(meta)?"#ff5566":"#ffcc44";
+ return _gShell(<>
+ {_gHead(_title,_tc,()=>goTo("menu"))}
+ <div style={{display:"flex",gap:6,flexShrink:0}}>{[["echoes","ECHOES","#bb77ff"],["wave","WAVES","#44ccaa"]].map(([k,l,c])=><button key={k} onClick={()=>setLbSort(k)} style={{flex:1,padding:"11px",...(lbSort===k?_gp(c,12):_gpDim(c,12)),color:"#fff",fontSize:12,fontWeight:"bold",letterSpacing:1.5,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>)}</div>
+ {_sorted.length===0?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#8899aa",fontSize:12,textAlign:"center",padding:20}}>{_online?"No players found.":"No connection — leaderboard unavailable."}</div>:<>
+ <div style={{display:"flex",gap:7,alignItems:"flex-end",flexShrink:0,height:132}}>{[1,0,2].map(pi=>{const p=_top[pi];if(!p)return <div key={pi} style={{flex:1}}/>;const _c=pi===0?"#ffcc44":pi===1?"#c8d0e8":"#cc8844";const _h=pi===0?132:pi===1?112:100;return <div key={pi} style={{flex:1,height:_h,..._gp(_c,14),padding:"10px 8px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",gap:3,textAlign:"center",boxSizing:"border-box"}}><div style={{color:"#fff",fontSize:pi===0?22:16,fontWeight:"bold",lineHeight:1}}>{pi+1}</div><div style={{color:"#fff",fontSize:pi===0?13:11.5,fontWeight:"bold",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{p.username}</div><div style={{color:"#fff",fontSize:pi===0?13:11,fontFamily:"'DejaVu Sans Mono','Courier New',monospace",opacity:0.95}}>{_val(p)}</div></div>;})}</div>
+ <div className="vs-scroll" style={{flex:1,minHeight:0,display:"flex",flexDirection:"column",gap:5,overflow:"auto"}}>{_sorted.slice(3).map((p,i)=><div key={i} style={{...(p._self?_gp(_acc,10):_gpDim("#8899aa",10)),padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,minWidth:0,flexShrink:0}}><span style={{color:p._self?"#fff":"#dde",fontSize:12.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><span style={{color:p._self?"#fff":"#778899",marginRight:8,fontFamily:"'DejaVu Sans Mono','Courier New',monospace"}}>{i+4}.</span>{p.username}</span><span style={{color:p._self?"#fff":_acc,fontSize:12,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono','Courier New',monospace",flexShrink:0}}>{_val(p)}</span></div>)}</div>
+ </>}
+</>);})()}
+{phase==="leaderboard"&&!_mob&&(
  <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:10,overflow:"hidden",animation:"none"}} className={_phaseClass("leaderboard")}>
  <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 16px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}>
- <h2 style={{color:!_online?"#cc9955":_isCheater(meta)?"#ff5566":"#ccddee",fontSize:17,letterSpacing:3,margin:0}}>{!_online?"LEADERBOARD - NO CONNECTION":_isCheater(meta)?"LEADERBOARD - ACCOUNT BANNED":"LEADERBOARD"}</h2>
+ <h2 style={{color:!_online?"#cc9955":_isCheater(meta)?"#ff5566":"#ccddee",fontSize:_mf(17),letterSpacing:3,margin:0}}>{!_online?"LEADERBOARD - NO CONNECTION":_isCheater(meta)?"LEADERBOARD - ACCOUNT BANNED":"LEADERBOARD"}</h2>
  <div style={{display:"flex",gap:6,marginTop:12,marginBottom:12}}>
- <button onClick={()=>setLbSort("echoes")} style={{padding:"5px 16px",background:lbSort==="echoes"?"#bb77ff22":"transparent",border:"1px solid "+(lbSort==="echoes"?"#bb77ff66":"#33445544"),borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:10,color:lbSort==="echoes"?"#bb99ff":"#667788",letterSpacing:1}}>ECHOES</button>
- <button onClick={()=>setLbSort("wave")} style={{padding:"5px 16px",background:lbSort==="wave"?"#44ccaa22":"transparent",border:"1px solid "+(lbSort==="wave"?"#44ccaa66":"#33445544"),borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:10,color:lbSort==="wave"?"#88ccaa":"#667788",letterSpacing:1}}>WAVES</button>
+ <button onClick={()=>setLbSort("echoes")} style={{padding:"5px 16px",background:lbSort==="echoes"?"#bb77ff22":"transparent",border:"1px solid "+(lbSort==="echoes"?"#bb77ff66":"#33445544"),borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),color:lbSort==="echoes"?"#bb99ff":"#667788",letterSpacing:1}}>ECHOES</button>
+ <button onClick={()=>setLbSort("wave")} style={{padding:"5px 16px",background:lbSort==="wave"?"#44ccaa22":"transparent",border:"1px solid "+(lbSort==="wave"?"#44ccaa66":"#33445544"),borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),color:lbSort==="wave"?"#88ccaa":"#667788",letterSpacing:1}}>WAVES</button>
  </div>
  <div style={{width:"100%",maxWidth:380}}>
  {(()=>{if(!_online)return [];let _lb=[...leaderboardData];return _lb.sort((a,b)=>lbSort==="echoes"?(b.echoes-a.echoes):(b.wave-a.wave));})().map((p,i)=><div key={i} onClick={()=>{return;const _n=Date.now();const _dbl=(_n-_lbTapRef.current.t<400&&_lbTapRef.current.i===i);_lbTapRef.current={t:_n,i};if(!_dbl)return;if(p._self){_setAdmHist(null);_setAdmHistName(null);setHistoryMode("waves");goTo("history");}else if(p.code&&_SYNC_OK){fetch(SUPABASE_URL+"/rest/v1/saves?code=eq."+p.code+"&select=data",{headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY}}).then(r=>r.json()).then(rows=>{const _h=(rows[0]&&rows[0].data&&rows[0].data.history)||[];_setAdmHist(_h);_setAdmHistName(p.username||"Unknown Pilot");setHistoryMode("waves");goTo("history");}).catch(()=>{});}}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",background:i===0?"#1a1408":i%2===0?"#0a0a14":"transparent",borderRadius:3,marginBottom:1,border:i===0?"1px solid #ffcc4422":"1px solid transparent"}}>
- <span style={{color:i===0?"#ffcc44":i===1?"#ccddee":i===2?"#cc8844":"#99aabb",fontSize:10}}><span style={{color:"#556677",fontSize:9,marginRight:6,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{String(i+1).padStart(2," ")}.</span>{p.username}</span>
- <span style={{color:lbSort==="echoes"?"#bb77ff":"#44ccaa",fontSize:10,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{lbSort==="echoes"?"⬢ "+p.echoes.toLocaleString():"Wave "+p.wave}</span>
+ <span style={{color:i===0?"#ffcc44":i===1?"#ccddee":i===2?"#cc8844":"#99aabb",fontSize:_mf(10)}}><span style={{color:"#556677",fontSize:_mf(9),marginRight:6,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{String(i+1).padStart(2," ")}.</span>{p.username}</span>
+ <span style={{color:lbSort==="echoes"?"#bb77ff":"#44ccaa",fontSize:_mf(10),fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{lbSort==="echoes"?"⬢ "+p.echoes.toLocaleString():"Wave "+p.wave}</span>
  </div>)}
- {(leaderboardData.length===0||!_online)&&<div style={{color:"#556677",fontSize:10,textAlign:"center",padding:20}}>{_online?"No players found.":"No connection — leaderboard unavailable."}</div>}
+ {(leaderboardData.length===0||!_online)&&<div style={{color:"#556677",fontSize:_mf(10),textAlign:"center",padding:20}}>{_online?"No players found.":"No connection — leaderboard unavailable."}</div>}
  </div>
  </div>
  <div style={{padding:10,borderTop:"1px solid #1a1a2e",display:"flex",justifyContent:"center"}}>
- <button onClick={()=>goTo("menu")} style={{padding:"8px 24px",background:"#0a0a16",border:"1px solid #55667744",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:11,color:"#8899aa"}}>← BACK</button>
+ <button onClick={()=>goTo("menu")} style={{padding:"8px 24px",background:"#0a0a16",border:"1px solid #55667744",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(11),color:"#8899aa"}}>← BACK</button>
  </div>
  </div>
  )}
- {phase==="phantom_info"&&(
+ {phase==="phantom_info"&&_mob&&_gShell(<>
+ {_gHead("PHANTOM","#cc66cc",()=>goTo("menu"))}
+ <div style={{flex:1,minHeight:0,padding:"10px 12px",display:"flex",flexDirection:"column",justifyContent:"center",gap:16}}>
+  <div style={{color:"#fff",fontSize:22,fontWeight:"bold",letterSpacing:1,textAlign:"center",textShadow:"0 0 14px #cc66cc88"}}>Your ship cannot fire.</div>
+  {[["Your main gun is disabled — all damage comes from your abilities.","#fff"],["First ability: pick Echo Clone, Combat Drone or Seeker Swarm.","#f0e0ff"],["New abilities arrive every 2 waves instead of 3.","#ffe9a8"],["Enemies drop no currency.","#ffb8b8"],["The wave upgrade shop is skipped entirely.","#ffb8b8"],["Phantom runs earn no echoes.","#ffb8b8"]].map(([d,c],i)=><div key={i} style={{display:"flex",gap:10,alignItems:"flex-start"}}><span style={{color:c,fontSize:14,lineHeight:1.45,flexShrink:0}}>▸</span><span style={{color:c,fontSize:14.5,lineHeight:1.45}}>{d}</span></div>)}
+ </div>
+ <button onClick={()=>initNewMode()} style={{..._gBtn("#cc66cc",true),flexShrink:0,padding:"24px 16px",fontSize:19}}>PLAY PHANTOM MODE</button>
+</>)}
+{phase==="phantom_info"&&!_mob&&(
  <div className={_phaseClass("phantom_info")} style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:10,overflow:"hidden"}}>
  <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 12px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}>
- <h2 style={{color:"#cc66cc",fontSize:18,letterSpacing:3,margin:0,zIndex:1,position:"relative"}}>PHANTOM</h2>
- <div style={{color:"#ddeeff",fontSize:10,marginTop:12,textAlign:"center",lineHeight:1.8,maxWidth:400,zIndex:1,position:"relative"}}>
- <div style={{color:"#cc66cc",fontSize:12,fontWeight:"bold",marginBottom:8}}>Your ship cannot fire.</div>
+ <h2 style={{color:"#cc66cc",fontSize:_mf(18),letterSpacing:3,margin:0,zIndex:1,position:"relative"}}>PHANTOM</h2>
+ <div style={{color:"#ddeeff",fontSize:_mf(10),marginTop:12,textAlign:"center",lineHeight:1.8,maxWidth:400,zIndex:1,position:"relative"}}>
+ <div style={{color:"#cc66cc",fontSize:_mf(12),fontWeight:"bold",marginBottom:8}}>Your ship cannot fire.</div>
  Your main gun is disabled. You must rely entirely on your abilities to deal damage.<br/><br/>
  <b style={{color:"#ccddee"}}>First ability</b> — choose from Echo Clone, Combat Drone, or Seeker Swarm.<br/>
  <b style={{color:"#ccddee"}}>Subsequent abilities</b> — random selection every <b style={{color:"#ffcc44"}}>2 waves</b> (instead of 3).<br/><br/>
@@ -2873,102 +3178,115 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  )}
  {phase==="ability"&&(
  <div className="vs-fade" style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"rgba(6,6,14,0.92)",zIndex:10}}>
- {gsRef.current?._sprintJustEnded&&<div style={{color:"#44ccaa",fontSize:22,fontWeight:"bold",letterSpacing:5,marginBottom:8,textShadow:"0 0 12px #44ccaa44"}}>INTRO SPRINT OVER</div>}
- <h2 style={{color:"#ffcc44",fontSize:18,letterSpacing:4,margin:0}}>CHOOSE AN ABILITY</h2>
- <p style={{color:"#778899",fontSize:10,marginTop:5,marginBottom:14}}>Permanent for this run</p>
+ {gsRef.current?._sprintJustEnded&&<div style={{color:"#44ccaa",fontSize:_mf(22),fontWeight:"bold",letterSpacing:5,marginBottom:8,textShadow:"0 0 12px #44ccaa44"}}>INTRO SPRINT OVER</div>}
+ <h2 style={{color:"#ffcc44",fontSize:_mf(18),letterSpacing:4,margin:0}}>CHOOSE AN ABILITY</h2>
+ <p style={{color:"#778899",fontSize:_mf(10),marginTop:5,marginBottom:14}}>Permanent for this run</p>
  <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center",maxWidth:600,padding:"0 10px"}}>
  {abChoices.map(ab=>(
- <button key={ab.id} onClick={()=>pickAb(ab.id)} style={{width:148,padding:"12px 8px",background:"#0c0c1a",border:"2px solid #ffcc4433",borderRadius:5,cursor:"pointer",textAlign:"center",fontFamily:"inherit",transition:"all 0.2s",position:"relative"}}
- onMouseOver={e=>e.currentTarget.style.borderColor="#ffcc44"} onMouseOut={e=>e.currentTarget.style.borderColor="#ffcc4433"}>
- {(()=>{const _au=meta.abUpgrades||{};const _s1=!!_au[ab.id+"_sub1"];const _s2=!!_au[ab.id+"_sub2"];const _m=!!_au[ab.id+"_mastery"];if(!_s1&&!_s2&&!_m)return null;return <div style={{position:"absolute",top:3,right:3,display:"flex",gap:2}}>{_s1&&<div style={{width:11,height:11,borderRadius:2,background:"#44ddcc22",border:"1px solid #44ddcc66",display:"flex",alignItems:"center",justifyContent:"center",fontSize:7,color:"#44ddcc",fontWeight:"bold",lineHeight:1}}>1</div>}{_s2&&<div style={{width:11,height:11,borderRadius:2,background:"#44ddcc22",border:"1px solid #44ddcc66",display:"flex",alignItems:"center",justifyContent:"center",fontSize:7,color:"#44ddcc",fontWeight:"bold",lineHeight:1}}>2</div>}{_m&&<div style={{width:11,height:11,borderRadius:2,background:"#ffcc4422",border:"1px solid #ffcc4466",display:"flex",alignItems:"center",justifyContent:"center",fontSize:7,color:"#ffcc44",fontWeight:"bold",lineHeight:1}}>★</div>}</div>;})()}
- <div style={{display:"flex",justifyContent:"center",marginBottom:4}}><AbilityIcon id={ab.id} size={28} color="#ffcc44" /></div>
- <div style={{color:"#ffcc44",fontSize:11,fontWeight:"bold",marginBottom:3}}>{ab.name}</div>
- <div style={{color:"#99aabb",fontSize:8,lineHeight:1.3}}>{ab.desc}</div>
+ <button key={ab.id} onClick={()=>pickAb(ab.id)} style={_mob?{width:"92%",maxWidth:430,height:132,boxSizing:"border-box",padding:"14px 16px",..._gp("#6a86b8",16),cursor:"pointer",textAlign:"center",fontFamily:"inherit",position:"relative",display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}:{width:148,padding:"12px 8px",background:"#0c0c1a",border:"2px solid #ffcc4433",borderRadius:5,cursor:"pointer",textAlign:"center",fontFamily:"inherit",transition:"all 0.2s",position:"relative"}}
+ onMouseOver={e=>{if(!_mob)e.currentTarget.style.borderColor="#ffcc44";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor="#ffcc4433";}}>
+ {(()=>{const _au=meta.abUpgrades||{};const _s1=!!_au[ab.id+"_sub1"];const _s2=!!_au[ab.id+"_sub2"];const _m=!!_au[ab.id+"_mastery"];if(!_s1&&!_s2&&!_m)return null;return <div style={{position:"absolute",top:_mv(3,8),right:_mv(3,8),display:"flex",gap:_mv(2,5)}}>{[[_s1,"1","#44ddcc"],[_s2,"2","#44ddcc"],[_m,"★","#ffcc44"]].map(([on,l,c],ii)=><div key={ii} style={{width:_mv(11,22),height:_mv(11,22),borderRadius:_mv(2,5),background:c+"22",border:`1px solid ${c}66`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:_mv(_mf(7),12),color:c,fontWeight:"bold",lineHeight:1,visibility:(on||_mob)?"visible":"hidden",opacity:on?1:0.25}}>{l}</div>)}</div>;})()}
+ <div style={{display:"flex",justifyContent:"center",marginBottom:4}}><AbilityIcon id={ab.id} size={_mv(28,40)} color={_mv("#ffcc44","#fff")} /></div>
+ <div style={{color:_mv("#ffcc44","#fff"),fontSize:_mv(_mf(11),16),fontWeight:"bold",marginBottom:_mv(3,5)}}>{ab.name}</div>
+ <div style={{color:_mv("#99aabb","#e8e8f2"),fontSize:_mv(_mf(8),11.5),lineHeight:1.4,...(_mob?{display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}:{})}}>{ab.desc}</div>
  </button>
  ))}
  </div>
- {gsRef.current?._showDiffuse&&<div style={{display:"flex",justifyContent:"center",marginTop:10}}><button onClick={()=>{const gs=gsRef.current;if(!gs)return;const _dmB=gs._diffuseBonus||0.0375;gs._diffuseCount++;gs._diffuseMult+=_dmB;gs._showDiffuse=false;gs._sprintJustEnded=false;if(gs._pAb>0){gs._pAb--;offerAb(gs);}else if(gs.isCargo){setPhase("playing");if(gs.wave===0)startCargoNextWave(gs);}else if(gs.isNewMode){setPhase("playing");startWave(gs);}else if(gs.isPractise||gs.wave===0){const _dSLvl=metaRef.current.lab?.completed?.intro_sprint||0;const _dSPct=_dSLvl>0?[10,20,30,40,50][Math.min(_dSLvl-1,4)]:0;const _dSMax=metaRef.current.highWave||0;const _dSThr=Math.floor(_dSMax*_dSPct/100);const _dDoS=!gs.isPractise&&_dSPct>0&&!metaRef.current.introSprintOff&&_dSThr>0;setPhase("playing");startWave(gs,_dDoS);}else{setShopData({scrap:gs.scrap,cores:gs.cores,plasma:gs.plasma,upgrades:{...gs.upgrades},wave:gs.wave});setPhase("shop");}}} style={{width:148,padding:"12px 8px",background:"#12081e",border:"2px solid #bb77ff33",borderRadius:5,cursor:"pointer",textAlign:"center",fontFamily:"inherit",transition:"all 0.2s"}} onMouseOver={e=>e.currentTarget.style.borderColor="#bb77ff"} onMouseOut={e=>e.currentTarget.style.borderColor="#bb77ff33"}><div style={{fontSize:22,marginBottom:4,color:"#bb77ff"}}>⬢</div><div style={{color:"#bb77ff",fontSize:11,fontWeight:"bold",marginBottom:3}}>DIFFUSE</div><div style={{color:"#9988bb",fontSize:8,lineHeight:1.3}}>Skip this ability slot permanently. Gain +{(gsRef.current?._diffuseBonus||0.0375).toFixed(3)} echo multiplier this run.<br/><span style={{color:"#cc6666",fontSize:7}}>This slot is gone for good.</span><br/><span style={{color:"#bb99ff"}}>Current: ×{gsRef.current?._diffuseMult?.toFixed(3)||"1.000"}</span></div></button></div>}
+ {gsRef.current?._showDiffuse&&<div style={{display:"flex",justifyContent:"center",marginTop:10,width:_mv("auto","100%")}}><button onClick={()=>{const gs=gsRef.current;if(!gs)return;const _dmB=gs._diffuseBonus||0.0375;gs._diffuseCount++;gs._diffuseMult+=_dmB;gs._showDiffuse=false;gs._sprintJustEnded=false;if(gs._pAb>0){gs._pAb--;offerAb(gs);}else if(gs.isCargo){setPhase("playing");if(gs.wave===0)startCargoNextWave(gs);}else if(gs.isNewMode){setPhase("playing");startWave(gs);}else if(gs.isPractise||gs.wave===0){const _dSLvl=metaRef.current.lab?.completed?.intro_sprint||0;const _dSPct=_dSLvl>0?[10,20,30,40,50][Math.min(_dSLvl-1,4)]:0;const _dSMax=metaRef.current.highWave||0;const _dSThr=Math.floor(_dSMax*_dSPct/100);const _dDoS=!gs.isPractise&&_dSPct>0&&!metaRef.current.introSprintOff&&_dSThr>0;setPhase("playing");startWave(gs,_dDoS);}else{setShopData({scrap:gs.scrap,cores:gs.cores,plasma:gs.plasma,upgrades:{...gs.upgrades},wave:gs.wave});setPhase("shop");}}} style={_mob?{width:"92%",maxWidth:430,height:132,boxSizing:"border-box",padding:"14px 16px",..._gp("#bb77ff",16),cursor:"pointer",textAlign:"center",fontFamily:"inherit",display:"flex",flexDirection:"column",justifyContent:"center"}:{width:148,padding:"12px 8px",background:"#12081e",border:"2px solid #bb77ff33",borderRadius:5,cursor:"pointer",textAlign:"center",fontFamily:"inherit",transition:"all 0.2s"}} onMouseOver={e=>{if(!_mob)e.currentTarget.style.borderColor="#bb77ff";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor="#bb77ff33";}}><div style={{fontSize:_mv(_mf(22),34),marginBottom:4,color:_mv("#bb77ff","#fff")}}>⬢</div><div style={{color:_mv("#bb77ff","#fff"),fontSize:_mv(_mf(11),16),fontWeight:"bold",marginBottom:_mv(3,5)}}>DIFFUSE</div><div style={{color:"#9988bb",fontSize:_mf(8),lineHeight:1.3}}>Skip this ability slot permanently. Gain +{(gsRef.current?._diffuseBonus||0.0375).toFixed(3)} echo multiplier this run.<br/><span style={{color:"#cc6666",fontSize:_mf(7)}}>This slot is gone for good.</span><br/><span style={{color:"#bb99ff"}}>Current: ×{gsRef.current?._diffuseMult?.toFixed(3)||"1.000"}</span></div></button></div>}
  </div>
  )}
  {phase==="tutorials"&&(
 <div className={_phaseClass("tutorials")} style={{position:"absolute",inset:0,zIndex:10,display:"flex",flexDirection:"column",background:"rgba(7,7,15,0.93)"}}>
- <div style={{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:"1px solid #1a1a2e",background:"#08080e"}}>
-  <button onClick={()=>{if(tutSel.ab||tutSel.enemy){setTutSel({...tutSel,ab:null,enemy:null,fx:null});}else if(tutSel.mode){setTutSel({mode:null,ab:null,bot:null,enemy:null,fx:null});}else{goTo("menu");}}} style={{...bs2("#44556644"),borderWidth:1,color:"#778899",padding:"5px 12px",fontSize:10}} {...hv("#778899")}>BACK</button>
-  <div style={{color:"#55cc99",fontSize:13,fontWeight:"bold",letterSpacing:4}}>SANDBOX</div>
-  <div style={{width:54}} />
+ <div style={_mob?{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 10px",background:"#04040a"}:{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:"1px solid #1a1a2e",background:"#08080e"}}>
+  {_mob?<div style={{width:"100%"}}>{_gHead("SANDBOX","#55cc99",()=>{if(tutSel.ab||tutSel.enemy){setTutSel({...tutSel,ab:null,enemy:null,fx:null});}else if(tutSel.mode){setTutSel({mode:null,ab:null,bot:null,enemy:null,fx:null});}else{goTo("menu");}})}</div>:<><button onClick={()=>{if(tutSel.ab||tutSel.enemy){setTutSel({...tutSel,ab:null,enemy:null,fx:null});}else if(tutSel.mode){setTutSel({mode:null,ab:null,bot:null,enemy:null,fx:null});}else{goTo("menu");}}} style={{...bs2("#44556644"),borderWidth:1,color:"#778899",padding:"5px 12px",fontSize:_mf(10)}} {...hv("#778899")}>BACK</button>
+  <div style={{color:"#55cc99",fontSize:_mf(13),fontWeight:"bold",letterSpacing:4}}>SANDBOX</div>
+  <div style={{width:54}} /></>}
  </div>
  <div key={"sb-"+(tutSel.mode||"r")+(tutSel.ab||"")+(tutSel.enemy||"")} className="vs-scroll vs-fade" style={{flex:"1 1 0",minHeight:0,overflow:"auto",padding:"14px",display:"flex",flexDirection:"column",alignItems:"center"}}>
   {!tutSel.mode&&[0].map(()=>(
-  <div key="pick" style={{width:"100%",maxWidth:440}}>
-   <div style={{color:"#8899aa",fontSize:10,lineHeight:1.6,textAlign:"center",marginBottom:12}}>Sandbox runs let you try one piece of the game in isolation. No currency, no rewards, no bosses. Exit from the pause menu whenever you like.</div>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+  <div key="pick" style={{width:"100%",maxWidth:440,...(_mob?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{})}}>
+   <div style={{color:"#8899aa",fontSize:_mf(10),lineHeight:1.6,textAlign:"center",marginBottom:12}}>Sandbox runs let you try one piece of the game in isolation. No currency, no rewards, no bosses. Exit from the pause menu whenever you like.</div>
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,...(_mob?{flex:1,gridAutoRows:"1fr",minHeight:0}:{})}}>
    {[{m:"ability",c:"#ffcc44",t:"Abilities",d:"One ability upgrade, alone."},{m:"bot",c:"#55ddaa",t:"Bots",d:"One fully-maxed bot, no abilities."},{m:"card",c:"#cc99ff",t:"Card Effects",d:"A card buff or nerf on one enemy type."},{m:"elite",c:"#ff5577",t:"Elites",d:"A chosen enemy spawns as an elite."}].map(o=>(
-   <button key={o.m} onClick={()=>setTutSel({mode:o.m,ab:null,bot:null,enemy:null,fx:null})} style={{minHeight:158,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"18px 10px",background:"#0a0a1a",border:"1px solid "+o.c+"44",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>e.currentTarget.style.borderColor=o.c} onMouseOut={e=>e.currentTarget.style.borderColor=o.c+"44"}>
-    <canvas width={120} height={120} style={{width:44,height:44,marginBottom:12}} ref={el=>{if(el){const _ix=el.getContext("2d");if(_ix){_ix.setTransform(3,0,0,3,0,0);_ix.clearRect(0,0,40,40);_drawSandIcon(_ix,o.m,o.c);}}}} /><div style={{color:o.c,fontSize:13,fontWeight:"bold",letterSpacing:1}}>{o.t}</div>
-    <div style={{color:"#8899aa",fontSize:9,marginTop:5,lineHeight:1.4}}>{o.d}</div>
+   <button key={o.m} onClick={()=>setTutSel({mode:o.m,ab:null,bot:null,enemy:null,fx:null})} style={_mob?{minHeight:240,..._gp(o.c,16),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"18px 10px",cursor:"pointer",fontFamily:"inherit"}:{minHeight:158,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"18px 10px",background:"#0a0a1a",border:"1px solid "+o.c+"44",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>{if(!_mob)e.currentTarget.style.borderColor=o.c;}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor=o.c+"44";}}>
+    <canvas width={120} height={120} style={{width:_mv(44,56),height:_mv(44,56),marginBottom:12}} ref={el=>{if(el){const _ix=el.getContext("2d");if(_ix){_ix.setTransform(3,0,0,3,0,0);_ix.clearRect(0,0,40,40);_drawSandIcon(_ix,o.m,o.c);}}}} /><div style={{color:_mv(o.c,"#fff"),fontSize:_mf(13),fontWeight:"bold",letterSpacing:1}}>{o.t}</div>
+    <div style={{color:"#8899aa",fontSize:_mf(9),marginTop:5,lineHeight:1.4}}>{o.d}</div>
    </button>))}
    </div>
   </div>))}
-  {tutSel.mode==="ability"&&(()=>{const ab=ABILITIES.find(a=>a.id===tutSel.ab);return(<div style={{width:"100%",maxWidth:440}}>
-   {!tutSel.ab&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{ABILITIES.map(a=>(
-    <button key={a.id} onClick={()=>setTutSel({...tutSel,ab:a.id})} style={{minHeight:80,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",background:"#0a0a1a",border:"1px solid #ffcc4433",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>e.currentTarget.style.borderColor="#ffcc44"} onMouseOut={e=>e.currentTarget.style.borderColor="#ffcc4433"}>
+  {tutSel.mode==="ability"&&(()=>{const ab=ABILITIES.find(a=>a.id===tutSel.ab);return(<div style={{width:"100%",maxWidth:440,...(_mob?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{})}}>
+   {!tutSel.ab&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,...(_mob?{flex:1,gridAutoRows:"1fr",minHeight:0}:{})}}>{ABILITIES.map(a=>(
+    <button key={a.id} onClick={()=>setTutSel({...tutSel,ab:a.id})} style={{minHeight:80,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",...(_mob?_gp("#ffcc44",12):{background:"#0a0a1a",border:"1px solid #ffcc4433",borderRadius:5}),cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>{if(!_mob)e.currentTarget.style.borderColor="#ffcc44";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor="#ffcc4433";}}>
      <AbilityIcon id={a.id} size={30} color="#ffcc44" />
-     <div style={{color:"#ffcc44",fontSize:10,textAlign:"center"}}>{a.name}</div>
+     <div style={{color:_mv("#ffcc44","#fff"),fontSize:_mv(_mf(10),12.5),textAlign:"center",fontWeight:_mv("normal","bold")}}>{a.name}</div>
     </button>))}</div>}
    {tutSel.ab&&<div>
-    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><AbilityIcon id={tutSel.ab} size={26} color="#ffcc44" /><div style={{color:"#ffcc44",fontSize:13,fontWeight:"bold"}}>{ab?ab.name:tutSel.ab}</div></div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><AbilityIcon id={tutSel.ab} size={26} color="#ffcc44" /><div style={{color:"#ffcc44",fontSize:_mf(13),fontWeight:"bold"}}>{ab?ab.name:tutSel.ab}</div></div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,...(_mob?{flex:1,gridAutoRows:"1fr",minHeight:0}:{})}}>
     {[{k:"sub1",l:"Sub-upgrade 1"},{k:"sub2",l:"Sub-upgrade 2"},{k:"mastery",l:"Mastery"},{k:null,l:"Base only"}].map(o=>{const key=o.k?tutSel.ab+"_"+o.k:null;const desc=key?(AB_DESCS[key]||""):"Just the base ability, no upgrade.";const isM=o.k==="mastery";const col=isM?"#ffcc44":"#44ddcc";return(
      <button key={o.l} onClick={()=>startTutAbility(tutSel.ab,key)} style={{minHeight:74,textAlign:"left",padding:"10px",background:"#0c0c1a",border:"1px solid "+col+"33",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>e.currentTarget.style.borderColor=col} onMouseOut={e=>e.currentTarget.style.borderColor=col+"33"}>
-      <div style={{color:col,fontSize:10,fontWeight:"bold"}}>{o.l}</div>
-      <div style={{color:"#8899aa",fontSize:8.5,marginTop:3,lineHeight:1.4}}>{desc}</div>
+      <div style={{color:col,fontSize:_mf(10),fontWeight:"bold"}}>{o.l}</div>
+      <div style={{color:"#8899aa",fontSize:_mf(8.5),marginTop:3,lineHeight:1.4}}>{desc}</div>
      </button>);})}
     </div>
    </div>}
   </div>);})()}
-  {tutSel.mode==="bot"&&<div style={{width:"100%",maxWidth:440}}>
-   <div style={{color:"#8899aa",fontSize:9,textAlign:"center",marginBottom:8}}>The chosen bot starts fully maxed. No abilities.</div>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{BOTS.map(b=>(
-    <button key={b.id} onClick={()=>startTutBot(b.id)} style={{minHeight:96,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",background:"#0a0a1a",border:"1px solid "+b.col+"44",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>e.currentTarget.style.borderColor=b.col} onMouseOut={e=>e.currentTarget.style.borderColor=b.col+"44"}>
+  {tutSel.mode==="bot"&&<div style={{width:"100%",maxWidth:440,...(_mob?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{})}}>
+   <div style={{color:"#8899aa",fontSize:_mf(9),textAlign:"center",marginBottom:8}}>The chosen bot starts fully maxed. No abilities.</div>
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,...(_mob?{flex:1,gridAutoRows:"1fr",minHeight:0}:{})}}>{BOTS.map(b=>(
+    <button key={b.id} onClick={()=>startTutBot(b.id)} style={{minHeight:96,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",...(_mob?_gp(b.col,12):{background:"#0a0a1a",border:"1px solid "+b.col+"44",borderRadius:5}),cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>{if(!_mob)e.currentTarget.style.borderColor=b.col;}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor=b.col+"44";}}>
      <canvas width={120} height={120} style={{width:32,height:32}} ref={el=>{if(el){const cx=el.getContext("2d");if(cx){cx.setTransform(3,0,0,3,0,0);cx.clearRect(0,0,40,40);_drawBotIcon(cx,b.id,20,20,13,b.col);}}}} />
-     <div style={{color:b.col,fontSize:11,fontWeight:"bold"}}>{b.name}</div>
-     <div style={{color:"#8899aa",fontSize:8,textAlign:"center",lineHeight:1.3}}>{b.desc}</div>
+     <div style={{color:b.col,fontSize:_mf(11),fontWeight:"bold"}}>{b.name}</div>
+     <div style={{color:"#8899aa",fontSize:_mf(8),textAlign:"center",lineHeight:1.3}}>{b.desc}</div>
     </button>))}</div>
   </div>}
-  {tutSel.mode==="card"&&(()=>{const fx=tutSel.enemy?DEALER_FX[tutSel.enemy]:null;const cap=t=>t.charAt(0).toUpperCase()+t.slice(1);return(<div style={{width:"100%",maxWidth:440}}>
-   {!tutSel.enemy&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{Object.keys(DEALER_FX).map(t=>(
-    <button key={t} onClick={()=>setTutSel({...tutSel,enemy:t})} style={{minHeight:74,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,padding:"10px",background:"#0a0a1a",border:"1px solid #cc99ff33",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>e.currentTarget.style.borderColor="#cc99ff"} onMouseOut={e=>e.currentTarget.style.borderColor="#cc99ff33"}>
+  {tutSel.mode==="card"&&(()=>{const fx=tutSel.enemy?DEALER_FX[tutSel.enemy]:null;const cap=t=>t.charAt(0).toUpperCase()+t.slice(1);return(<div style={{width:"100%",maxWidth:440,...(_mob?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{})}}>
+   {!tutSel.enemy&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,...(_mob?{flex:1,gridAutoRows:"1fr",minHeight:0}:{})}}>{Object.keys(DEALER_FX).map(t=>(
+    <button key={t} onClick={()=>setTutSel({...tutSel,enemy:t})} style={{minHeight:74,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,padding:"10px",...(_mob?_gp("#cc99ff",12):{background:"#0a0a1a",border:"1px solid #cc99ff33",borderRadius:5}),cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>{if(!_mob)e.currentTarget.style.borderColor="#cc99ff";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor="#cc99ff33";}}>
      <EnemyIcon type={t} size={34} color="#cc99ff" cardMode />
-     <div style={{color:"#cc99ff",fontSize:10}}>{cap(t)}</div>
+     <div style={{color:"#cc99ff",fontSize:_mf(10)}}>{cap(t)}</div>
     </button>))}</div>}
    {tutSel.enemy&&fx&&<div>
-    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><EnemyIcon type={tutSel.enemy} size={28} color="#cc99ff" cardMode /><div style={{color:"#cc99ff",fontSize:13,fontWeight:"bold"}}>{cap(tutSel.enemy)}</div></div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-    {fx.nerfs.map((o,i)=>(<button key={"n"+i} onClick={()=>startTutEnemy(tutSel.enemy,o.mod)} style={{minHeight:80,position:"relative",textAlign:"left",padding:"10px",background:"#0a140a",border:"1px solid #66ff8833",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>e.currentTarget.style.borderColor="#66ff88"} onMouseOut={e=>e.currentTarget.style.borderColor="#66ff8833"}><div style={{position:"absolute",top:5,right:9,color:"#7dffc0",fontSize:18,fontWeight:"bold"}}>-</div><div style={{color:"#7dffc0",fontSize:9,fontWeight:"bold",marginBottom:3}}>NERF</div><div style={{color:"#aaccaa",fontSize:9,lineHeight:1.35}}>{o.label}</div></button>))}
-    {fx.buffs.map((o,i)=>(<button key={"b"+i} onClick={()=>startTutEnemy(tutSel.enemy,o.mod)} style={{minHeight:80,position:"relative",textAlign:"left",padding:"10px",background:"#160a0a",border:"1px solid #ff557733",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>e.currentTarget.style.borderColor="#ff5577"} onMouseOut={e=>e.currentTarget.style.borderColor="#ff557733"}><div style={{position:"absolute",top:5,right:9,color:"#ff9a8a",fontSize:18,fontWeight:"bold"}}>+</div><div style={{color:"#ff9a8a",fontSize:9,fontWeight:"bold",marginBottom:3}}>BUFF</div><div style={{color:"#ddaaaa",fontSize:9,lineHeight:1.35}}>{o.label}</div></button>))}
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><EnemyIcon type={tutSel.enemy} size={28} color="#cc99ff" cardMode /><div style={{color:"#cc99ff",fontSize:_mf(13),fontWeight:"bold"}}>{cap(tutSel.enemy)}</div></div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,...(_mob?{flex:1,gridAutoRows:"1fr",minHeight:0}:{})}}>
+    {fx.nerfs.map((o,i)=>(<button key={"n"+i} onClick={()=>startTutEnemy(tutSel.enemy,o.mod)} style={{minHeight:80,position:"relative",textAlign:"left",padding:"10px",background:"#0a140a",border:"1px solid #66ff8833",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>e.currentTarget.style.borderColor="#66ff88"} onMouseOut={e=>e.currentTarget.style.borderColor="#66ff8833"}><div style={{position:"absolute",top:5,right:9,color:"#7dffc0",fontSize:_mf(18),fontWeight:"bold"}}>-</div><div style={{color:"#7dffc0",fontSize:_mf(9),fontWeight:"bold",marginBottom:3}}>NERF</div><div style={{color:"#aaccaa",fontSize:_mf(9),lineHeight:1.35}}>{o.label}</div></button>))}
+    {fx.buffs.map((o,i)=>(<button key={"b"+i} onClick={()=>startTutEnemy(tutSel.enemy,o.mod)} style={{minHeight:80,position:"relative",textAlign:"left",padding:"10px",background:"#160a0a",border:"1px solid #ff557733",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>e.currentTarget.style.borderColor="#ff5577"} onMouseOut={e=>e.currentTarget.style.borderColor="#ff557733"}><div style={{position:"absolute",top:5,right:9,color:"#ff9a8a",fontSize:_mf(18),fontWeight:"bold"}}>+</div><div style={{color:"#ff9a8a",fontSize:_mf(9),fontWeight:"bold",marginBottom:3}}>BUFF</div><div style={{color:"#ddaaaa",fontSize:_mf(9),lineHeight:1.35}}>{o.label}</div></button>))}
     </div>
-    <button onClick={()=>startTutEnemy(tutSel.enemy,{})} style={{display:"block",width:"100%",textAlign:"center",padding:"8px",marginTop:8,background:"transparent",border:"1px solid #33445544",borderRadius:5,cursor:"pointer",fontFamily:"inherit",color:"#8899aa",fontSize:9}}>No modifier (vanilla enemy)</button>
+    <button onClick={()=>startTutEnemy(tutSel.enemy,{})} style={{display:"block",width:"100%",textAlign:"center",padding:"8px",marginTop:8,background:"transparent",border:"1px solid #33445544",borderRadius:5,cursor:"pointer",fontFamily:"inherit",color:"#8899aa",fontSize:_mf(9)}}>No modifier (vanilla enemy)</button>
    </div>}
   </div>);})()}
-  {tutSel.mode==="elite"&&(()=>{const cap=t=>t.charAt(0).toUpperCase()+t.slice(1);return(<div style={{width:"100%",maxWidth:440}}>
-   <div style={{color:"#8899aa",fontSize:9,textAlign:"center",marginBottom:8}}>The chosen enemy spawns as an elite each wave (with reinforcements), using your normal loadout.</div>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{Object.keys(DEALER_FX).filter(t=>t!=="splitter"&&t!=="bomber").map(t=>(
-    <button key={t} onClick={()=>startTutElite(t)} style={{minHeight:74,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,padding:"10px",background:"#0a0a1a",border:"1px solid #ff557733",borderRadius:5,cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>e.currentTarget.style.borderColor="#ff5577"} onMouseOut={e=>e.currentTarget.style.borderColor="#ff557733"}>
+  {tutSel.mode==="elite"&&(()=>{const cap=t=>t.charAt(0).toUpperCase()+t.slice(1);return(<div style={{width:"100%",maxWidth:440,...(_mob?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{})}}>
+   <div style={{color:"#8899aa",fontSize:_mf(9),textAlign:"center",marginBottom:8}}>The chosen enemy spawns as an elite each wave (with reinforcements), using your normal loadout.</div>
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,...(_mob?{flex:1,gridAutoRows:"1fr",minHeight:0}:{})}}>{Object.keys(DEALER_FX).filter(t=>t!=="splitter"&&t!=="bomber").map(t=>(
+    <button key={t} onClick={()=>startTutElite(t)} style={{minHeight:74,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,padding:"10px",...(_mob?_gp("#ff5577",12):{background:"#0a0a1a",border:"1px solid #ff557733",borderRadius:5}),cursor:"pointer",fontFamily:"inherit"}} onMouseOver={e=>{if(!_mob)e.currentTarget.style.borderColor="#ff5577";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor="#ff557733";}}>
      <EnemyIcon type={t} size={34} color="#cc99ff" cardMode />
-     <div style={{color:"#ff7799",fontSize:10}}>{cap(t)}</div>
+     <div style={{color:"#ff7799",fontSize:_mf(10)}}>{cap(t)}</div>
     </button>))}</div>
   </div>);})()}
  </div>
 </div>)}
- {phase==="playground"&&(
+ {phase==="playground"&&_mob&&(()=>{const _col=enforcerMode?"#ff5577":"#55aa88";const _ents=Object.entries(ED).sort(([a],[b])=>(ENEMY_UNLOCK[a]||1)-(ENEMY_UNLOCK[b]||1));const _bPg=!!(meta.pgCompleted||{}).boss;const _bPath=!!(meta.pathsUpg||{}).ef_boss;const _bLocked=enforcerMode&&!(_bPg&&_bPath);const _bDef=!!(meta.enforcerDefeated||{}).boss;const _tierLock=enforcerMode&&(meta.metaTier||1)<2;
+ const _tile=(k,ed,extraStyle)=>{const w=ENEMY_UNLOCK[k]||1;const _def=!!(meta.enforcerDefeated||{})[k];const _best=(meta.enforcerBest||{})[k]||0;const _pg=!!(meta.pgCompleted||{})[k];const _path=!!(meta.pathsUpg||{})["ef_"+k];const _lk=enforcerMode&&(!_pg||!_path);const _can=enforcerMode?!_lk:true;const _isBoss=k==="boss";const _c=(enforcerMode&&_def?"#ffcc44":_col);const _sub=enforcerMode?(_lk?((!_pg&&!_path)?"Beat in Playground + unlock Path":!_pg?"Beat in Playground first":"Unlock its Path node"):_def?"Defeated":`Best ${_best}s`):(_isBoss?"W5 · HP×18 · solo":`W${w} · HP×${ed.hpM} · DMG×${ed.dM}`);
+  return <button key={k} onClick={()=>_can&&startPlayground(k,enforcerMode)} disabled={!_can} style={{...(enforcerMode&&_def?_gpMax(12):_gpDim(_c,12)),padding:"6px 5px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:_can?"pointer":"default",fontFamily:"inherit",opacity:_lk?0.4:1,position:"relative",overflow:"hidden",minWidth:0,...(extraStyle||{})}}>{enforcerMode&&_def&&<div className="gold-shimmer"/>}<EnemyIcon type={k} size={30} /><div style={{minWidth:0,textAlign:"center",width:"100%"}}><div style={{color:"#fff",fontSize:11.5,fontWeight:"bold",textTransform:"capitalize",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{k}</div><div style={{color:_lk?"#ff9999":"#d0d6e8",fontSize:8.5,lineHeight:1.25,height:22,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{_sub}</div></div></button>;};
+ return _gShell(<>
+ {_gHead(enforcerMode?"ENFORCER":"PLAYGROUND",_col,()=>goTo("menu"))}
+ <div style={{display:"flex",gap:6,flexShrink:0}}>{[[false,"PLAYGROUND","#55aa88"],[true,"ENFORCER","#ff5577"]].map(([m,l,c])=><button key={l} onClick={()=>setEnforcerMode(m)} style={{flex:1,padding:"16px",...(enforcerMode===m?_gp(c,14):_gpDim(c,14)),color:"#fff",fontSize:13,fontWeight:"bold",letterSpacing:2,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>)}</div>
+ <div style={{color:"#d8dcee",fontSize:10.5,lineHeight:1.45,textAlign:"center",flexShrink:0,minHeight:44}}>{enforcerMode?"Survive 60s vs an ultimate enemy. One hit kills. You can't damage them. First win: +0.025 echo mult. Unlock: beat it in Playground + buy its Paths node.":"Fight 1 solo, then 5 at once (boss: 1). Stats match its first wave. No drops, upgrades or echoes."}</div>
+ <div style={{flex:1,minHeight:0,position:"relative",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gridAutoRows:"1fr",gap:6}}>
+  {_ents.map(([k,ed])=>_tile(k,ed))}
+  {_tile("boss",{hpM:18,dM:1})}
+  {_tierLock&&<div style={{position:"absolute",inset:0,background:"rgba(2,2,8,0.88)",borderRadius:12,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,textAlign:"center",padding:16}}><div style={{fontSize:32}}>🔒</div><div style={{color:"#fff",fontSize:13,fontWeight:"bold",letterSpacing:2}}>LOCKED</div><div style={{color:"#c8cce6",fontSize:10.5,lineHeight:1.6}}>Reach <span style={{color:"#bb99ff",fontWeight:"bold"}}>Meta Tier 2</span> to unlock Enforcer. Max Tier 1 ship upgrades, then unlock Tier 2 for <span style={{color:"#bb99ff",fontWeight:"bold"}}>⬢ 800</span>.</div></div>}
+ </div>
+</>);})()}
+{phase==="playground"&&!_mob&&(
  <div className={_phaseClass("playground")} style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:10,overflow:"hidden"}}>
- <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflowY:"auto",overflowX:"hidden",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 12px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}><h2 style={{color:enforcerMode?"#ff5577":"#55aa88",fontSize:18,letterSpacing:3,margin:0,zIndex:1,position:"relative"}}>{enforcerMode?"ENFORCER":"PLAYGROUND"}</h2>
+ <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflowY:"auto",overflowX:"hidden",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 12px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}><h2 style={{color:enforcerMode?"#ff5577":"#55aa88",fontSize:_mf(18),letterSpacing:3,margin:0,zIndex:1,position:"relative"}}>{enforcerMode?"ENFORCER":"PLAYGROUND"}</h2>
  <div style={{display:"flex",gap:0,marginTop:10,borderRadius:4,overflow:"hidden",border:"1px solid #33445544",flexShrink:0,position:"relative",zIndex:2}}>
- <button onClick={()=>setEnforcerMode(false)} style={{padding:"6px 16px",background:!enforcerMode?"#141428":"#0a0a16",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,color:!enforcerMode?"#55aa88":"#667788",borderRight:"1px solid #33445544",whiteSpace:"nowrap"}}>PLAYGROUND</button>
- <button onClick={()=>setEnforcerMode(true)} style={{padding:"6px 16px",background:enforcerMode?"#1a1020":"#0a0a16",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,color:enforcerMode?"#ff5577":"#667788",whiteSpace:"nowrap"}}>ENFORCER</button>
+ <button onClick={()=>setEnforcerMode(false)} style={{padding:"6px 16px",background:!enforcerMode?"#141428":"#0a0a16",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),color:!enforcerMode?"#55aa88":"#667788",borderRight:"1px solid #33445544",whiteSpace:"nowrap"}}>PLAYGROUND</button>
+ <button onClick={()=>setEnforcerMode(true)} style={{padding:"6px 16px",background:enforcerMode?"#1a1020":"#0a0a16",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),color:enforcerMode?"#ff5577":"#667788",whiteSpace:"nowrap"}}>ENFORCER</button>
  </div>
  <div key={enforcerMode?"enforcer":"playground"} style={{width:"100%",display:"flex",flexDirection:"column",alignItems:"center",animation:(_transStage==="exiting"&&_transFrom==="playground")?undefined:((enforcerMode?"tabSlideRight":"tabSlideLeft")+" 200ms cubic-bezier(0.22,1,0.36,1) both")}}>
- <p style={{color:"#ccddee",fontSize:9,marginTop:6,textAlign:"center",lineHeight:1.5}}>{enforcerMode?"Survive 60 seconds against an ultimate enemy. Any hit kills you instantly. You cannot damage them. Each first victory adds +0.025 to your echo multiplier. Enforcers are not in any particular difficulty order. To unlock one, you must both beat that enemy in the Playground and buy its node in the enforcer Paths branch.":"Pick an enemy to fight. You'll face 1 solo, then 5 at once (boss: 1 only). Stats match the wave that enemy first appears. No drops, no upgrades, no echoes."}</p>
+ <p style={{color:"#ccddee",fontSize:_mf(9),marginTop:6,textAlign:"center",lineHeight:1.5,minHeight:54}}>{enforcerMode?"Survive 60 seconds against an ultimate enemy. Any hit kills you instantly. You cannot damage them. Each first victory adds +0.025 to your echo multiplier. Enforcers are not in any particular difficulty order. To unlock one, you must both beat that enemy in the Playground and buy its node in the enforcer Paths branch.":"Pick an enemy to fight. You'll face 1 solo, then 5 at once (boss: 1 only). Stats match the wave that enemy first appears. No drops, no upgrades, no echoes."}</p>
  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:14,width:"100%",maxWidth:480,position:"relative"}}>
  {Object.entries(ED).sort(([a],[b])=>(ENEMY_UNLOCK[a]||1)-(ENEMY_UNLOCK[b]||1)).map(([k,ed])=>{
  const w=ENEMY_UNLOCK[k]||1;
@@ -2985,9 +3303,9 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  {enforcerMode&&_enfDef&&<div className="gold-shimmer"/>}
  <EnemyIcon type={k} size={32} />
  <div>
- <div style={{color:"#ccddee",fontSize:11,fontWeight:"bold",textTransform:"capitalize"}}>{k}</div>
- {enforcerMode?<div style={{color:_enfDef?"#ffcc44":_enfLocked?"#cc6666":"#aabbcc",fontSize:8}}>{_enfLocked?((!_pgDone&&!_pathOk)?"Need: playground + paths unlock":!_pgDone?"Complete playground round first":"Unlock in Paths first"):_enfDef?"Enforcer defeated":`Longest survived: ${_enfBest}s`}</div>
- :<div style={{color:"#aabbcc",fontSize:8}}>Wave {w} · HP×{ed.hpM} · DMG×{ed.dM}</div>}
+ <div style={{color:"#ccddee",fontSize:_mf(11),fontWeight:"bold",textTransform:"capitalize"}}>{k}</div>
+ {enforcerMode?<div style={{color:_enfDef?"#ffcc44":_enfLocked?"#cc6666":"#aabbcc",fontSize:_mf(8)}}>{_enfLocked?((!_pgDone&&!_pathOk)?"Need: playground + paths unlock":!_pgDone?"Complete playground round first":"Unlock in Paths first"):_enfDef?"Enforcer defeated":`Longest survived: ${_enfBest}s`}</div>
+ :<div style={{color:"#aabbcc",fontSize:_mf(8)}}>Wave {w} · HP×{ed.hpM} · DMG×{ed.dM}</div>}
  </div>
  </button>
  );
@@ -2998,48 +3316,61 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  {enforcerMode&&(meta.enforcerDefeated||{}).boss&&<div className="gold-shimmer"/>}
  <EnemyIcon type="boss" size={32} />
  <div>
- <div style={{color:"#ff2266",fontSize:11,fontWeight:"bold"}}>Boss</div>
- {enforcerMode?<div style={{color:(meta.enforcerDefeated||{}).boss?"#ffcc44":(!(meta.pgCompleted||{}).boss||!(meta.pathsUpg||{}).ef_boss)?"#cc6666":"#aabbcc",fontSize:8}}>{(!(meta.pgCompleted||{}).boss||!(meta.pathsUpg||{}).ef_boss)?((!(meta.pgCompleted||{}).boss&&!(meta.pathsUpg||{}).ef_boss)?"Need: playground + paths unlock":!(meta.pgCompleted||{}).boss?"Complete playground round first":"Unlock in Paths first"):(meta.enforcerDefeated||{}).boss?"Enforcer defeated":`Longest survived: ${(meta.enforcerBest||{}).boss||0}s`}</div>
- :<div style={{color:"#aabbcc",fontSize:8}}>Wave 5 · HP×18 · Solo only</div>}
+ <div style={{color:"#ff2266",fontSize:_mf(11),fontWeight:"bold"}}>Boss</div>
+ {enforcerMode?<div style={{color:(meta.enforcerDefeated||{}).boss?"#ffcc44":(!(meta.pgCompleted||{}).boss||!(meta.pathsUpg||{}).ef_boss)?"#cc6666":"#aabbcc",fontSize:_mf(8)}}>{(!(meta.pgCompleted||{}).boss||!(meta.pathsUpg||{}).ef_boss)?((!(meta.pgCompleted||{}).boss&&!(meta.pathsUpg||{}).ef_boss)?"Need: playground + paths unlock":!(meta.pgCompleted||{}).boss?"Complete playground round first":"Unlock in Paths first"):(meta.enforcerDefeated||{}).boss?"Enforcer defeated":`Longest survived: ${(meta.enforcerBest||{}).boss||0}s`}</div>
+ :<div style={{color:"#aabbcc",fontSize:_mf(8)}}>Wave 5 · HP×18 · Solo only</div>}
  </div>
  </button>
  {enforcerMode&&(meta.metaTier||1)<2&&<div style={{position:"absolute",inset:0,background:"rgba(6,6,14,0.88)",zIndex:5,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",borderRadius:6,pointerEvents:"all"}}>
- <div style={{fontSize:36,marginBottom:8}}>🔒</div>
- <div style={{color:"#8899aa",fontSize:12,fontWeight:"bold",letterSpacing:2,marginBottom:8}}>LOCKED</div>
- <div style={{color:"#667788",fontSize:10,textAlign:"center",maxWidth:260,lineHeight:1.6}}>Reach <span style={{color:"#bb99ff"}}>Meta Tier 2</span> to unlock Enforcer mode. Max all Ship Upgrades at Tier 1 first. Once maxed, you will be able to unlock tier 2 for <span style={{color:"#bb99ff"}}>⬢ 800</span>.</div>
+ <div style={{fontSize:_mf(36),marginBottom:8}}>🔒</div>
+ <div style={{color:"#8899aa",fontSize:_mf(12),fontWeight:"bold",letterSpacing:2,marginBottom:8}}>LOCKED</div>
+ <div style={{color:"#667788",fontSize:_mf(10),textAlign:"center",maxWidth:260,lineHeight:1.6}}>Reach <span style={{color:"#bb99ff"}}>Meta Tier 2</span> to unlock Enforcer mode. Max all Ship Upgrades at Tier 1 first. Once maxed, you will be able to unlock tier 2 for <span style={{color:"#bb99ff"}}>⬢ 800</span>.</div>
  </div>}
  </div>
  </div>
- <button onClick={()=>goTo("menu")} style={{...bs2("#55667744"),marginTop:16,padding:"8px 24px",fontSize:11,borderWidth:1,color:"#8899aa"}}>← BACK</button>
+ <button onClick={()=>goTo("menu")} style={{...bs2("#55667744"),marginTop:16,padding:"8px 24px",fontSize:_mf(11),borderWidth:1,color:"#8899aa"}}>← BACK</button>
  </div></div>
  )}
- {phase==="practise"&&(
+ {phase==="practise"&&_mob&&(()=>{const _types=Object.entries(ENEMY_UNLOCK).filter(([k,w])=>w<=practiceWave&&k!=="boss").map(([k])=>k);const _isBoss=practiceWave%5===0;const _eCount=4+Math.floor(practiceWave*1.0)+Math.floor(Math.pow(practiceWave,1.1)*0.25);const _rawHp=Math.round(BASE_HP*hpScale(practiceWave));const _rawDmg=Math.round((7+practiceWave*1.8)*dmgScale(practiceWave)*0.35);const _cum=(()=>{let tk=0;for(let w2=1;w2<=practiceWave;w2++)tk+=4+Math.floor(w2*1.0)+Math.floor(Math.pow(w2,1.1)*0.25);return Math.max(0,Math.floor(practiceWave*1.5+tk*0.38+Math.pow(practiceWave,2.8)*0.065+Math.pow(practiceWave,1.8)*0.4));})();const _heM=(()=>{const _t=metaRef.current.metaTier||1;if(_t<2)return 1;const _phW=metaRef.current.phantomHighWave||0;const _prW=metaRef.current.practiseHighWave||0;const _phL=(metaRef.current.lab?.completed?.phantom_enhance||0)*0.001;const _prL=(metaRef.current.lab?.completed?.practise_enhance||0)*0.001;const _tv=_t===3?2.5:_t===2?1.5:1;return _tv*(1+_phW*(0.01+_phL))*(1+_prW*(0.006+_prL))*(1+(metaRef.current.enforcerKills||0)*0.025)*(1+((metaRef.current.ownedDesigns||[]).length)*0.004);})();
+ const _wb=(lbl,fn,big)=><button onClick={fn} style={{width:big?56:44,height:big?56:38,borderRadius:big?14:10,..._gpDim("#cc8844",big?14:10),color:"#fff",fontSize:big?24:11,fontWeight:"bold",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>{lbl}</button>;
+ return _gShell(<>
+ {_gHead("PRACTISE","#cc8844",()=>goTo("menu"))}
+ <div style={{color:"#c8cce6",fontSize:9.5,lineHeight:1.5,textAlign:"center",flexShrink:0}}>Any wave, base stats. No drops, upgrades or echoes. Survive the wave to win.</div>
+ <div style={{..._gp("#cc8844",18),padding:"14px 12px",flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
+  <div style={{display:"flex",alignItems:"center",gap:12}}>{_wb("−",()=>setPracticeWave(w=>Math.max(1,w-1)),true)}<div style={{minWidth:110,textAlign:"center"}}><div style={{color:"#fff",fontSize:46,fontWeight:"bold",lineHeight:1,textShadow:"0 0 16px #cc8844"}}>{practiceWave}</div><div style={{color:"#fff0e0",fontSize:9,letterSpacing:3,marginTop:2}}>WAVE{_isBoss?" · BOSS":""}</div></div>{_wb("+",()=>setPracticeWave(w=>Math.min(99,w+1)),true)}</div>
+  <div style={{display:"flex",gap:8}}>{_wb("−10",()=>setPracticeWave(w=>Math.max(1,w-10)),false)}{_wb("+10",()=>setPracticeWave(w=>Math.min(99,w+10)),false)}</div>
+ </div>
+ <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,flexShrink:0}}>{[["ENEMY HP","×"+hpScale(practiceWave).toFixed(1),_rawHp+" HP each","#ff6688"],["ENEMY DMG","×"+dmgScale(practiceWave).toFixed(1),_rawDmg+" DMG each","#ffaa44"],["ENEMY COUNT",String(_eCount),"this wave","#44bbdd"],["CUMULATIVE ECHOES","⬢ "+_cum.toLocaleString(),_heM>1?("×"+_heM.toFixed(3)+" = ⬢ "+Math.floor(_cum*_heM).toLocaleString()):"through wave "+practiceWave,CUR.echoes.color]].map(([k,v,s,c],i)=><div key={i} style={{..._gpDim(c,12),padding:"10px 12px"}}><div style={{color:c,fontSize:9,letterSpacing:1.5,fontWeight:"bold"}}>{k}</div><div style={{color:"#fff",fontSize:17,fontWeight:"bold",marginTop:3}}>{v}</div><div style={{color:"#e0e4f2",fontSize:10.5,marginTop:2}}>{s}</div></div>)}</div>
+ <div style={{flex:1,minHeight:0,..._gpDim("#cc8844",14),padding:"10px 12px",display:"flex",flexDirection:"column",gap:8,overflow:"hidden"}}><div style={{color:"#cc8844",fontSize:9.5,letterSpacing:1.5,fontWeight:"bold",flexShrink:0}}>ENEMIES THIS WAVE</div><div style={{display:"flex",flexWrap:"wrap",gap:7,alignContent:"flex-start",overflow:"hidden"}}>{_isBoss&&<div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",background:"#ff226622",borderRadius:10,border:"1px solid #ff226666"}}><EnemyIcon type="boss" size={26}/><span style={{color:"#ff6688",fontSize:11,fontWeight:"bold"}}>Boss</span></div>}{_types.map(k=><div key={k} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",background:"#ffffff0c",borderRadius:10,border:"1px solid #ffffff1c"}}><EnemyIcon type={k} size={24}/><span style={{color:"#e6eaf5",fontSize:11,textTransform:"capitalize"}}>{k}</span></div>)}{_types.length===0&&!_isBoss&&<span style={{color:"#8899aa",fontSize:10}}>No enemies unlock at this wave</span>}</div></div>
+ <button onClick={()=>startPractise(practiceWave)} style={{..._gBtn("#cc8844",true),flexShrink:0,padding:"20px 16px",fontSize:17}}>PLAY WAVE {practiceWave}</button>
+</>);})()}
+{phase==="practise"&&!_mob&&(
  <div className={_phaseClass("practise")} style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:10,overflow:"hidden"}}>
- <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 12px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}><h2 style={{color:"#cc8844",fontSize:18,letterSpacing:3,margin:0,zIndex:1,position:"relative"}}>PRACTISE</h2>
- <p style={{color:"#ccddee",fontSize:9,marginTop:6,textAlign:"center",lineHeight:1.5}}>Play any wave with base stats. No drops, no upgrades, no echoes.<br/>Survive the full wave to win. Die and you'll return to the menu.</p>
+ <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 12px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}><h2 style={{color:"#cc8844",fontSize:_mf(18),letterSpacing:3,margin:0,zIndex:1,position:"relative"}}>PRACTISE</h2>
+ <p style={{color:"#ccddee",fontSize:_mf(9),marginTop:6,textAlign:"center",lineHeight:1.5}}>Play any wave with base stats. No drops, no upgrades, no echoes.<br/>Survive the full wave to win. Die and you'll return to the menu.</p>
  <div style={{display:"flex",alignItems:"center",gap:12,marginTop:18}}>
- <button onClick={()=>setPracticeWave(w=>Math.max(1,w-10))} style={{background:"none",border:"1px solid #44556644",color:"#cc8844",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:12,borderRadius:3}}>−10</button>
- <button onClick={()=>setPracticeWave(w=>Math.max(1,w-1))} style={{background:"none",border:"1px solid #44556644",color:"#cc8844",padding:"6px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:14,borderRadius:3}}>−</button>
- <div style={{minWidth:80,textAlign:"center"}}><span style={{color:"#ccddee",fontSize:28,fontWeight:"bold"}}>{practiceWave}</span><div style={{color:"#aabbcc",fontSize:8,marginTop:2}}>WAVE</div></div>
- <button onClick={()=>setPracticeWave(w=>Math.min(99,w+1))} style={{background:"none",border:"1px solid #44556644",color:"#cc8844",padding:"6px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:14,borderRadius:3}}>+</button>
- <button onClick={()=>setPracticeWave(w=>Math.min(99,w+10))} style={{background:"none",border:"1px solid #44556644",color:"#cc8844",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:12,borderRadius:3}}>+10</button>
+ <button onClick={()=>setPracticeWave(w=>Math.max(1,w-10))} style={{background:"none",border:"1px solid #44556644",color:"#cc8844",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(12),borderRadius:3}}>−10</button>
+ <button onClick={()=>setPracticeWave(w=>Math.max(1,w-1))} style={{background:"none",border:"1px solid #44556644",color:"#cc8844",padding:"6px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(14),borderRadius:3}}>−</button>
+ <div style={{minWidth:80,textAlign:"center"}}><span style={{color:"#ccddee",fontSize:_mf(28),fontWeight:"bold"}}>{practiceWave}</span><div style={{color:"#aabbcc",fontSize:_mf(8),marginTop:2}}>WAVE</div></div>
+ <button onClick={()=>setPracticeWave(w=>Math.min(99,w+1))} style={{background:"none",border:"1px solid #44556644",color:"#cc8844",padding:"6px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(14),borderRadius:3}}>+</button>
+ <button onClick={()=>setPracticeWave(w=>Math.min(99,w+10))} style={{background:"none",border:"1px solid #44556644",color:"#cc8844",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(12),borderRadius:3}}>+10</button>
  </div>
  <div style={{marginTop:14,padding:"8px 12px",background:"#0a0a1a",border:"1px solid #22334444",borderRadius:4,maxWidth:400,width:"100%"}}>
- <div style={{color:"#ccddee",fontSize:9,marginBottom:6}}>Enemies this wave:</div>
+ <div style={{color:"#ccddee",fontSize:_mf(9),marginBottom:6}}>Enemies this wave:</div>
  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
  {(()=>{const types=Object.entries(ENEMY_UNLOCK).filter(([k,w])=>w<=practiceWave&&k!=="boss").map(([k])=>k);
  const isBoss=practiceWave%5===0;
- return(<>{isBoss&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"2px 6px",background:"#1a0a1a",borderRadius:3,border:"1px solid #ff226633"}}><EnemyIcon type="boss" size={18}/><span style={{color:"#ff2266",fontSize:8,fontWeight:"bold"}}>Boss</span></div>}
- {types.map(k=><div key={k} style={{display:"flex",alignItems:"center",gap:4,padding:"2px 6px",background:"#0c0c1a",borderRadius:3,border:"1px solid #22334444"}}><EnemyIcon type={k} size={16}/><span style={{color:"#ccddee",fontSize:8,textTransform:"capitalize"}}>{k}</span></div>)}
- {types.length===0&&!isBoss&&<span style={{color:"#99aabb",fontSize:8}}>No enemies unlock at this wave</span>}</>);
+ return(<>{isBoss&&<div style={{display:"flex",alignItems:"center",gap:4,padding:"2px 6px",background:"#1a0a1a",borderRadius:3,border:"1px solid #ff226633"}}><EnemyIcon type="boss" size={18}/><span style={{color:"#ff2266",fontSize:_mf(8),fontWeight:"bold"}}>Boss</span></div>}
+ {types.map(k=><div key={k} style={{display:"flex",alignItems:"center",gap:4,padding:"2px 6px",background:"#0c0c1a",borderRadius:3,border:"1px solid #22334444"}}><EnemyIcon type={k} size={16}/><span style={{color:"#ccddee",fontSize:_mf(8),textTransform:"capitalize"}}>{k}</span></div>)}
+ {types.length===0&&!isBoss&&<span style={{color:"#99aabb",fontSize:_mf(8)}}>No enemies unlock at this wave</span>}</>);
  })()}
  </div>
- <div style={{color:"#aabbcc",fontSize:8,marginTop:6}}>
+ <div style={{color:"#aabbcc",fontSize:_mf(8),marginTop:6}}>
  {(()=>{const _eCount=4+Math.floor(practiceWave*1.0)+Math.floor(Math.pow(practiceWave,1.1)*0.25);const _rawHp=Math.round(BASE_HP*hpScale(practiceWave));const _rawDmg=Math.round((7+practiceWave*1.8)*dmgScale(practiceWave)*0.35);const _cumEchoes=(()=>{let totalK=0;for(let w2=1;w2<=practiceWave;w2++)totalK+=4+Math.floor(w2*1.0)+Math.floor(Math.pow(w2,1.1)*0.25);return Math.max(0,Math.floor(practiceWave*1.5+totalK*0.38+Math.pow(practiceWave,2.8)*0.065+Math.pow(practiceWave,1.8)*0.4));})();return <>Enemy HP scale: ×{hpScale(practiceWave).toFixed(1)} ({_rawHp}) · DMG scale: ×{dmgScale(practiceWave).toFixed(1)} ({_rawDmg}) · Count: {_eCount}<br/>Cumulative echoes through wave {practiceWave}: <span style={{color:CUR.echoes.color}}>⬢ {_cumEchoes.toLocaleString()}</span>{(()=>{const _t=metaRef.current.metaTier||1;if(_t<2)return null;const _phW=metaRef.current.phantomHighWave||0;const _prW=metaRef.current.practiseHighWave||0;const _phL=(metaRef.current.lab?.completed?.phantom_enhance||0)*0.001;const _prL=(metaRef.current.lab?.completed?.practise_enhance||0)*0.001;const _tv=_t===3?2.5:_t===2?1.5:1;const _ph=_t>=2?(1+_phW*(0.01+_phL)):1;const _pr=_t>=2?(1+_prW*(0.006+_prL)):1;const _enf=_t>=2?1+(metaRef.current.enforcerKills||0)*0.025:1;const _des4=_t>=2?1+((metaRef.current.ownedDesigns||[]).length)*0.004:1;const _heMult=_tv*_ph*_pr*_enf*_des4;if(_heMult<=1)return null;const _final=Math.floor(_cumEchoes*_heMult);return <>{" "}<span style={{color:"#ffcc44"}}>×{_heMult.toFixed(3)}</span>{" = "}<span style={{color:CUR.echoes.color}}>⬢ {_final.toLocaleString()}</span></>;})()}</>})()}
  </div>
  </div>
- <button onClick={()=>startPractise(practiceWave)} style={{...bs2("#cc8844"),marginTop:16,padding:"10px 32px",fontSize:14}} {...hv("#cc8844")}>PLAY WAVE {practiceWave}</button>
- <button onClick={()=>goTo("menu")} style={{...bs2("#55667744"),marginTop:10,padding:"8px 24px",fontSize:11,borderWidth:1,color:"#8899aa"}}>← BACK</button>
+ <button onClick={()=>startPractise(practiceWave)} style={{...bs2("#cc8844"),marginTop:16,padding:"10px 32px",fontSize:_mf(14)}} {...hv("#cc8844")}>PLAY WAVE {practiceWave}</button>
+ <button onClick={()=>goTo("menu")} style={{...bs2("#55667744"),marginTop:10,padding:"8px 24px",fontSize:_mf(11),borderWidth:1,color:"#8899aa"}}>← BACK</button>
  </div></div>
  )}
  {phase==="history"&&(()=>{
@@ -3052,24 +3383,37 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  const _cumEchoes=[];let _runCum=0;_hist.forEach(r=>{_runCum+=(r.echoes||0);_cumEchoes.push(_runCum);});
  const _trendWindow=Math.max(3,Math.floor(_filtered.length/8));
  const _trend=_filtered.map((_,i)=>{let s=0,c=0;for(let j=Math.max(0,i-_trendWindow+1);j<=i;j++){s+=(historyMode==="echoes"?(_filtered[j].echoes||0):_filtered[j].wave);c++;}return s/c;});
+ if(_mob){const _sel=historyHover!==null?_filtered[historyHover]:null;const _acc=historyMode==="echoes"?CUR.echoes.color:"#00e5ff";return _gShell(<>
+  {_gHead("PLAY HISTORY","#8899aa",()=>goTo("menu"))}
+  {_admHist&&<div style={{color:"#ff9966",fontSize:10,letterSpacing:1,textAlign:"center",flexShrink:0}}>VIEWING: {_admHistName||"Unknown Pilot"} (admin)</div>}
+  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,flexShrink:0}}>{[["LIFETIME RUNS",String(_totalRuns-_hist.filter(r=>r.forfeited).length),"#8899aa"],["LIFETIME KILLS",_totalKills.toLocaleString(),"#ff6688"],["LIFETIME ECHOES","⬢ "+_totalEchoes.toLocaleString(),CUR.echoes.color]].map(([k,v,c],i)=><div key={i} style={{..._gpDim(c,12),padding:"10px 8px",textAlign:"center"}}><div style={{color:c,fontSize:8,letterSpacing:1,fontWeight:"bold"}}>{k}</div><div style={{color:"#fff",fontSize:15,fontWeight:"bold",marginTop:3}}>{v}</div></div>)}</div>
+  <div style={{display:"flex",gap:6,flexShrink:0}}>{[["waves","WAVES","#00e5ff"],["echoes","ECHOES",CUR.echoes.color]].map(([k,l,c])=><button key={k} onClick={()=>setHistoryMode(k)} style={{flex:1,padding:"11px",...(historyMode===k?_gp(c,12):_gpDim(c,12)),color:"#fff",fontSize:11,fontWeight:"bold",letterSpacing:1.5,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>)}<button onClick={()=>setHistoryHideForfeits(p=>!p)} style={{flex:1.3,padding:"11px 6px",...(historyHideForfeits?_gp("#44ccaa",12):_gpDim("#8899aa",12)),color:"#fff",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"inherit"}}>{historyHideForfeits?"FORFEITS HIDDEN":"SHOW ALL"}</button></div>
+  {_filtered.length===0?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#aab",fontSize:13,textAlign:"center"}}>No runs recorded yet. Go die in the void!</div>:<>
+  <div style={{flex:1,minHeight:0,..._gpDim("#8899aa",14),padding:"10px 10px 8px",display:"flex",flexDirection:"column"}}>
+   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",color:"#8899aa",fontSize:9,marginBottom:4,flexShrink:0}}><span>{historyMode==="echoes"?"⬢ "+_maxW.toLocaleString():"WAVE "+_maxW}</span><div style={{display:"flex",gap:6,alignItems:"center"}}><button onClick={()=>setHistoryHover(h=>h===null?_filtered.length-1:Math.max(0,h-1))} style={{width:40,height:32,..._gpDim("#8899aa",8),color:"#fff",fontSize:16,fontWeight:"bold",cursor:"pointer",fontFamily:"inherit"}}>‹</button><span style={{color:"#c8cce6",fontSize:10,minWidth:52,textAlign:"center"}}>{historyHover!==null?`${historyHover+1}/${_filtered.length}`:`—/${_filtered.length}`}</span><button onClick={()=>setHistoryHover(h=>h===null?0:Math.min(_filtered.length-1,h+1))} style={{width:40,height:32,..._gpDim("#8899aa",8),color:"#fff",fontSize:16,fontWeight:"bold",cursor:"pointer",fontFamily:"inherit"}}>›</button></div></div>
+   <div style={{flex:1,minHeight:0,display:"grid",gridTemplateColumns:`repeat(${_filtered.length},1fr)`,alignItems:"end",gap:_filtered.length>40?0:1,borderBottom:"1px solid #ffffff22"}}>{_filtered.map((r,i)=>{const _bVal=historyMode==="echoes"?(r.echoes||0):r.wave;const _pct=Math.max(3,100*(_bVal/_maxW));const _on=historyHover===i;return <div key={i} onClick={()=>setHistoryHover(i)} style={{height:_pct+"%",background:_on?(r.forfeited?"#ffaa66":_acc):(r.forfeited?"#cc885577":_acc+"66"),borderRadius:"2px 2px 0 0",cursor:"pointer",boxShadow:_on?`0 0 8px ${_acc}`:"none"}} />;})}</div>
+  </div>
+  <div style={{..._gpDim("#8899aa",14),padding:"10px 12px",flexShrink:0,height:118,boxSizing:"border-box",display:"flex",gap:10,alignItems:"center"}}>{_sel?(()=>{const r=_sel;const d=new Date(r.date);const histIdx=_hist.indexOf(r);const cumE=histIdx>=0?_cumEchoes[histIdx]:0;return <><div style={{flex:1,minWidth:0,color:"#dde",fontSize:10.5,lineHeight:1.55}}><div style={{color:"#fff",fontSize:12,fontWeight:"bold"}}>Run #{histIdx+1}{r.forfeited&&<span style={{color:"#ffaa66"}}> (forfeited)</span>} <span style={{color:"#8899aa",fontSize:9.5}}>{d.toLocaleDateString()}</span></div><div>Wave <b style={{color:"#fff"}}>{r.wave}</b> · <b style={{color:"#fff"}}>{r.kills}</b> kills · by <span style={{color:"#ff8899"}}>{r.cause}</span></div><div><span style={{color:CUR.echoes.color}}>⬢+{r.echoes}</span> · lifetime <span style={{color:CUR.echoes.color}}>⬢{cumE.toLocaleString()}</span></div></div><button onClick={()=>{_setHistPanel(null);_setHistDetail(r);}} style={{..._gBtn("#ff66aa",false),padding:"12px 18px",fontSize:11,flexShrink:0,flexDirection:"column",gap:2,minWidth:92}}>DETAILS<span style={{fontSize:8.5,fontWeight:"normal",opacity:0.85}}>& replay</span></button></>;})():<div style={{color:"#8899aa",fontSize:12,textAlign:"center",width:"100%"}}>Use ‹ › or tap a bar to pick a run.</div>}</div>
+  </>}
+ </>);}
  return(
  <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:10,overflow:"hidden",animation:"none"}} className={_phaseClass("history")}>
- <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 12px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}><h2 style={{color:"#99aacc",fontSize:18,letterSpacing:3,margin:0,zIndex:1,position:"relative"}}>PLAY HISTORY</h2>{_admHist&&<div style={{color:"#ff9966",fontSize:10,marginTop:5,letterSpacing:1,zIndex:1,position:"relative"}}>VIEWING: {_admHistName||"Unknown Pilot"} (admin)</div>}
- <div style={{color:"#aabbcc",fontSize:9,marginTop:6,textAlign:"center",lineHeight:1.6}}>
+ <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 12px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}>{_mob?<div style={{width:"100%",position:"relative",zIndex:1,marginBottom:4}}>{_gHead("PLAY HISTORY","#8899aa",()=>goTo("menu"))}</div>:<h2 style={{color:"#99aacc",fontSize:_mf(18),letterSpacing:3,margin:0,zIndex:1,position:"relative"}}>PLAY HISTORY</h2>}{_admHist&&<div style={{color:"#ff9966",fontSize:_mf(10),marginTop:5,letterSpacing:1,zIndex:1,position:"relative"}}>VIEWING: {_admHistName||"Unknown Pilot"} (admin)</div>}
+ <div style={{color:"#aabbcc",fontSize:_mf(9),marginTop:6,textAlign:"center",lineHeight:1.6}}>
  Lifetime runs: <span style={{color:"#ccddee"}}>{_totalRuns - _hist.filter(r=>r.forfeited).length}</span> · Lifetime kills: <span style={{color:"#ccddee"}}>{_totalKills.toLocaleString()}</span> · Lifetime echoes: <span style={{color:CUR.echoes.color}}>⬢ {_totalEchoes.toLocaleString()}</span>
  </div>
- <div style={{color:"#ff66aa",fontSize:9,marginTop:4,textAlign:"center",letterSpacing:1}}>Double click to view detailed stats and a video replay</div>
+ <div style={{color:"#ff66aa",fontSize:_mf(9),marginTop:4,textAlign:"center",letterSpacing:1}}>Double click to view detailed stats and a video replay</div>
  <div style={{display:"flex",gap:8,marginTop:10,alignItems:"center",flexWrap:"wrap",justifyContent:"center"}}>
  <div style={{display:"flex",gap:0,borderRadius:4,overflow:"hidden",border:"1px solid #33445544"}}>
- <button onClick={()=>{setHistoryMode("waves");}} style={{padding:"5px 12px",background:historyMode==="waves"?"#141428":"#0a0a16",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:9,color:historyMode==="waves"?"#99aacc":"#667788"}}>Wave Reached</button>
- <button onClick={()=>{setHistoryMode("echoes");}} style={{padding:"5px 12px",background:historyMode==="echoes"?"#141428":"#0a0a16",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:9,color:historyMode==="echoes"?CUR.echoes.color:"#667788",borderLeft:"1px solid #33445544"}}>Echoes Earned</button>
+ <button onClick={()=>{setHistoryMode("waves");}} style={{padding:_mv("5px 12px","12px 10px"),background:historyMode==="waves"?"#141428":"#0a0a16",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:historyMode==="waves"?"#99aacc":"#667788"}}>Wave Reached</button>
+ <button onClick={()=>{setHistoryMode("echoes");}} style={{padding:_mv("5px 12px","12px 10px"),background:historyMode==="echoes"?"#141428":"#0a0a16",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:historyMode==="echoes"?CUR.echoes.color:"#667788",borderLeft:"1px solid #33445544"}}>Echoes Earned</button>
  </div>
- <button onClick={()=>setHistoryHideForfeits(p=>!p)} style={{padding:"5px 10px",minWidth:120,background:historyHideForfeits?"#141428":"#0a0a16",border:`1px solid ${historyHideForfeits?"#44ccaa66":"#33445544"}`,borderRadius:3,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:historyHideForfeits?"#88ccaa":"#667788",textAlign:"center"}}>{historyHideForfeits?"Forfeits hidden":"Showing all runs"}</button>
+ <button onClick={()=>setHistoryHideForfeits(p=>!p)} style={{padding:"5px 10px",minWidth:120,background:historyHideForfeits?"#141428":"#0a0a16",border:`1px solid ${historyHideForfeits?"#44ccaa66":"#33445544"}`,borderRadius:3,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:historyHideForfeits?"#88ccaa":"#667788",textAlign:"center"}}>{historyHideForfeits?"Forfeits hidden":"Showing all runs"}</button>
  </div>
- {_filtered.length===0?<div style={{color:"#99aabb",fontSize:11,marginTop:40}}>No runs recorded yet. Go die in the void!</div>:(
+ {_filtered.length===0?<div style={{color:"#99aabb",fontSize:_mf(11),marginTop:40}}>No runs recorded yet. Go die in the void!</div>:(
  <div style={{width:"100%",maxWidth:GW-20,marginTop:14}}>
- <div style={{color:"#99aabb",fontSize:8,textAlign:"center",marginBottom:6,minHeight:90}}>
- {historyHover!==null&&_filtered[historyHover]?(()=>{const r=_filtered[historyHover];const d=new Date(r.date);const histIdx=_hist.indexOf(r);const cumE=histIdx>=0?_cumEchoes[histIdx]:0;return <div style={{color:"#aabbcc",fontSize:9,lineHeight:1.7,textAlign:"center"}}>
+ <div style={{color:"#99aabb",fontSize:_mf(8),textAlign:"center",marginBottom:6,minHeight:90}}>
+ {historyHover!==null&&_filtered[historyHover]?(()=>{const r=_filtered[historyHover];const d=new Date(r.date);const histIdx=_hist.indexOf(r);const cumE=histIdx>=0?_cumEchoes[histIdx]:0;return <div style={{color:"#aabbcc",fontSize:_mf(9),lineHeight:1.7,textAlign:"center"}}>
  <span style={{color:"#ccddee",fontWeight:"bold"}}>Run #{histIdx+1}</span>{r.forfeited&&<span style={{color:"#cc8855"}}> (forfeited)</span>}<br/>
  {d.toLocaleDateString()} {d.toLocaleTimeString()}<br/>
  Max wave: <span style={{color:"#ccddee"}}>{r.wave}</span> · Killed by: <span style={{color:"#cc8899"}}>{r.cause}</span> · Kills: <span style={{color:"#ccddee"}}>{r.kills}</span><br/>
@@ -3080,9 +3424,9 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  <div style={{display:"flex"}}>
  {}
  <div style={{width:30,flexShrink:0,display:"flex",flexDirection:"column",justifyContent:"space-between",paddingRight:4,height:_chartH}}>
- <span style={{color:"#445566",fontSize:7,textAlign:"right"}}>{historyMode==="echoes"?"⬢":"W"}{historyMode==="echoes"?_maxW.toLocaleString():_maxW}</span>
- {_maxW>2&&<span style={{color:"#334455",fontSize:7,textAlign:"right"}}>{historyMode==="echoes"?"⬢":"W"}{historyMode==="echoes"?Math.round(_maxW/2).toLocaleString():Math.round(_maxW/2)}</span>}
- <span style={{color:"#445566",fontSize:7,textAlign:"right"}}>0</span>
+ <span style={{color:"#445566",fontSize:_mf(7),textAlign:"right"}}>{historyMode==="echoes"?"⬢":"W"}{historyMode==="echoes"?_maxW.toLocaleString():_maxW}</span>
+ {_maxW>2&&<span style={{color:"#334455",fontSize:_mf(7),textAlign:"right"}}>{historyMode==="echoes"?"⬢":"W"}{historyMode==="echoes"?Math.round(_maxW/2).toLocaleString():Math.round(_maxW/2)}</span>}
+ <span style={{color:"#445566",fontSize:_mf(7),textAlign:"right"}}>0</span>
  </div>
  {}
  <div style={{flex:1,position:"relative"}}>
@@ -3098,100 +3442,119 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  </svg>;})()}
  {}
  <div style={{position:"absolute",top:_chartH/2,left:0,right:0,borderTop:"1px dashed #22334433",pointerEvents:"none"}} />
- <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}><span style={{color:"#445566",fontSize:7}}>Run 1</span><span style={{color:"#445566",fontSize:7}}>Run {_filtered.length}</span></div>
+ <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}><span style={{color:"#445566",fontSize:_mf(7)}}>Run 1</span><span style={{color:"#445566",fontSize:_mf(7)}}>Run {_filtered.length}</span></div>
  </div>
  </div>
- {_trend.length>0&&<div style={{color:"#ffcc4466",fontSize:7,textAlign:"center",marginTop:4}}>— trend ({_trendWindow}-run avg){(meta.metaTier||1)>=2&&<span style={{color:"#ff66aa66"}}> — hyperecho multiplier</span>}</div>}
+ {_trend.length>0&&<div style={{color:"#ffcc4466",fontSize:_mf(7),textAlign:"center",marginTop:4}}>— trend ({_trendWindow}-run avg){(meta.metaTier||1)>=2&&<span style={{color:"#ff66aa66"}}> — hyperecho multiplier</span>}</div>}
  </div>)}
- <button onClick={()=>goTo("menu")} style={{...bs2("#55667744"),marginTop:16,padding:"8px 24px",fontSize:11,borderWidth:1,color:"#8899aa"}}>← BACK</button>
+ {!_mob&&<button onClick={()=>goTo("menu")} style={{...bs2("#55667744"),marginTop:16,padding:"8px 24px",fontSize:_mf(11),borderWidth:1,color:"#8899aa"}}>← BACK</button>}
  </div></div>);})()}
- {phase==="hyperecho"&&(
+ {phase==="hyperecho"&&_mob&&(()=>{const _tier=meta.metaTier||1;const _phW=meta.phantomHighWave||0;const _prW=meta.practiseHighWave||0;const _phLab=(meta.lab?.completed?.phantom_enhance||0)*0.001;const _prLab=(meta.lab?.completed?.practise_enhance||0)*0.001;const _phV=1+_phW*(0.01+_phLab);const _prV=1+_prW*(0.006+_prLab);const _bossDiff=(meta.pathsUpg?.pr_diff&&(meta.practiseHighWave||0)>0&&(meta.practiseHighWave||0)%5===0)?0.045:0;
+ const _mults=[{id:"tier",name:"Tier",desc:"Base multiplier from your Meta Tier.",color:"#bb99ff",val:_tier===3?2.5:_tier===2?1.5:1},{id:"phantom",name:"Phantom",desc:`+${(0.01+_phLab).toFixed(3)} per phantom max wave (${_phW}).`,color:"#cc66cc",val:_tier>=2?_phV:1},{id:"practise",name:"Practise",desc:`+${(0.006+_prLab).toFixed(3)} per practise max wave (${_prW}).`,color:"#cc9966",val:_tier>=2?_prV:1},{id:"enforcer",name:"Enforcer",desc:"+0.025 per enforcer defeated in Playground.",color:"#ff5577",val:_tier>=2?1+(meta.enforcerKills||0)*0.025:1},{id:"designer",name:"Designer",desc:"+0.004 per custom ship design owned (Settings > Custom Designs).",color:"#cc7744",val:_tier>=2?1+((meta.ownedDesigns||[]).length)*0.004:1},{id:"diffusion",name:"Diffusion",desc:"Per-run bonus from diffusing ability slots. +"+((meta.lab?.completed?.diffusion_multi||0)*0.009+0.0375).toFixed(3)+" per diffuse, resets each run."+(_bossDiff?" Plus a permanent +0.045 for a boss-wave practise best.":""),color:"#44ddcc",val:(gsRef.current?._diffuseMult||1)+_bossDiff}];
+ const _total=_mults.reduce((a,m)=>a*m.val,1);const _sel=_mults.find(m=>m.id===heInfoId);const _locked=_tier<2;
+ return _gShell(<>
+ {_gHead("HYPERECHO","#ffcc44",()=>goTo("menu"))}
+ <div style={{..._gp("#ffcc44",18),padding:"14px 16px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}><div><div style={{color:"#fff",fontSize:9,letterSpacing:2,fontWeight:"bold"}}>TOTAL MULTIPLIER</div><div style={{color:"#fff8e0",fontSize:9,marginTop:2}}>All sources stack multiplicatively</div></div><div style={{color:"#fff",fontSize:30,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono','Courier New',monospace",textShadow:"0 0 14px #ffcc44"}}>×{_total.toFixed(3)}</div></div>
+ <div style={{flex:1,minHeight:0,position:"relative",display:"flex",flexDirection:"column",gap:6}}>
+  <div style={{flex:1,minHeight:0,display:"flex",flexDirection:"column",gap:6}}>{_mults.map(m=>{const _on=heInfoId===m.id;return <div key={m.id} onClick={()=>setHeInfoId(_on?null:m.id)} style={{...(_on?_gp(m.color,14):_gpDim(m.color,14)),flex:1,padding:"6px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:"pointer",minHeight:0}}><div style={{color:_on?"#fff":m.color,fontSize:14,fontWeight:"bold",letterSpacing:1}}>{m.name}</div><div style={{color:"#fff",fontSize:22,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono','Courier New',monospace"}}>×{m.val.toFixed(3)}</div></div>;})}</div>
+  <div style={{..._gpDim("#ffcc44",14),padding:"12px 14px",flexShrink:0,height:96,boxSizing:"border-box",display:"flex",alignItems:"center",overflow:"hidden"}}><div style={{color:_sel?"#f0f2ff":"#8899aa",fontSize:13,lineHeight:1.45,display:"-webkit-box",WebkitLineClamp:4,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{_sel?_sel.desc:"Tap a multiplier for details."}</div></div>
+  {_locked&&<div style={{position:"absolute",inset:0,background:"rgba(2,2,8,0.86)",borderRadius:14,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,textAlign:"center",padding:16}}><div style={{fontSize:32}}>🔒</div><div style={{color:"#fff",fontSize:13,fontWeight:"bold",letterSpacing:2}}>LOCKED</div><div style={{color:"#c8cce6",fontSize:10.5,lineHeight:1.6}}>Reach <span style={{color:"#bb99ff",fontWeight:"bold"}}>Meta Tier 2</span> to unlock multipliers. Max all Tier 1 ship upgrades, then unlock Tier 2 for <span style={{color:"#bb99ff",fontWeight:"bold"}}>⬢ 800</span>.</div></div>}
+ </div>
+</>);})()}
+{phase==="hyperecho"&&!_mob&&(
  <div className={_phaseClass("hyperecho")} style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:10,overflow:"hidden"}}>
  <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 16px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}>
- <h2 style={{color:"#ffcc44",fontSize:18,letterSpacing:3,margin:0}}>HYPERECHO</h2>
- <div style={{color:"#ccddee",fontSize:10,marginTop:8,textAlign:"center",lineHeight:1.6,maxWidth:380}}>Echo multipliers stack multiplicatively. Earn more echoes per run by unlocking multiplier sources.</div>
+ <h2 style={{color:"#ffcc44",fontSize:_mf(18),letterSpacing:3,margin:0}}>HYPERECHO</h2>
+ <div style={{color:"#ccddee",fontSize:_mf(10),marginTop:8,textAlign:"center",lineHeight:1.6,maxWidth:380}}>Echo multipliers stack multiplicatively. Earn more echoes per run by unlocking multiplier sources.</div>
  <div style={{marginTop:20,width:"100%",maxWidth:360,display:"flex",flexDirection:"column",gap:6,position:"relative"}}>
  {(()=>{const _tier=meta.metaTier||1;const _phW=meta.phantomHighWave||0;const _prW=meta.practiseHighWave||0;const _phLab=(meta.lab?.completed?.phantom_enhance||0)*0.001;const _prLab=(meta.lab?.completed?.practise_enhance||0)*0.001;const _phV=1+_phW*(0.01+_phLab);const _prV=1+_prW*(0.006+_prLab);const _mults=[{id:"tier",name:"Tier",desc:"",color:"#bb99ff",val:_tier===3?2.5:_tier===2?1.5:1},{id:"phantom",name:"Phantom",desc:`+${(0.01+_phLab).toFixed(3)} per phantom max wave (${_phW}).`,color:"#cc66cc",val:_tier>=2?_phV:1},{id:"practise",name:"Practise",desc:`+${(0.006+_prLab).toFixed(3)} per practise max wave (${_prW}).`,color:"#cc9966",val:_tier>=2?_prV:1},{id:"enforcer",name:"Enforcer",desc:"+0.025 per enforcer defeated in Playground.",color:"#ff5577",val:_tier>=2?1+(meta.enforcerKills||0)*0.025:1},{id:"designer",name:"Designer",desc:"+0.004 per custom ship design owned. Unlock designs with boss shards in Settings > Custom Designs.",color:"#cc7744",val:_tier>=2?1+((meta.ownedDesigns||[]).length)*0.004:1},{id:"diffusion",name:"Diffusion",desc:"Per-run echo bonus from diffusing ability slots. Each diffuse adds +" + ((metaRef.current.lab?.completed?.diffusion_multi||0)*0.009+0.0375).toFixed(3) + " to the multiplier. Resets each run."+((meta.pathsUpg?.pr_diff&&(meta.practiseHighWave||0)>0&&(meta.practiseHighWave||0)%5===0)?" Plus a permanent +0.045 because your best practise wave is a boss wave.":""),color:"#44ddcc",val:(gsRef.current?._diffuseMult||1)+((meta.pathsUpg?.pr_diff&&(meta.practiseHighWave||0)>0&&(meta.practiseHighWave||0)%5===0)?0.045:0)}];const _total=_mults.reduce((a,m)=>a*m.val,1);return _mults.map(m=>(
  <div key={m.id} style={{padding:"6px 0"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
- <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{color:m.color,fontSize:14,fontWeight:"bold"}}>{m.name}</div>
- {m.desc&&<div onClick={(e)=>{e.stopPropagation();setHeInfoId(heInfoId===m.id?null:m.id);}} style={{width:14,height:14,borderRadius:7,border:"1px solid #44667744",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#667788"}}>?</div>}</div>
- <div style={{color:"#ccddee",fontSize:18,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace",minWidth:70,textAlign:"right"}}>×{m.val.toFixed(3)}</div>
+ <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{color:m.color,fontSize:_mf(14),fontWeight:"bold"}}>{m.name}</div>
+ {m.desc&&<div onClick={(e)=>{e.stopPropagation();setHeInfoId(heInfoId===m.id?null:m.id);}} style={{width:_mv(14,30),height:_mv(14,30),borderRadius:_mv(7,15),border:"1px solid #44667744",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mv(_mf(8),16),color:"#667788"}}>?</div>}</div>
+ <div style={{color:"#ccddee",fontSize:_mf(18),fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace",minWidth:70,textAlign:"right"}}>×{m.val.toFixed(3)}</div>
  </div>
- {heInfoId===m.id&&<div style={{color:"#8899aa",fontSize:8,marginTop:6,lineHeight:1.5,borderTop:"1px solid #22334444",paddingTop:4}}>{m.desc}</div>}
+ {heInfoId===m.id&&<div style={{color:"#8899aa",fontSize:_mf(8),marginTop:6,lineHeight:1.5,borderTop:"1px solid #22334444",paddingTop:4}}>{m.desc}</div>}
  </div>));})()}
  {(meta.metaTier||1)<2&&<div style={{position:"absolute",inset:0,background:"rgba(6,6,14,0.85)",zIndex:5,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",borderRadius:6,pointerEvents:"all"}}>
- <div style={{fontSize:36,marginBottom:8}}>🔒</div>
- <div style={{color:"#8899aa",fontSize:12,fontWeight:"bold",letterSpacing:2,marginBottom:8}}>LOCKED</div>
- <div style={{color:"#667788",fontSize:10,textAlign:"center",maxWidth:260,lineHeight:1.6}}>Reach <span style={{color:"#bb99ff"}}>Meta Tier 2</span> to unlock HyperEcho multipliers. Max all Ship Upgrades at Tier 1 first. Once maxed, you will be able to unlock tier 2 for <span style={{color:"#bb99ff"}}>⬢ 800</span>.</div>
+ <div style={{fontSize:_mf(36),marginBottom:8}}>🔒</div>
+ <div style={{color:"#8899aa",fontSize:_mf(12),fontWeight:"bold",letterSpacing:2,marginBottom:8}}>LOCKED</div>
+ <div style={{color:"#667788",fontSize:_mf(10),textAlign:"center",maxWidth:260,lineHeight:1.6}}>Reach <span style={{color:"#bb99ff"}}>Meta Tier 2</span> to unlock HyperEcho multipliers. Max all Ship Upgrades at Tier 1 first. Once maxed, you will be able to unlock tier 2 for <span style={{color:"#bb99ff"}}>⬢ 800</span>.</div>
  </div>}
  </div>
  <div style={{width:"100%",maxWidth:360,borderTop:"1px solid #44556644",marginTop:14,paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 12px 0"}}>
- <div style={{color:"#ffcc44",fontSize:16,fontWeight:"bold"}}>TOTAL MULTIPLIER</div>
- {(()=>{const _tier=meta.metaTier||1;const _phW2=meta.phantomHighWave||0;const _prW2=meta.practiseHighWave||0;const _phL2=(meta.lab?.completed?.phantom_enhance||0)*0.001;const _prL2=(meta.lab?.completed?.practise_enhance||0)*0.001;const _tv=_tier===3?2.5:_tier===2?1.5:1;const _enfK=meta.enforcerKills||0;const _total=_tv*(_tier>=2?(1+_phW2*(0.01+_phL2)):1)*(_tier>=2?(1+_prW2*(0.006+_prL2)):1)*(_tier>=2?1+_enfK*0.025:1)*(_tier>=2?1+((meta.ownedDesigns||[]).length)*0.004:1)*(gsRef.current?._diffuseMult||1);return <div style={{color:"#ffcc44",fontSize:26,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>×{_total.toFixed(3)}</div>;})()}
+ <div style={{color:"#ffcc44",fontSize:_mf(16),fontWeight:"bold"}}>TOTAL MULTIPLIER</div>
+ {(()=>{const _tier=meta.metaTier||1;const _phW2=meta.phantomHighWave||0;const _prW2=meta.practiseHighWave||0;const _phL2=(meta.lab?.completed?.phantom_enhance||0)*0.001;const _prL2=(meta.lab?.completed?.practise_enhance||0)*0.001;const _tv=_tier===3?2.5:_tier===2?1.5:1;const _enfK=meta.enforcerKills||0;const _total=_tv*(_tier>=2?(1+_phW2*(0.01+_phL2)):1)*(_tier>=2?(1+_prW2*(0.006+_prL2)):1)*(_tier>=2?1+_enfK*0.025:1)*(_tier>=2?1+((meta.ownedDesigns||[]).length)*0.004:1)*(gsRef.current?._diffuseMult||1);return <div style={{color:"#ffcc44",fontSize:_mf(26),fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>×{_total.toFixed(3)}</div>;})()}
  </div>
- <button onClick={()=>goTo("menu")} style={{...bs2("#55667744"),marginTop:20,padding:"8px 24px",fontSize:11,borderWidth:1,color:"#8899aa"}}>← BACK</button>
+ <button onClick={()=>goTo("menu")} style={{...bs2("#55667744"),marginTop:20,padding:"8px 24px",fontSize:_mf(11),borderWidth:1,color:"#8899aa"}}>← BACK</button>
  </div></div>
  )}
  {phase==="settings"&&(
  <div onClick={()=>{if(confirmReset)setConfirmReset(false);}} className={_phaseClass("settings")} style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:10,overflow:"hidden"}}>
- <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"8px 16px 20px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}><h2 style={{color:"#ccddee",fontSize:17,letterSpacing:3,margin:0,zIndex:1,position:"relative"}}>SETTINGS</h2>
- <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"16px 0 8px"}}>ACCOUNT</h3>
+ <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"8px 16px 20px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}>{_mob?<div style={{width:"100%",position:"relative",zIndex:1,marginBottom:4}}>{_gHead(_setSec===null?"SETTINGS":({account:"ACCOUNT & DISPLAY",custom:"CUSTOMISATION",play:"CONTROLS & GAMEPLAY"})[_setSec]||"SETTINGS","#99aabb",()=>{if(_setSec!==null){_setSetSec(null);return;}if(_returnToPauseRef.current){setPhase("playing");}else{goTo("menu");}})}</div>:<h2 style={{color:"#ccddee",fontSize:_mf(17),letterSpacing:3,margin:0,zIndex:1,position:"relative"}}>SETTINGS</h2>}
+ {_mob&&_setSec===null&&<div style={{width:"100%",flex:1,minHeight:0,display:"flex",flexDirection:"column",gap:9,position:"relative",zIndex:1,padding:"4px 0 8px",boxSizing:"border-box"}}>{(()=>{const _tile=(k,t,d,col)=><button key={k} onClick={()=>_setSetSec(k)} style={{..._gp(col,18),flex:"1.25 1 0",padding:"16px",display:"flex",flexDirection:"column",justifyContent:"center",gap:7,cursor:"pointer",fontFamily:"inherit",textAlign:"left",minHeight:0}}><div style={{color:"#fff",fontSize:17,fontWeight:"bold",letterSpacing:2}}>{t}</div><div style={{color:"#eef",fontSize:12,lineHeight:1.45,opacity:0.9}}>{d}</div></button>;
+ const _cus=(t,d,fn,dot)=><button key={t} onClick={fn} style={{background:"#0c0c1a",border:"1px solid #bb99ff55",borderRadius:14,flex:"1 1 0",padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:"pointer",fontFamily:"inherit",textAlign:"left",position:"relative",minHeight:0}}>{dot&&<span style={_affDot} />}<div><div style={{color:"#fff",fontSize:14,fontWeight:"bold"}}>{t}</div><div style={{color:"#aeb6cc",fontSize:10.5,marginTop:3}}>{d}</div></div><span style={{color:"#bb99ff",fontSize:20}}>›</span></button>;
+ return <><div style={{flex:"0 0 auto"}}><div style={{color:"#aeb6cc",fontSize:10.5,fontWeight:"bold",letterSpacing:2,margin:"0 2px 6px"}}>DISPLAY MODE</div>{_DispMode(true)}</div>
+  {_tile("account","ACCOUNT & DISPLAY","Cloud sync code, account lock, resolution and the full changelog","#44ccaa")}
+  {_cus("SHIP & BULLET COLOURS","Pick your ship and bullet colours",()=>setShowShipPopup(true))}
+  {_cus("BACKGROUNDS","Animated menu and battle backgrounds",()=>setShowBgPopup(true))}
+  {_cus("CUSTOM DESIGNS","Unlockable ship designs bought with boss shards",()=>setShowDesignPopup(true),_dotsOn&&_affordDesign)}
+  {_tile("play","CONTROLS & GAMEPLAY","Touch controls, lab alerts, hit numbers, pickup ring, epilepsy safety and more","#ffaa66")}</>;})()}</div>}<div style={{display:(_mob&&_setSec!=="account")?"none":"contents",width:"100%"}}><h3 style={{color:"#ddeeff",fontSize:_mf(11),letterSpacing:2,margin:"16px 0 8px"}}>ACCOUNT</h3>
  <div style={{display:"flex",gap:6,alignItems:"center",justifyContent:"center",maxWidth:300}}>
  {!syncCode?<>
- <input type="text" inputMode="numeric" maxLength={6} value={syncCodeInput} onChange={e=>setSyncCodeInput(e.target.value.replace(/\D/g,""))} placeholder="0000" style={{width:88,padding:"6px 8px",background:"#0a0a16",border:"1px solid #33445566",borderRadius:4,color:"#ccddee",fontSize:12,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace",textAlign:"center",letterSpacing:3,outline:"none"}} />
- <button onClick={()=>{const c=syncCodeInput;if(c.length<4){setSyncStatus("tooshort");return;}if(c.length>6){setSyncStatus("error");return;}if(BLOCKED_CODES.has(c)){setSyncStatus("blocked");return;}if(!_SYNC_OK){setSyncStatus("noconfig");return;}setSyncStatus("syncing");fetch(SUPABASE_URL+"/rest/v1/saves?code=eq."+c+"&select=data,updated_at",{headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Cache-Control":"no-cache"}}).then(r=>r.json()).then(rows=>{const cd=rows.length>0&&rows[0].data?rows[0].data:null;if(cd&&cd.meta&&cd.meta.locked){const _lk=localStorage.getItem("vs4-lock-key");if(!_lk||_lk!==cd.meta.lock_key){setSyncStatus("locked");return;}}const lm=meta;const lp=(lm.highWave||0)>0||(lm.echoes||0)>0||Object.keys(lm.levels||{}).length>0;if(cd&&cd.meta&&lp){let _llp=lm.savedAt||0;if(!_llp){try{const _lh=JSON.parse(localStorage.getItem("vs4-history")||"[]");if(_lh.length>0)_llp=_lh[_lh.length-1].date||0;}catch(_e2){}}const _clp=cd.meta.savedAt||(rows[0].updated_at?new Date(rows[0].updated_at).getTime():0);setSyncConflict({code:c,local:{savedAt:_llp,echoes:lm.echoes||0,highWave:lm.highWave||0,totalEchoesEarned:lm.totalEchoesEarned||0},cloud:{savedAt:_clp,echoes:cd.meta.echoes||0,highWave:cd.meta.highWave||0,totalEchoesEarned:cd.meta.totalEchoesEarned||0},cloudData:cd});setSyncStatus("conflict");}else if(cd&&cd.meta){if(cd.meta.locked){const _lk2=localStorage.getItem("vs4-lock-key");if(!_lk2||_lk2!==cd.meta.lock_key){setSyncStatus("locked");return;}}localStorage.setItem("vs4-sync-code",c);setSyncCode(c);syncCodeRef.current=c;setMeta(cd.meta);try{localStorage.setItem("vs4-meta",JSON.stringify(cd.meta));}catch(e){}if(cd.history)try{localStorage.setItem("vs4-history",JSON.stringify(cd.history));}catch(e){}if(cd.tut)try{localStorage.setItem("vs4-tut",cd.tut);}catch(e){}setSyncStatus("synced");{const _tsS=Date.now();const _msS={...cd.meta,savedAt:_tsS};try{const _hS=localStorage.getItem("vs4-history")||"[]";const _tS=localStorage.getItem("vs4-tut")||"0";fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code:c,data:{meta:_msS,history:_vsHistForSync(),tut:_tS,session_id:_sessionIdRef.current,devices:{[_sessionIdRef.current]:Date.now()}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(_e){}}}else{localStorage.setItem("vs4-sync-code",c);setSyncCode(c);syncCodeRef.current=c;setSyncStatus("synced");const _ts3=Date.now();const _pushM={...lm,savedAt:_ts3};try{const h=localStorage.getItem("vs4-history")||"[]";const t=localStorage.getItem("vs4-tut")||"0";fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code:c,data:{meta:_pushM,history:_vsHistForSync(),tut:t,session_id:_sessionIdRef.current,devices:{[_sessionIdRef.current]:Date.now()}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(e){}}}).catch(()=>setSyncStatus("error"));}} style={{padding:"6px 14px",background:"#141428",border:"1px solid #44ccaa66",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:10,color:"#88ccaa",letterSpacing:1}}>SYNC</button>
- <div onClick={()=>setShowSyncInfo(true)} style={{width:15,height:15,borderRadius:"50%",border:"1px solid #44ccaa44",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#44ccaa66",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#44ccaa"} onMouseOut={e=>e.currentTarget.style.color="#44ccaa66"}>?</div>
+ <input type="text" inputMode="numeric" maxLength={6} value={syncCodeInput} onChange={e=>setSyncCodeInput(e.target.value.replace(/\D/g,""))} placeholder="0000" style={{width:88,padding:"6px 8px",background:"#0a0a16",border:"1px solid #33445566",borderRadius:4,color:"#ccddee",fontSize:_mf(12),fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace",textAlign:"center",letterSpacing:3,outline:"none"}} />
+ <button onClick={()=>{const c=syncCodeInput;if(c.length<4){setSyncStatus("tooshort");return;}if(c.length>6){setSyncStatus("error");return;}if(BLOCKED_CODES.has(c)){setSyncStatus("blocked");return;}if(!_SYNC_OK){setSyncStatus("noconfig");return;}setSyncStatus("syncing");fetch(SUPABASE_URL+"/rest/v1/saves?code=eq."+c+"&select=data,updated_at",{headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Cache-Control":"no-cache"}}).then(r=>r.json()).then(rows=>{const cd=rows.length>0&&rows[0].data?rows[0].data:null;if(cd&&cd.meta&&cd.meta.locked){const _lk=localStorage.getItem("vs4-lock-key");if(!_lk||_lk!==cd.meta.lock_key){setSyncStatus("locked");return;}}const lm=meta;const lp=(lm.highWave||0)>0||(lm.echoes||0)>0||Object.keys(lm.levels||{}).length>0;if(cd&&cd.meta&&lp){let _llp=lm.savedAt||0;if(!_llp){try{const _lh=JSON.parse(localStorage.getItem("vs4-history")||"[]");if(_lh.length>0)_llp=_lh[_lh.length-1].date||0;}catch(_e2){}}const _clp=cd.meta.savedAt||(rows[0].updated_at?new Date(rows[0].updated_at).getTime():0);setSyncConflict({code:c,local:{savedAt:_llp,echoes:lm.echoes||0,highWave:lm.highWave||0,totalEchoesEarned:lm.totalEchoesEarned||0},cloud:{savedAt:_clp,echoes:cd.meta.echoes||0,highWave:cd.meta.highWave||0,totalEchoesEarned:cd.meta.totalEchoesEarned||0},cloudData:cd});setSyncStatus("conflict");}else if(cd&&cd.meta){if(cd.meta.locked){const _lk2=localStorage.getItem("vs4-lock-key");if(!_lk2||_lk2!==cd.meta.lock_key){setSyncStatus("locked");return;}}localStorage.setItem("vs4-sync-code",c);setSyncCode(c);syncCodeRef.current=c;setMeta(cd.meta);try{localStorage.setItem("vs4-meta",JSON.stringify(cd.meta));}catch(e){}if(cd.history)try{localStorage.setItem("vs4-history",JSON.stringify(cd.history));}catch(e){}if(cd.tut)try{localStorage.setItem("vs4-tut",cd.tut);}catch(e){}setSyncStatus("synced");{const _tsS=Date.now();const _msS={...cd.meta,savedAt:_tsS};try{const _hS=localStorage.getItem("vs4-history")||"[]";const _tS=localStorage.getItem("vs4-tut")||"0";fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code:c,data:{meta:_msS,history:_vsHistForSync(),tut:_tS,session_id:_sessionIdRef.current,devices:{[_sessionIdRef.current]:Date.now()}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(_e){}}}else{localStorage.setItem("vs4-sync-code",c);setSyncCode(c);syncCodeRef.current=c;setSyncStatus("synced");const _ts3=Date.now();const _pushM={...lm,savedAt:_ts3};try{const h=localStorage.getItem("vs4-history")||"[]";const t=localStorage.getItem("vs4-tut")||"0";fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code:c,data:{meta:_pushM,history:_vsHistForSync(),tut:t,session_id:_sessionIdRef.current,devices:{[_sessionIdRef.current]:Date.now()}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(e){}}}).catch(()=>setSyncStatus("error"));}} style={{padding:"6px 14px",background:"#141428",border:"1px solid #44ccaa66",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),color:"#88ccaa",letterSpacing:1}}>SYNC</button>
+ <div onClick={()=>setShowSyncInfo(true)} style={{width:15,height:15,borderRadius:"50%",border:"1px solid #44ccaa44",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mf(8),color:"#44ccaa66",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#44ccaa"} onMouseOut={e=>e.currentTarget.style.color="#44ccaa66"}>?</div>
  </>:<>
- <span style={{color:"#44ccaa",fontSize:13,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace",letterSpacing:3}}>{syncCode}</span>
- {!confirmDisconnect?<button onClick={()=>{if(meta.locked){setSyncStatus("unlock_first");setTimeout(()=>setSyncStatus("synced"),3000);return;}setConfirmDisconnect(true);}} style={{padding:"4px 14px",background:"#141428",border:"1px solid #ff334466",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#cc6666",letterSpacing:1}}>DISCONNECT</button>:<div style={{display:"flex",gap:4,alignItems:"center"}}><button onClick={()=>{if(metaRef.current.locked){setConfirmDisconnect(false);setSyncStatus("unlock_first");setTimeout(()=>setSyncStatus("synced"),3000);return;}const _ms=metaRef.current;const _ts=Date.now();const _pushFinal={..._ms,savedAt:_ts};try{const _h=localStorage.getItem("vs4-history")||"[]";const _t=localStorage.getItem("vs4-tut")||"0";fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code:syncCodeRef.current,data:{meta:_pushFinal,history:_vsHistForSync(),tut:_t,session_id:"disconnected",devices:{}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(_e){}setSyncCode(null);syncCodeRef.current=null;setSyncStatus("none");setSyncCodeInput("");setConfirmDisconnect(false);setSessionTakeover(false);try{localStorage.removeItem("vs4-sync-code");localStorage.removeItem("vs4-meta");localStorage.removeItem("vs4-history");localStorage.removeItem("vs4-tut");}catch(e){}const _def={echoes:0,levels:{},shards:0,shardsBought:0,abUpgrades:{},shipColor:"cyan",bulletColor:"teal",bossShards:0,ownedDesigns:[],shipDesign:"none",designColor:undefined,showNewEnemy:true,showHitText:true,showMagnetRange:true,highWave:0,username:_genUsername()};setMeta(_def);setShowTutPrompt(true);}} style={{padding:"4px 10px",background:"#1a0a0a",border:"1px solid #ff3344",borderRadius:3,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#ff4455"}}>CONFIRM</button><button onClick={()=>setConfirmDisconnect(false)} style={{padding:"4px 10px",background:"none",border:"1px solid #33445544",borderRadius:3,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#667788"}}>CANCEL</button></div>}
- <div onClick={()=>setShowSyncInfo(true)} style={{width:15,height:15,borderRadius:"50%",border:"1px solid #44ccaa44",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#44ccaa66",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#44ccaa"} onMouseOut={e=>e.currentTarget.style.color="#44ccaa66"}>?</div>
+ <span style={{color:"#44ccaa",fontSize:_mf(13),fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace",letterSpacing:3}}>{syncCode}</span>
+ {!confirmDisconnect?<button onClick={()=>{if(meta.locked){setSyncStatus("unlock_first");setTimeout(()=>setSyncStatus("synced"),3000);return;}setConfirmDisconnect(true);}} style={{padding:"4px 14px",background:"#141428",border:"1px solid #ff334466",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:"#cc6666",letterSpacing:1}}>DISCONNECT</button>:<div style={{display:"flex",gap:4,alignItems:"center"}}><button onClick={()=>{if(metaRef.current.locked){setConfirmDisconnect(false);setSyncStatus("unlock_first");setTimeout(()=>setSyncStatus("synced"),3000);return;}const _ms=metaRef.current;const _ts=Date.now();const _pushFinal={..._ms,savedAt:_ts};try{const _h=localStorage.getItem("vs4-history")||"[]";const _t=localStorage.getItem("vs4-tut")||"0";fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code:syncCodeRef.current,data:{meta:_pushFinal,history:_vsHistForSync(),tut:_t,session_id:"disconnected",devices:{}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(_e){}setSyncCode(null);syncCodeRef.current=null;setSyncStatus("none");setSyncCodeInput("");setConfirmDisconnect(false);setSessionTakeover(false);try{localStorage.removeItem("vs4-sync-code");localStorage.removeItem("vs4-meta");localStorage.removeItem("vs4-history");localStorage.removeItem("vs4-tut");}catch(e){}const _def={echoes:0,levels:{},shards:0,shardsBought:0,abUpgrades:{},shipColor:"cyan",bulletColor:"teal",bossShards:0,ownedDesigns:[],shipDesign:"none",designColor:undefined,showNewEnemy:true,showHitText:true,showMagnetRange:true,highWave:0,username:_genUsername()};setMeta(_def);setShowTutPrompt(true);}} style={{padding:"4px 10px",background:"#1a0a0a",border:"1px solid #ff3344",borderRadius:3,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:"#ff4455"}}>CONFIRM</button><button onClick={()=>setConfirmDisconnect(false)} style={{padding:"4px 10px",background:"none",border:"1px solid #33445544",borderRadius:3,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:"#667788"}}>CANCEL</button></div>}
+ <div onClick={()=>setShowSyncInfo(true)} style={{width:15,height:15,borderRadius:"50%",border:"1px solid #44ccaa44",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mf(8),color:"#44ccaa66",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#44ccaa"} onMouseOut={e=>e.currentTarget.style.color="#44ccaa66"}>?</div>
  </>}
  </div>
- {syncStatus==="tooshort"&&<div style={{color:"#cc5555",fontSize:8,marginTop:4}}>Code must be at least 4 characters.</div>}
- {syncStatus==="error"&&<div style={{color:"#cc5555",fontSize:8,marginTop:4}}>Sync failed. Check your connection.</div>}
- {syncStatus==="blocked"&&<div style={{color:"#cc8855",fontSize:8,marginTop:4}}>That code is too obvious. Try something less guessable.</div>}
- {syncStatus==="noconfig"&&<div style={{color:"#cc8855",fontSize:8,marginTop:4}}>Cloud sync not configured. See SUPABASE_URL in code.</div>}
- {syncStatus==="syncing"&&<div style={{color:"#44ccaa",fontSize:8,marginTop:4}}>Syncing...</div>}
- {syncStatus==="synced"&&syncCode&&<div style={{color:"#44ccaa88",fontSize:8,marginTop:4}}>Connected</div>}
- {syncStatus==="locked"&&<div style={{color:"#ff8844",fontSize:8,marginTop:4}}>This account is locked by its owner. New connections are not allowed.</div>}
- {syncStatus==="unlock_first"&&<div style={{color:"#ff8844",fontSize:8,marginTop:4}}>Unlock your account before disconnecting.</div>}
- {syncStatus==="conflict"&&<div style={{color:"#ffcc44",fontSize:8,marginTop:4}}>Choose which save to keep below.</div>}
+ {syncStatus==="tooshort"&&<div style={{color:"#cc5555",fontSize:_mf(8),marginTop:4}}>Code must be at least 4 characters.</div>}
+ {syncStatus==="error"&&<div style={{color:"#cc5555",fontSize:_mf(8),marginTop:4}}>Sync failed. Check your connection.</div>}
+ {syncStatus==="blocked"&&<div style={{color:"#cc8855",fontSize:_mf(8),marginTop:4}}>That code is too obvious. Try something less guessable.</div>}
+ {syncStatus==="noconfig"&&<div style={{color:"#cc8855",fontSize:_mf(8),marginTop:4}}>Cloud sync not configured. See SUPABASE_URL in code.</div>}
+ {syncStatus==="syncing"&&<div style={{color:"#44ccaa",fontSize:_mf(8),marginTop:4}}>Syncing...</div>}
+ {syncStatus==="synced"&&syncCode&&<div style={{color:"#44ccaa88",fontSize:_mf(8),marginTop:4}}>Connected</div>}
+ {syncStatus==="locked"&&<div style={{color:"#ff8844",fontSize:_mf(8),marginTop:4}}>This account is locked by its owner. New connections are not allowed.</div>}
+ {syncStatus==="unlock_first"&&<div style={{color:"#ff8844",fontSize:_mf(8),marginTop:4}}>Unlock your account before disconnecting.</div>}
+ {syncStatus==="conflict"&&<div style={{color:"#ffcc44",fontSize:_mf(8),marginTop:4}}>Choose which save to keep below.</div>}
  {syncConflict&&(
  <div style={{marginTop:10,width:"100%",maxWidth:360}}>
  <div style={{display:"flex",gap:8}}>
  <div style={{flex:1,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:6,padding:"12px 10px",textAlign:"center"}}>
- <div style={{color:"#44ccaa",fontSize:11,fontWeight:"bold",letterSpacing:1,marginBottom:8}}>THIS DEVICE</div>
- <div style={{color:"#8899aa",fontSize:9,marginBottom:2}}>Last played</div>
- <div style={{color:"#ccddee",fontSize:9,marginBottom:8,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{syncConflict.local.savedAt?new Date(syncConflict.local.savedAt).toLocaleDateString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"Pre-update save"}</div>
- <div style={{color:"#8899aa",fontSize:9,marginBottom:2}}>Best wave</div>
- <div style={{color:"#ccddee",fontSize:13,fontWeight:"bold",marginBottom:6}}>Wave {syncConflict.local.highWave||0}</div>
- <div style={{color:"#8899aa",fontSize:9,marginBottom:2}}>Echoes</div>
- <div style={{color:"#bb77ff",fontSize:13,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>⬢ {syncConflict.local.echoes||0}</div>
- <button onClick={()=>{const c=syncConflict.code;if(syncConflict.cloudData?.meta?.locked){const _lk3=localStorage.getItem("vs4-lock-key");if(!_lk3||_lk3!==syncConflict.cloudData.meta.lock_key){setSyncConflict(null);setSyncStatus("locked");return;}}localStorage.setItem("vs4-sync-code",c);setSyncCode(c);syncCodeRef.current=c;setSyncConflict(null);setSyncStatus("synced");const _ts4=Date.now();const _pushM2={...meta,savedAt:_ts4};try{const h=localStorage.getItem("vs4-history")||"[]";const t=localStorage.getItem("vs4-tut")||"0";fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code:c,data:{meta:_pushM2,history:_vsHistForSync(),tut:t,session_id:_sessionIdRef.current,devices:{[_sessionIdRef.current]:Date.now()}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(e){}}} style={{marginTop:10,padding:"6px 16px",background:"transparent",border:"1px solid #44ccaa66",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",letterSpacing:1,transition:"all 0.2s"}} onMouseOver={e=>{e.currentTarget.style.background="#44ccaa";e.currentTarget.style.color="#06060e";}} onMouseOut={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#88ccaa";}}>USE THIS</button>
+ <div style={{color:"#44ccaa",fontSize:_mf(11),fontWeight:"bold",letterSpacing:1,marginBottom:8}}>THIS DEVICE</div>
+ <div style={{color:"#8899aa",fontSize:_mf(9),marginBottom:2}}>Last played</div>
+ <div style={{color:"#ccddee",fontSize:_mf(9),marginBottom:8,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{syncConflict.local.savedAt?new Date(syncConflict.local.savedAt).toLocaleDateString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"Pre-update save"}</div>
+ <div style={{color:"#8899aa",fontSize:_mf(9),marginBottom:2}}>Best wave</div>
+ <div style={{color:"#ccddee",fontSize:_mf(13),fontWeight:"bold",marginBottom:6}}>Wave {syncConflict.local.highWave||0}</div>
+ <div style={{color:"#8899aa",fontSize:_mf(9),marginBottom:2}}>Echoes</div>
+ <div style={{color:"#bb77ff",fontSize:_mf(13),fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>⬢ {syncConflict.local.echoes||0}</div>
+ <button onClick={()=>{const c=syncConflict.code;if(syncConflict.cloudData?.meta?.locked){const _lk3=localStorage.getItem("vs4-lock-key");if(!_lk3||_lk3!==syncConflict.cloudData.meta.lock_key){setSyncConflict(null);setSyncStatus("locked");return;}}localStorage.setItem("vs4-sync-code",c);setSyncCode(c);syncCodeRef.current=c;setSyncConflict(null);setSyncStatus("synced");const _ts4=Date.now();const _pushM2={...meta,savedAt:_ts4};try{const h=localStorage.getItem("vs4-history")||"[]";const t=localStorage.getItem("vs4-tut")||"0";fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code:c,data:{meta:_pushM2,history:_vsHistForSync(),tut:t,session_id:_sessionIdRef.current,devices:{[_sessionIdRef.current]:Date.now()}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(e){}}} style={{marginTop:10,padding:"6px 16px",background:"transparent",border:"1px solid #44ccaa66",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:"#88ccaa",letterSpacing:1,transition:"all 0.2s"}} onMouseOver={e=>{e.currentTarget.style.background="#44ccaa";e.currentTarget.style.color="#06060e";}} onMouseOut={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#88ccaa";}}>USE THIS</button>
  </div>
  <div style={{flex:1,background:"#0a0a16",border:"1px solid #bb77ff44",borderRadius:6,padding:"12px 10px",textAlign:"center"}}>
- <div style={{color:"#bb77ff",fontSize:11,fontWeight:"bold",letterSpacing:1,marginBottom:8}}>CLOUD</div>
- <div style={{color:"#8899aa",fontSize:9,marginBottom:2}}>Last played</div>
- <div style={{color:"#ccddee",fontSize:9,marginBottom:8,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{syncConflict.cloud.savedAt?new Date(syncConflict.cloud.savedAt).toLocaleDateString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"Pre-update save"}</div>
- <div style={{color:"#8899aa",fontSize:9,marginBottom:2}}>Best wave</div>
- <div style={{color:"#ccddee",fontSize:13,fontWeight:"bold",marginBottom:6}}>Wave {syncConflict.cloud.highWave||0}</div>
- <div style={{color:"#8899aa",fontSize:9,marginBottom:2}}>Echoes</div>
- <div style={{color:"#bb77ff",fontSize:13,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>⬢ {syncConflict.cloud.echoes||0}</div>
- <button onClick={()=>{const c=syncConflict.code;const cd=syncConflict.cloudData;if(cd?.meta?.locked){const _lk4=localStorage.getItem("vs4-lock-key");if(!_lk4||_lk4!==cd.meta.lock_key){setSyncConflict(null);setSyncStatus("locked");return;}}localStorage.setItem("vs4-sync-code",c);setSyncCode(c);syncCodeRef.current=c;if(cd.meta){setMeta(cd.meta);try{localStorage.setItem("vs4-meta",JSON.stringify(cd.meta));}catch(e){}}if(cd.history)try{localStorage.setItem("vs4-history",JSON.stringify(cd.history));}catch(e){}if(cd.tut)try{localStorage.setItem("vs4-tut",cd.tut);}catch(e){}{const _tsS2=Date.now();const _msS2={...cd.meta,savedAt:_tsS2};try{fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code:c,data:{meta:_msS2,history:cd.history||[],tut:cd.tut||"0",session_id:_sessionIdRef.current,devices:{[_sessionIdRef.current]:Date.now()}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(_e2){}}setSyncConflict(null);setSyncStatus("synced");}} style={{marginTop:10,padding:"6px 16px",background:"transparent",border:"1px solid #bb77ff66",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#bb99ff",letterSpacing:1,transition:"all 0.2s"}} onMouseOver={e=>{e.currentTarget.style.background="#bb77ff";e.currentTarget.style.color="#06060e";}} onMouseOut={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#bb99ff";}}>USE THIS</button>
+ <div style={{color:"#bb77ff",fontSize:_mf(11),fontWeight:"bold",letterSpacing:1,marginBottom:8}}>CLOUD</div>
+ <div style={{color:"#8899aa",fontSize:_mf(9),marginBottom:2}}>Last played</div>
+ <div style={{color:"#ccddee",fontSize:_mf(9),marginBottom:8,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{syncConflict.cloud.savedAt?new Date(syncConflict.cloud.savedAt).toLocaleDateString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"Pre-update save"}</div>
+ <div style={{color:"#8899aa",fontSize:_mf(9),marginBottom:2}}>Best wave</div>
+ <div style={{color:"#ccddee",fontSize:_mf(13),fontWeight:"bold",marginBottom:6}}>Wave {syncConflict.cloud.highWave||0}</div>
+ <div style={{color:"#8899aa",fontSize:_mf(9),marginBottom:2}}>Echoes</div>
+ <div style={{color:"#bb77ff",fontSize:_mf(13),fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>⬢ {syncConflict.cloud.echoes||0}</div>
+ <button onClick={()=>{const c=syncConflict.code;const cd=syncConflict.cloudData;if(cd?.meta?.locked){const _lk4=localStorage.getItem("vs4-lock-key");if(!_lk4||_lk4!==cd.meta.lock_key){setSyncConflict(null);setSyncStatus("locked");return;}}localStorage.setItem("vs4-sync-code",c);setSyncCode(c);syncCodeRef.current=c;if(cd.meta){setMeta(cd.meta);try{localStorage.setItem("vs4-meta",JSON.stringify(cd.meta));}catch(e){}}if(cd.history)try{localStorage.setItem("vs4-history",JSON.stringify(cd.history));}catch(e){}if(cd.tut)try{localStorage.setItem("vs4-tut",cd.tut);}catch(e){}{const _tsS2=Date.now();const _msS2={...cd.meta,savedAt:_tsS2};try{fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code:c,data:{meta:_msS2,history:cd.history||[],tut:cd.tut||"0",session_id:_sessionIdRef.current,devices:{[_sessionIdRef.current]:Date.now()}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(_e2){}}setSyncConflict(null);setSyncStatus("synced");}} style={{marginTop:10,padding:"6px 16px",background:"transparent",border:"1px solid #bb77ff66",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:"#bb99ff",letterSpacing:1,transition:"all 0.2s"}} onMouseOver={e=>{e.currentTarget.style.background="#bb77ff";e.currentTarget.style.color="#06060e";}} onMouseOut={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#bb99ff";}}>USE THIS</button>
  </div>
  </div>
- <button onClick={()=>{setSyncConflict(null);setSyncStatus("none");setSyncCodeInput("");}} style={{marginTop:8,padding:"5px 12px",background:"none",border:"1px solid #33445544",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:8,color:"#667788",width:"100%"}}>CANCEL</button>
+ <button onClick={()=>{setSyncConflict(null);setSyncStatus("none");setSyncCodeInput("");}} style={{marginTop:8,padding:_mv("5px 12px","12px 10px"),background:"none",border:"1px solid #33445544",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(8),color:"#667788",width:"100%"}}>CANCEL</button>
  </div>
  )}
  {showSyncInfo&&(
  <div onClick={()=>closePopup(setShowSyncInfo)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
- <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:340,width:"100%"}}>
+ <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44ccaa33",borderRadius:_mv(6,20),padding:_mv("16px 14px","18px 16px"),maxWidth:340,width:"100%"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
- <div style={{color:"#44ccaa",fontSize:14,fontWeight:"bold",letterSpacing:2}}>CLOUD SYNC</div>
- <button onClick={()=>closePopup(setShowSyncInfo)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ <div style={{color:"#44ccaa",fontSize:_mf(14),fontWeight:"bold",letterSpacing:2}}>CLOUD SYNC</div>
+ <button onClick={()=>closePopup(setShowSyncInfo)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
  </div>
- <div style={{color:"#99aabb",fontSize:10,lineHeight:1.7}}>
+ <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.7}}>
  Your <b style={{color:"#ccddee"}}>4 to 6 digit code</b> is your account — no username or password needed. Just remember it.<br/><br/>
  Enter the same code on any device to <b style={{color:"#44ccaa"}}>load your progress</b>. All meta upgrades, ability shards, echoes, lab progress, and run history are synced.<br/><br/>
  Data saves <b style={{color:"#44ccaa"}}>automatically</b> every 2 minutes while playing and whenever you die or forfeit a run. When you switch devices, your latest save is loaded automatically.<br/><br/>
@@ -3201,157 +3564,162 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  </div>
  )}
  {syncCode&&<>
- <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"16px 0 6px"}}>USERNAME:</h3>
+ <h3 style={{color:"#ddeeff",fontSize:_mf(11),letterSpacing:2,margin:"16px 0 6px"}}>USERNAME:</h3>
  <div style={{display:"flex",gap:6,alignItems:"center",justifyContent:"center",maxWidth:300}}>
- <input type="text" maxLength={16} value={usernameInput||""} onChange={e=>setUsernameInput(e.target.value)} placeholder={meta.username||"Pilot"} style={{width:120,padding:"6px 8px",background:"#0a0a16",border:"1px solid #33445566",borderRadius:4,color:"#ccddee",fontSize:11,fontFamily:"inherit",textAlign:"center",outline:"none"}} />
- <button onClick={()=>{const u=usernameInput.trim();if(!u||u.length<2){return;}if(_hasProfanity(u)){setSyncStatus("profanity");setTimeout(()=>setSyncStatus("synced"),3000);return;}if(leaderboardData.some(p=>p.username.toLowerCase()===u.toLowerCase())){setSyncStatus("taken");setTimeout(()=>setSyncStatus("synced"),3000);return;}setMeta(prev=>{const nx={...prev,username:u};saveMeta(nx);return nx;});setUsernameInput("");}} style={{padding:"6px 14px",background:"#141428",border:"1px solid #44ccaa66",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:10,color:"#88ccaa",letterSpacing:1}}>SET</button>
+ <input type="text" maxLength={16} value={usernameInput||""} onChange={e=>setUsernameInput(e.target.value)} placeholder={meta.username||"Pilot"} style={{width:120,padding:"6px 8px",background:"#0a0a16",border:"1px solid #33445566",borderRadius:4,color:"#ccddee",fontSize:_mf(11),fontFamily:"inherit",textAlign:"center",outline:"none"}} />
+ <button onClick={()=>{const u=usernameInput.trim();if(!u||u.length<2){return;}if(_hasProfanity(u)){setSyncStatus("profanity");setTimeout(()=>setSyncStatus("synced"),3000);return;}if(leaderboardData.some(p=>p.username.toLowerCase()===u.toLowerCase())){setSyncStatus("taken");setTimeout(()=>setSyncStatus("synced"),3000);return;}setMeta(prev=>{const nx={...prev,username:u};saveMeta(nx);return nx;});setUsernameInput("");}} style={{padding:"6px 14px",background:"#141428",border:"1px solid #44ccaa66",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),color:"#88ccaa",letterSpacing:1}}>SET</button>
  </div>
- {syncStatus==="profanity"&&<div style={{color:"#ff5555",fontSize:8,marginTop:3}}>That username contains inappropriate language.</div>}
- {syncStatus==="taken"&&<div style={{color:"#ff8844",fontSize:8,marginTop:3}}>That username is already taken.</div>}
+ {syncStatus==="profanity"&&<div style={{color:"#ff5555",fontSize:_mf(8),marginTop:3}}>That username contains inappropriate language.</div>}
+ {syncStatus==="taken"&&<div style={{color:"#ff8844",fontSize:_mf(8),marginTop:3}}>That username is already taken.</div>}
  <div style={{display:"flex",gap:10,alignItems:"center",justifyContent:"center",marginTop:10}}>
- <span style={{color:"#99aabb",fontSize:9}}>Lock Account</span>
- <div onClick={()=>{if(meta.locked){setMeta(prev=>{const nx={...prev,locked:false,lock_key:null};saveMeta(nx);return nx;});try{localStorage.removeItem("vs4-lock-key");}catch(e){}}else{setShowLockWarning(true);}}} style={{width:36,height:18,borderRadius:9,background:meta.locked?"#44ccaa":"#1a1a2e",position:"relative",cursor:"pointer",border:"1px solid "+(meta.locked?"#44ccaa66":"#33445566"),transition:"background 0.2s"}}><div style={{width:14,height:14,borderRadius:7,background:meta.locked?"#fff":"#556677",position:"absolute",top:1,left:meta.locked?19:1,transition:"left 0.2s"}}/></div>
- <div onClick={()=>setShowLockInfo(true)} style={{width:14,height:14,borderRadius:"50%",border:"1px solid #44ccaa44",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:7,color:"#44ccaa66",flexShrink:0}}>?</div>
+ <span style={{color:"#99aabb",fontSize:_mf(9)}}>Lock Account</span>
+ <div onClick={()=>{if(meta.locked){setMeta(prev=>{const nx={...prev,locked:false,lock_key:null};saveMeta(nx);return nx;});try{localStorage.removeItem("vs4-lock-key");}catch(e){}}else{setShowLockWarning(true);}}} style={{width:_mv(36,48),height:_mv(18,26),borderRadius:_mv(9,13),background:meta.locked?"#44ccaa":"#1a1a2e",position:"relative",cursor:"pointer",border:"1px solid "+(meta.locked?"#44ccaa66":"#33445566"),transition:"background 0.2s",flexShrink:0}}><div style={{width:_mv(14,20),height:_mv(14,20),borderRadius:_mv(7,10),background:meta.locked?"#fff":"#556677",position:"absolute",top:_mv(1,2),left:meta.locked?_mv(19,25):_mv(1,2),transition:"left 0.2s"}}/></div>
+ <div onClick={()=>setShowLockInfo(true)} style={{width:14,height:14,borderRadius:"50%",border:"1px solid #44ccaa44",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mf(7),color:"#44ccaa66",flexShrink:0}}>?</div>
  </div>
  </>}
- {showLockInfo&&<div onClick={()=>closePopup(setShowLockInfo)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:320,width:"100%"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{color:"#44ccaa",fontSize:13,fontWeight:"bold",letterSpacing:2}}>ACCOUNT LOCK</div><button onClick={()=>closePopup(setShowLockInfo)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button></div><div style={{color:"#99aabb",fontSize:10,lineHeight:1.7}}>When your account is locked, nobody else can sign into it using your code — even if they know it.<br/><br/>You can unlock it at any time from this device. Just make sure to <b style={{color:"#ffcc44"}}>unlock before clearing your browser data or losing access to this browser/device</b>, or you won't be able to get back in.</div></div></div>}
- {showLockWarning&&<div onClick={()=>closePopup(setShowLockWarning)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #ffcc4433",borderRadius:6,padding:"16px 14px",maxWidth:320,width:"100%"}}><div style={{color:"#ffcc44",fontSize:13,fontWeight:"bold",letterSpacing:2,marginBottom:10}}>LOCK ACCOUNT?</div><div style={{color:"#99aabb",fontSize:10,lineHeight:1.7,marginBottom:14}}>This will prevent anyone else from signing into your account. You can always unlock it from this device.<br/><br/><span style={{color:"#cc8866",fontSize:9}}>If you clear your browser data, or lose access to this browser/device while locked, you will be permanently locked out of this account.</span></div><div style={{display:"flex",gap:8,justifyContent:"center"}}><button onClick={()=>{const _lkey=Math.random().toString(36).slice(2,14);try{localStorage.setItem("vs4-lock-key",_lkey);}catch(e){}setMeta(prev=>{const nx={...prev,locked:true,lock_key:_lkey};saveMeta(nx);return nx;});setShowLockWarning(false);}} style={{padding:"6px 16px",background:"transparent",border:"1px solid #ffcc4466",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#ffcc44",letterSpacing:1}}>LOCK MY ACCOUNT</button><button onClick={()=>closePopup(setShowLockWarning)} style={{padding:"6px 16px",background:"none",border:"1px solid #33445544",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#667788"}}>CANCEL</button></div></div></div>}
- <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"20px 0 8px"}}>CUSTOMISATION</h3>
- <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",maxWidth:380}}>
- <button onClick={()=>{setShowShipPopup(true);}} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"space-between"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}><span>Ship & Bullet Colours</span><span style={{color:"#44ccaa44",fontSize:11}}>›</span></button>
- <button onClick={()=>setShowBgPopup(true)} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"space-between"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}><span>Backgrounds</span><span style={{color:"#44ccaa44",fontSize:11}}>›</span></button>
- <button onClick={()=>setShowDesignPopup(true)} style={{padding:"10px 14px",flex:1,minWidth:90,background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative"}} onMouseOver={e=>e.currentTarget.style.borderColor="#44ccaa"} onMouseOut={e=>e.currentTarget.style.borderColor="#44ccaa44"}>{_dotsOn&&_affordDesign&&<span style={_affDot} />}<span>Custom Designs</span><span style={{color:"#44ccaa44",fontSize:11}}>›</span></button>
+ {showLockInfo&&<div onClick={()=>closePopup(setShowLockInfo)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44ccaa33",borderRadius:_mv(6,20),padding:_mv("16px 14px","18px 16px"),maxWidth:320,width:"100%"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{color:"#44ccaa",fontSize:_mf(13),fontWeight:"bold",letterSpacing:2}}>ACCOUNT LOCK</div><button onClick={()=>closePopup(setShowLockInfo)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button></div><div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.7}}>When your account is locked, nobody else can sign into it using your code — even if they know it.<br/><br/>You can unlock it at any time from this device. Just make sure to <b style={{color:"#ffcc44"}}>unlock before clearing your browser data or losing access to this browser/device</b>, or you won't be able to get back in.</div></div></div>}
+ {showLockWarning&&<div onClick={()=>closePopup(setShowLockWarning)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #ffcc4433",borderRadius:6,padding:"16px 14px",maxWidth:320,width:"100%"}}><div style={{color:"#ffcc44",fontSize:_mf(13),fontWeight:"bold",letterSpacing:2,marginBottom:10}}>LOCK ACCOUNT?</div><div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.7,marginBottom:14}}>This will prevent anyone else from signing into your account. You can always unlock it from this device.<br/><br/><span style={{color:"#cc8866",fontSize:_mf(9)}}>If you clear your browser data, or lose access to this browser/device while locked, you will be permanently locked out of this account.</span></div><div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:_mv("nowrap","wrap")}}><button onClick={()=>{const _lkey=Math.random().toString(36).slice(2,14);try{localStorage.setItem("vs4-lock-key",_lkey);}catch(e){}setMeta(prev=>{const nx={...prev,locked:true,lock_key:_lkey};saveMeta(nx);return nx;});setShowLockWarning(false);}} style={{padding:"6px 16px",background:"transparent",border:"1px solid #ffcc4466",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:"#ffcc44",letterSpacing:1}}>LOCK MY ACCOUNT</button><button onClick={()=>closePopup(setShowLockWarning)} style={{padding:"6px 16px",background:"none",border:"1px solid #33445544",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:"#667788"}}>CANCEL</button></div></div></div>}
+ </div><div style={{display:(_mob&&_setSec!=="custom")?"none":"contents",width:"100%"}}>{!_mob&&<h3 style={{color:"#ddeeff",fontSize:_mf(11),letterSpacing:2,margin:"20px 0 8px"}}>CUSTOMISATION</h3>}
+ <div style={{display:"flex",gap:_mv(8,10),flexWrap:"wrap",justifyContent:"center",maxWidth:380,width:"100%",flexDirection:_mv("row","column")}}>
+ <button onClick={()=>{setShowShipPopup(true);}} style={{padding:_mv("10px 14px","16px 16px"),flex:1,minWidth:_mv(90,"100%"),...(_mob?_gpDim("#44ccaa",14):{background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4}),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),14),fontWeight:_mv("normal","bold"),color:_mv("#88ccaa","#fff"),textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"space-between"}} onMouseOver={e=>{if(!_mob)e.currentTarget.style.borderColor="#44ccaa";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor="#44ccaa44";}}><span>Ship & Bullet Colours</span><span style={{color:_mv("#44ccaa44","#fff"),fontSize:_mv(_mf(11),18)}}>›</span></button>
+ <button onClick={()=>setShowBgPopup(true)} style={{padding:_mv("10px 14px","16px 16px"),flex:1,minWidth:_mv(90,"100%"),...(_mob?_gpDim("#44ccaa",14):{background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4}),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),14),fontWeight:_mv("normal","bold"),color:_mv("#88ccaa","#fff"),textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"space-between"}} onMouseOver={e=>{if(!_mob)e.currentTarget.style.borderColor="#44ccaa";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor="#44ccaa44";}}><span>Backgrounds</span><span style={{color:_mv("#44ccaa44","#fff"),fontSize:_mv(_mf(11),18)}}>›</span></button>
+ <button onClick={()=>setShowDesignPopup(true)} style={{padding:_mv("10px 14px","16px 16px"),flex:1,minWidth:_mv(90,"100%"),...(_mob?_gpDim("#44ccaa",14):{background:"#0a0a16",border:"1px solid #44ccaa44",borderRadius:4}),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),14),fontWeight:_mv("normal","bold"),color:_mv("#88ccaa","#fff"),textAlign:"left",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative"}} onMouseOver={e=>{if(!_mob)e.currentTarget.style.borderColor="#44ccaa";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor="#44ccaa44";}}>{_dotsOn&&_affordDesign&&<span style={_affDot} />}<span>Custom Designs</span><span style={{color:_mv("#44ccaa44","#fff"),fontSize:_mv(_mf(11),18)}}>›</span></button>
  </div>
- {showDesignPopup&&(()=>{const _dCol=SHIP_COLORS.find(c=>c.id===(meta.designColor||"orange"))||SHIP_COLORS[0];return(
- <div onClick={()=>closePopup(setShowDesignPopup)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
- <div onClick={e=>e.stopPropagation()} className="vs-scroll" style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #cc333333",borderRadius:6,padding:"16px 14px",maxWidth:420,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
- <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
- <div style={{color:"#cc3333",fontSize:17,fontWeight:"bold",letterSpacing:2}}>CUSTOM DESIGNS</div>
- <button onClick={()=>closePopup(setShowDesignPopup)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:11,borderRadius:3}}>✕</button>
- </div>
- <div style={{color:"#aabbcc",fontSize:12,marginBottom:12}}>Boss Shards: <span style={{color:"#cc3333",fontWeight:"bold",fontSize:14}}>{CUR.bossShards.icon} {meta.bossShards||0}</span></div>
- <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
- {SHIP_DESIGNS.map((sd,sdi)=>{const owned=sd.cost===0||(meta.ownedDesigns||[]).includes(sd.id);const selected=(meta.shipDesign||"none")===sd.id;const canBuy=!owned&&(meta.bossShards||0)>=sd.cost;return(
- <button key={sd.id} onClick={()=>{if(owned){setMeta(prev=>{const nx={...prev,shipDesign:sd.id};saveMeta(nx);return nx;});}else if(canBuy){setMeta(prev=>{const nx={...prev,bossShards:(prev.bossShards||0)-sd.cost,ownedDesigns:[...(prev.ownedDesigns||[]),sd.id],shipDesign:sd.id};saveMeta(nx);return nx;});}}}
- style={{padding:"4px 2px",minHeight:90,background:selected?"#1a1420":owned?"#0a0a16":"#08080f",border:`2px solid ${selected?"#cc3333":owned?"#cc333344":"#22223322"}`,borderRadius:4,cursor:owned||canBuy?"pointer":"default",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s",position:"relative",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}
- onMouseOver={e=>{if(owned||canBuy)e.currentTarget.style.borderColor="#cc3333";}} onMouseOut={e=>e.currentTarget.style.borderColor=selected?"#cc3333":owned?"#cc333344":"#22223322"}>
- <canvas width={192} height={192} ref={cvs=>{if(!cvs)return;const cx=cvs.getContext("2d");cx.setTransform(3,0,0,3,0,0);cx.clearRect(0,0,64,64);const _shipC=SHIP_COLORS.find(c=>c.id===(meta.shipColor||"cyan"))||SHIP_COLORS[0];cx.fillStyle=_shipC.color;cx.shadowColor=_shipC.glow;cx.shadowBlur=5;const sz=13,px=32,py=34;cx.beginPath();cx.moveTo(px,py-sz-4);cx.lineTo(px-sz,py+sz);cx.lineTo(px,py+sz*0.4);cx.lineTo(px+sz,py+sz);cx.closePath();cx.fill();cx.shadowBlur=0;if(sd.draw){sd.draw(cx,px,py,sz,_dCol.color);cx.globalAlpha=1;}}} style={{display:"block",margin:"0 auto",width:64,height:64}} />
- {!owned&&<div style={{color:canBuy?"#cc3333":"#44556688",fontSize:9,marginTop:2}}>{CUR.bossShards.icon} {sd.cost}</div>}
- {selected&&<div style={{color:"#cc3333",fontSize:8,marginTop:2}}>equipped</div>}
- </button>);})}
- </div>
- <div style={{color:"#8899aa",fontSize:10,marginTop:12,marginBottom:6,letterSpacing:1}}>DESIGN COLOUR</div>
- <div style={{display:"grid",gridTemplateColumns:"repeat(8,1fr)",gap:4}}>
- {SHIP_COLORS.map(sc=>{const _isShipCol=(meta.shipColor||"cyan")===sc.id;const sel=(meta.designColor||"orange")===sc.id&&!_isShipCol;return(
- <button key={sc.id} onClick={()=>{if(_isShipCol)return;setMeta(prev=>{const nx={...prev,designColor:sc.id};saveMeta(nx);return nx;});}}
- style={{padding:"6px 2px",background:sel?"#141428":"#0a0a16",border:`2px solid ${_isShipCol?"#22222233":sel?sc.color:sc.color+"33"}`,borderRadius:3,cursor:_isShipCol?"default":"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s",opacity:_isShipCol?0.25:1}}
- onMouseOver={e=>{if(!_isShipCol)e.currentTarget.style.borderColor=sc.color;}} onMouseOut={e=>e.currentTarget.style.borderColor=_isShipCol?"#22222233":sel?sc.color:sc.color+"33"}>
- <div style={{width:14,height:14,margin:"0 auto",background:sc.color,borderRadius:"50%",boxShadow:_isShipCol?"none":`0 0 6px ${sc.glow}66`}} />
- </button>);})}
- </div>
- <div style={{color:"#667788",fontSize:10,marginTop:10,lineHeight:1.6}}>Earn boss shards from bosses. (Current boss shard drop rate: <span style={{color:"#44ccaa"}}>{(metaRef.current.lab?.completed?.boss_shard_drop||0)*8}%</span>)</div>
- </div>
- </div>);})()}
- <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:"20px 0 8px"}}>MOBILE CONTROLS</h3>
+ 
+ </div><div style={{display:(_mob&&_setSec!=="play")?"none":"contents",width:"100%"}}><h3 style={{color:"#ddeeff",fontSize:_mf(11),letterSpacing:2,margin:"20px 0 8px"}}>MOBILE CONTROLS</h3>
  <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",maxWidth:380}}>
  {[{id:"reactive",label:"Reactive Joystick"},{id:"stationary",label:"Stationary Joystick"},{id:"arrows",label:"On-Screen Arrows"}].map(mc=>{
  const sel=(meta.mobileControls||"reactive")===mc.id;
  return <button key={mc.id} onClick={()=>setMeta(prev=>{const nx={...prev,mobileControls:mc.id};saveMeta(nx);return nx;})}
- style={{padding:"5px 10px",flex:1,minWidth:100,background:sel?"#141428":"#0a0a16",border:`1px solid ${sel?"#44ccaa66":"#33445544"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:sel?"#88ccaa":"#667788",textAlign:"center"}}>
+ style={{padding:"5px 10px",flex:1,minWidth:100,background:sel?"#141428":"#0a0a16",border:`1px solid ${sel?"#44ccaa66":"#33445544"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:sel?"#88ccaa":"#667788",textAlign:"center"}}>
  {mc.label}
  </button>;
  })}
  </div>
- <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,margin:"20px 0 8px"}}>
- <h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:0}}>GAMEPLAY</h3>
- <div onClick={()=>_setShowAdvInfo(true)} style={{width:14,height:14,borderRadius:"50%",border:"1px solid #44667788",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#556688",fontWeight:"bold"}} onMouseOver={e=>{e.currentTarget.style.color="#88bbdd";e.currentTarget.style.borderColor="#88bbddaa";}} onMouseOut={e=>{e.currentTarget.style.color="#556688";e.currentTarget.style.borderColor="#44667788";}}>i</div>
+ </div><div style={{display:(_mob&&_setSec!=="play")?"none":"contents",width:"100%"}}><div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,margin:"20px 0 8px"}}>
+ <h3 style={{color:"#ddeeff",fontSize:_mf(11),letterSpacing:2,margin:0}}>GAMEPLAY</h3>
+ <div onClick={()=>_setShowAdvInfo(true)} style={{width:14,height:14,borderRadius:"50%",border:"1px solid #44667788",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mf(8),color:"#556688",fontWeight:"bold"}} onMouseOver={e=>{e.currentTarget.style.color="#88bbdd";e.currentTarget.style.borderColor="#88bbddaa";}} onMouseOut={e=>{e.currentTarget.style.color="#556688";e.currentTarget.style.borderColor="#44667788";}}>i</div>
  </div>
  <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",maxWidth:380}}>
  {[
  {key:"showNewEnemy",label:"New enemy alerts",get:()=>meta.showNewEnemy!==false,toggle:()=>setMeta(prev=>{const nx={...prev,showNewEnemy:prev.showNewEnemy===false?true:false};saveMeta(nx);return nx;})},
- {key:"labAlertFreq",skipSuffix:true,label:(()=>{const f=meta.labAlertFreq===undefined?5:meta.labAlertFreq;return f===0?"Lab alerts: OFF":`Lab alerts: Every ${f} wave${f>1?"s":""}`;})(),get:()=>(meta.labAlertFreq===undefined?5:meta.labAlertFreq)>0,toggle:()=>setMeta(prev=>{const f=prev.labAlertFreq===undefined?5:prev.labAlertFreq;const cycle={1:5,5:10,10:0,0:1};const nx={...prev,labAlertFreq:cycle[f]??5};saveMeta(nx);return nx;})},
+ {key:"labAlertFreq",seg:[[1,"Every wave"],[5,"Every 5"],[10,"Every 10"],[0,"Off"]],segTitle:"Lab alerts",segHint:"How often lab progress pops up",skipSuffix:true,label:(()=>{const f=meta.labAlertFreq===undefined?5:meta.labAlertFreq;return f===0?"Lab alerts: OFF":`Lab alerts: Every ${f} wave${f>1?"s":""}`;})(),get:()=>(meta.labAlertFreq===undefined?5:meta.labAlertFreq)>0,toggle:()=>setMeta(prev=>{const f=prev.labAlertFreq===undefined?5:prev.labAlertFreq;const cycle={1:5,5:10,10:0,0:1};const nx={...prev,labAlertFreq:cycle[f]??5};saveMeta(nx);return nx;})},
  {key:"hitMode",skipSuffix:true,label:(()=>{const m=meta.hitMode||(meta.showHitText===false?"off":"small");return m==="off"?"Hit numbers: OFF":m==="large"?"Hit numbers: ON (large)":"Hit numbers: ON (small)";})(),get:()=>{const m=meta.hitMode||(meta.showHitText===false?"off":"small");return m!=="off";},toggle:()=>setMeta(prev=>{const m=prev.hitMode||(prev.showHitText===false?"off":"small");const cyc={small:"large",large:"off",off:"small"};const nm=cyc[m]||"small";const nx={...prev,hitMode:nm,showHitText:nm!=="off"};saveMeta(nx);return nx;})},
  {key:"showMagnetRange",label:"Pickup range indicator",get:()=>!!meta.showMagnetRange,toggle:()=>setMeta(prev=>{const nx={...prev,showMagnetRange:!prev.showMagnetRange};saveMeta(nx);return nx;})},
  {key:"overheatAnim",label:"Overheat animation",get:()=>!meta.overheatBorderOff,toggle:()=>setMeta(prev=>{const nx={...prev,overheatBorderOff:!prev.overheatBorderOff};saveMeta(nx);return nx;})},
  {key:"showBorder",label:"Screen border",get:()=>meta.showBorder!==false,toggle:()=>setMeta(prev=>{const nx={...prev,showBorder:!prev.showBorder};saveMeta(nx);return nx;})},
 {key:"affordDot",label:"Affordability dot",get:()=>meta.affordDotOff!==true,toggle:()=>setMeta(prev=>{const nx={...prev,affordDotOff:!prev.affordDotOff};saveMeta(nx);return nx;})},
 {key:"epilepsy",label:"Epilepsy safety",get:()=>!!meta.epilepsySafe,toggle:()=>setMeta(prev=>{const nx={...prev,epilepsySafe:!prev.epilepsySafe};saveMeta(nx);return nx;})},
- ].map(tog=>{const isOn=tog.get();return(
+ ].map(tog=>{const isOn=tog.get();
+ if(_mob&&(tog.seg||tog.key==="hitMode")){const _hm=tog.key==="hitMode";const _seg=_hm?[["off","Off"],["small","Small"],["large","Large"]]:tog.seg;const _cur=_hm?(meta.hitMode||(meta.showHitText===false?"off":"small")):(meta[tog.key]===undefined?5:meta[tog.key]);const _set=(v)=>setMeta(prev=>{const nx=_hm?{...prev,hitMode:v,showHitText:v!=="off"}:{...prev,[tog.key]:v};saveMeta(nx);return nx;});return <div key={tog.key} style={{width:"100%",height:92,flexShrink:0,background:"#0c0c1a",border:"1px solid #ffffff1a",borderRadius:12,padding:"9px 12px",boxSizing:"border-box",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+  <div style={{display:"flex",alignItems:"baseline",gap:8,minWidth:0}}><span style={{color:"#fff",fontSize:12.5,fontWeight:"bold",flexShrink:0}}>{_hm?"Hit numbers":tog.segTitle}</span><span style={{color:"#99a3bb",fontSize:10,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{_hm?"Damage numbers when you hit something":tog.segHint}</span></div>
+  <div style={{display:"flex",gap:5}}>{_seg.map(([v,l])=><button key={v} onClick={()=>_set(v)} style={{flex:1,height:38,padding:"0 2px",background:_cur===v?"#44ccaa":"#14141f",border:"1px solid "+(_cur===v?"#44ccaa":"#ffffff1f"),borderRadius:9,color:_cur===v?"#04121a":"#c8cce6",fontSize:10.5,fontWeight:"bold",cursor:"pointer",fontFamily:"inherit",minWidth:0,boxSizing:"border-box"}}>{l}</button>)}</div>
+ </div>;}
+ if(_mob){const _desc={showNewEnemy:"Banner the first time a new enemy type appears",hitMode:"Floating damage numbers on hit — tap to change",showMagnetRange:"Ring showing where pickups get pulled in",overheatAnim:"Pulsing border while you're earning overheat",showBorder:"Thin outline around the play area",affordDot:"Dots on buttons when you can afford something",epilepsy:"No screen shake, hit flash or flashing borders"}[tog.key]||"";const _t=tog.skipSuffix?String(tog.label).split(":")[0]:tog.label;const _v=tog.skipSuffix?String(tog.label).split(":").slice(1).join(":").trim():null;
+  return <button key={tog.key} onClick={tog.toggle} style={{width:"100%",height:52,flexShrink:0,boxSizing:"border-box",background:"#0c0c1a",border:`1px solid ${isOn?"#44ccaa66":"#ffffff1a"}`,borderRadius:12,padding:"0 12px 0 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}><div style={{minWidth:0,flex:1}}><div style={{color:"#fff",fontSize:12.5,fontWeight:"bold",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{_t}</div><div style={{color:"#99a3bb",fontSize:10,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{_desc}</div></div>{_v!==null?<span style={{color:isOn?"#88ccaa":"#8899aa",fontSize:11,fontWeight:"bold",flexShrink:0,textAlign:"right"}}>{_v}</span>:<span style={{width:44,height:24,borderRadius:12,background:isOn?"#44ccaa":"#1a1a2e",border:"1px solid "+(isOn?"#44ccaa":"#445566"),position:"relative",flexShrink:0}}><span style={{position:"absolute",top:2,left:isOn?22:2,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s"}} /></span>}</button>;}
+ return(
  <button key={tog.key} onClick={tog.toggle}
- style={{padding:"8px 10px",width:"calc(50% - 3px)",boxSizing:"border-box",background:isOn?"#141428":"#0a0a16",border:`1px solid ${isOn?"#44ccaa66":"#33445544"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:isOn?"#88ccaa":"#667788",textAlign:"center"}}>
+ style={{padding:"8px 10px",width:"calc(50% - 3px)",boxSizing:"border-box",background:isOn?"#141428":"#0a0a16",border:`1px solid ${isOn?"#44ccaa66":"#33445544"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:isOn?"#88ccaa":"#667788",textAlign:"center"}}>
  {tog.skipSuffix?tog.label:`${tog.label}: ${isOn?"ON":"OFF"}`}
  </button>);})}
  </div>
- <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,margin:"20px 0 8px"}}><h3 style={{color:"#ddeeff",fontSize:11,letterSpacing:2,margin:0}}>RESOLUTION</h3></div>
+ </div><div style={{display:(_mob&&_setSec!=="account")?"none":"contents",width:"100%"}}><div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,margin:"20px 0 8px"}}><h3 style={{color:"#ddeeff",fontSize:_mf(11),letterSpacing:2,margin:0}}>DISPLAY MODE</h3></div>
+{_DispMode(false)}
+<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,margin:"20px 0 8px"}}><h3 style={{color:"#ddeeff",fontSize:_mf(11),letterSpacing:2,margin:0}}>RESOLUTION</h3></div>
+
 <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,maxWidth:380,width:"100%"}}>
 <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center"}}>
-{[{s:1,l:"600 \u00d7 800"},{s:2,l:"1200 \u00d7 1600"},{s:3,l:"1800 \u00d7 2400"},{s:4,l:"2400 \u00d7 3200"}].map(r=>{const sel=(meta.resScale||2)===r.s;return <button key={r.s} onClick={()=>setMeta(prev=>{const nx={...prev,resScale:r.s};saveMeta(nx);return nx;})} style={{padding:"6px 10px",background:sel?"#141428":"#0a0a16",border:"1px solid "+(sel?"#44ccaa66":"#33445544"),borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:sel?"#88ccaa":"#667788"}}>{r.l}</button>;})}
+{[1,2,3,4].map(_rs=>({s:_rs,l:`${GW*_rs} \u00d7 ${GH*_rs}`})).map(r=>{const sel=(meta.resScale||2)===r.s;return <button key={r.s} onClick={()=>setMeta(prev=>{const nx={...prev,resScale:r.s};saveMeta(nx);return nx;})} style={{padding:_mv("6px 10px","12px 10px"),background:sel?"#141428":"#0a0a16",border:"1px solid "+(sel?"#44ccaa":"#33445544"),borderRadius:_mv(4,10),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),12),color:sel?"#88ccaa":"#8899aa",minWidth:_mv(0,"46%")}}>{r.l}</button>;})}
 </div>
 
 
 </div>
-<div style={{display:"flex",gap:10,marginTop:20}}>
- <button onClick={()=>setConfirmReset(true)} style={{...bs2("#ff334433"),padding:"8px 20px",fontSize:11,borderWidth:1,color:"#886666"}}>{syncCode?"DELETE ACCOUNT":"RESET ALL PROGRESS"}</button>
+{_mob&&<button onClick={()=>setShowChangelog(true)} style={{width:"100%",maxWidth:380,..._gpDim("#88bbdd",14),padding:"16px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontFamily:"inherit",marginTop:14}}><div style={{textAlign:"left"}}><div style={{color:"#fff",fontSize:14,fontWeight:"bold"}}>CHANGELOG</div><div style={{color:"#aeb6cc",fontSize:10,marginTop:2}}>Full version history · v3.1</div></div><span style={{color:"#fff",fontSize:18}}>›</span></button>}
+<div style={{display:"flex",gap:10,marginTop:_mv(20,12)}}>
+ <button onClick={()=>setConfirmReset(true)} style={{...bs2("#ff334433"),padding:"8px 20px",fontSize:_mf(11),borderWidth:1,color:"#886666"}}>{syncCode?"DELETE ACCOUNT":"RESET ALL PROGRESS"}</button>
  </div>
- {confirmReset&&<div onClick={e=>{e.stopPropagation();setConfirmReset(false);}} style={{position:"absolute",inset:0,background:"rgba(2,2,8,0.88)",zIndex:40,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:"2px solid #ff334466",borderRadius:8,padding:"18px 22px",maxWidth:360,width:"100%",textAlign:"center",boxShadow:"0 4px 24px rgba(0,0,0,0.6)"}}><div style={{color:"#ff5566",fontSize:14,fontWeight:"bold",letterSpacing:2,marginBottom:10}}>{syncCode?"DELETE ACCOUNT":"RESET ALL PROGRESS"}</div><div style={{color:"#bbaaaa",fontSize:10,lineHeight:1.7,marginBottom:16}}>{syncCode&&meta.locked?"Unlock your account before deleting.":syncCode?"This will permanently delete your account, erase all progress, and remove you from the leaderboard. This cannot be undone.":"This will erase all Echoes, meta upgrades, ability shards, and ability upgrades permanently. This cannot be undone."}</div><div style={{display:"flex",gap:8,justifyContent:"center"}}><button onClick={()=>{if(_delTimer>0)return;if(syncCode&&meta.locked)return;if(syncCode){const _delCode=syncCodeRef.current;const f={echoes:0,levels:{},shards:0,shardsBought:0,abUpgrades:{},shipColor:"cyan",bulletColor:"teal",bossShards:0,ownedDesigns:[],shipDesign:"none",designColor:undefined,showNewEnemy:true,showHitText:true,showMagnetRange:true,highWave:0,username:_genUsername()};try{fetch(SUPABASE_URL+"/rest/v1/saves?code=eq."+_delCode,{method:"DELETE",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY}}).catch(()=>{});}catch(_e){}setSyncCode(null);syncCodeRef.current=null;setSyncStatus("none");setSyncCodeInput("");try{localStorage.removeItem("vs4-sync-code");localStorage.removeItem("vs4-meta");localStorage.removeItem("vs4-history");localStorage.removeItem("vs4-tut");localStorage.removeItem("vs4-lock-key");}catch(e){}setMeta(f);setConfirmReset(false);setShowTutPrompt(true);}else{const f={echoes:0,levels:{},shards:0,shardsBought:0,abUpgrades:{},shipColor:"cyan",bulletColor:"teal",bossShards:0,ownedDesigns:[],shipDesign:"none",designColor:undefined,showNewEnemy:metaRef.current.showNewEnemy,showHitText:metaRef.current.showHitText,showMagnetRange:true,highWave:0};setMeta(f);saveMeta(f);try{localStorage.removeItem("vs4-history");localStorage.removeItem("vs4-tut");}catch(e){}setConfirmReset(false);setShowTutPrompt(true);}}} disabled={_delTimer>0||!!(syncCode&&meta.locked)} style={{padding:"8px 20px",background:(_delTimer>0||(syncCode&&meta.locked))?"#1a0a0a":"#ff3344",border:"1px solid "+((_delTimer>0||(syncCode&&meta.locked))?"#55334433":"#ff4455"),borderRadius:4,fontFamily:"inherit",fontSize:11,letterSpacing:1,color:(_delTimer>0||(syncCode&&meta.locked))?"#774444":"#0c0c1a",cursor:(_delTimer>0||(syncCode&&meta.locked))?"default":"pointer",fontWeight:"bold"}}>{(syncCode&&meta.locked)?"LOCKED":_delTimer>0?("WAIT "+_delTimer+"s"):"CONFIRM DELETE"}</button><button onClick={()=>setConfirmReset(false)} style={{padding:"8px 20px",background:"none",border:"1px solid #33445544",borderRadius:4,fontFamily:"inherit",fontSize:11,letterSpacing:1,color:"#8899aa",cursor:"pointer"}}>CANCEL</button></div></div></div>}
- <button onClick={()=>{if(_returnToPauseRef.current){_setTransFrom("settings");_setTransStage("exiting");_transTimerRef.current=setTimeout(()=>{setPhase("playing");_setTransStage("idle");_setTransFrom(null);_setTransTo(null);},200);}else{goTo("menu");}}} style={{...bs2("#55667744"),marginTop:20,padding:"8px 24px",fontSize:11,borderWidth:1,color:"#8899aa"}}>← BACK</button>
- <div style={{display:"flex",alignItems:"center",gap:4,marginTop:6}}>
- <span style={{color:"#334455",fontSize:8,letterSpacing:1}}>Version 3.0.1</span>
- <div onClick={()=>setShowChangelog(true)} style={{width:14,height:14,borderRadius:"50%",border:"1px solid #44667788",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#556688",fontWeight:"bold"}} onMouseOver={e=>{e.currentTarget.style.color="#88bbdd";e.currentTarget.style.borderColor="#88bbddaa";}} onMouseOut={e=>{e.currentTarget.style.color="#556688";e.currentTarget.style.borderColor="#44667788";}}>i</div>
+ {confirmReset&&<div onClick={e=>{e.stopPropagation();setConfirmReset(false);}} style={{position:"absolute",inset:0,background:"rgba(2,2,8,0.88)",zIndex:40,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:"2px solid #ff334466",borderRadius:8,padding:"18px 22px",maxWidth:360,width:"100%",textAlign:"center",boxShadow:"0 4px 24px rgba(0,0,0,0.6)"}}><div style={{color:"#ff5566",fontSize:_mf(14),fontWeight:"bold",letterSpacing:2,marginBottom:10}}>{syncCode?"DELETE ACCOUNT":"RESET ALL PROGRESS"}</div><div style={{color:"#bbaaaa",fontSize:_mf(10),lineHeight:1.7,marginBottom:16}}>{syncCode&&meta.locked?"Unlock your account before deleting.":syncCode?"This will permanently delete your account, erase all progress, and remove you from the leaderboard. This cannot be undone.":"This will erase all Echoes, meta upgrades, ability shards, and ability upgrades permanently. This cannot be undone."}</div><div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:_mv("nowrap","wrap")}}><button onClick={()=>{if(_delTimer>0)return;if(syncCode&&meta.locked)return;if(syncCode){const _delCode=syncCodeRef.current;const f={echoes:0,levels:{},shards:0,shardsBought:0,abUpgrades:{},shipColor:"cyan",bulletColor:"teal",bossShards:0,ownedDesigns:[],shipDesign:"none",designColor:undefined,showNewEnemy:true,showHitText:true,showMagnetRange:true,highWave:0,username:_genUsername()};try{fetch(SUPABASE_URL+"/rest/v1/saves?code=eq."+_delCode,{method:"DELETE",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY}}).catch(()=>{});}catch(_e){}setSyncCode(null);syncCodeRef.current=null;setSyncStatus("none");setSyncCodeInput("");try{localStorage.removeItem("vs4-sync-code");localStorage.removeItem("vs4-meta");localStorage.removeItem("vs4-history");localStorage.removeItem("vs4-tut");localStorage.removeItem("vs4-lock-key");}catch(e){}setMeta(f);setConfirmReset(false);setShowTutPrompt(true);}else{const f={echoes:0,levels:{},shards:0,shardsBought:0,abUpgrades:{},shipColor:"cyan",bulletColor:"teal",bossShards:0,ownedDesigns:[],shipDesign:"none",designColor:undefined,showNewEnemy:metaRef.current.showNewEnemy,showHitText:metaRef.current.showHitText,showMagnetRange:true,highWave:0};setMeta(f);saveMeta(f);try{localStorage.removeItem("vs4-history");localStorage.removeItem("vs4-tut");}catch(e){}setConfirmReset(false);setShowTutPrompt(true);}}} disabled={_delTimer>0||!!(syncCode&&meta.locked)} style={{padding:"8px 20px",background:(_delTimer>0||(syncCode&&meta.locked))?"#1a0a0a":"#ff3344",border:"1px solid "+((_delTimer>0||(syncCode&&meta.locked))?"#55334433":"#ff4455"),borderRadius:4,fontFamily:"inherit",fontSize:_mf(11),letterSpacing:1,color:(_delTimer>0||(syncCode&&meta.locked))?"#774444":"#0c0c1a",cursor:(_delTimer>0||(syncCode&&meta.locked))?"default":"pointer",fontWeight:"bold"}}>{(syncCode&&meta.locked)?"LOCKED":_delTimer>0?("WAIT "+_delTimer+"s"):"CONFIRM DELETE"}</button><button onClick={()=>setConfirmReset(false)} style={{padding:"8px 20px",background:"none",border:"1px solid #33445544",borderRadius:4,fontFamily:"inherit",fontSize:_mf(11),letterSpacing:1,color:"#8899aa",cursor:"pointer"}}>CANCEL</button></div></div></div>}
+ </div>{!_mob&&<button onClick={()=>{if(_returnToPauseRef.current){_setTransFrom("settings");_setTransStage("exiting");_transTimerRef.current=setTimeout(()=>{setPhase("playing");_setTransStage("idle");_setTransFrom(null);_setTransTo(null);},200);}else{goTo("menu");}}} style={{...bs2("#55667744"),marginTop:20,padding:"8px 24px",fontSize:_mf(11),borderWidth:1,color:"#8899aa"}}>← BACK</button>}
+ <div style={{display:_mv("flex","none"),alignItems:"center",gap:4,marginTop:6}}>
+ <span style={{color:"#334455",fontSize:_mf(8),letterSpacing:1}}>Version 3.1</span>
+ <div onClick={()=>setShowChangelog(true)} style={{width:14,height:14,borderRadius:"50%",border:"1px solid #44667788",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mf(8),color:"#556688",fontWeight:"bold"}} onMouseOver={e=>{e.currentTarget.style.color="#88bbdd";e.currentTarget.style.borderColor="#88bbddaa";}} onMouseOut={e=>{e.currentTarget.style.color="#556688";e.currentTarget.style.borderColor="#44667788";}}>i</div>
  {_showAdvInfo&&(()=>{
  const _sz=(k)=>{try{const v=localStorage.getItem(k);return v?v.length:0;}catch(e){return 0;}};
  const _fmt=(n)=>n<1024?n+" B":n<1048576?(n/1024).toFixed(1)+" KB":(n/1048576).toFixed(2)+" MB";
  const _metaSz=_sz("vs4-meta"),_histSz=_sz("vs4-history"),_tutSz=_sz("vs4-tut"),_totSz=_metaSz+_histSz+_tutSz;
  let _hist=[],_rCount=0,_rBytes=0;try{_hist=JSON.parse(localStorage.getItem("vs4-history")||"[]");_hist.forEach(e=>{if(e.replay){_rCount++;_rBytes+=JSON.stringify(e.replay).length;}});}catch(e){}
  const _syncSz=Math.max(0,_totSz-_rBytes); // approx bytes that would be uploaded (replays stripped)
- const _row=(k,v)=>(<div style={{display:"flex",justifyContent:"space-between",fontSize:9,padding:"3px 0",borderBottom:"1px solid #1a1a2e"}}><span style={{color:"#8899aa"}}>{k}</span><span style={{color:"#ccddee",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{v}</span></div>);
+ const _row=(k,v)=>(<div style={{display:"flex",justifyContent:"space-between",fontSize:_mf(9),padding:"3px 0",borderBottom:"1px solid #1a1a2e"}}><span style={{color:"#8899aa"}}>{k}</span><span style={{color:"#ccddee",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>{v}</span></div>);
  return <div onClick={()=>closePopup(_setShowAdvInfo)} style={{position:"absolute",inset:0,background:"rgba(2,2,8,0.9)",zIndex:40,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
  <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44556677",borderRadius:6,padding:"16px 18px",maxWidth:360,width:"100%",maxHeight:"86%",overflow:"auto"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
- <div style={{color:"#99aacc",fontSize:12,fontWeight:"bold",letterSpacing:2}}>ADVANCED INFO</div>
- <button onClick={()=>closePopup(_setShowAdvInfo)} style={{background:"none",border:"1px solid #33445566",color:"#778899",fontSize:9,padding:"2px 8px",borderRadius:3,cursor:"pointer",fontFamily:"inherit"}}>CLOSE</button>
+ <div style={{color:"#99aacc",fontSize:_mf(12),fontWeight:"bold",letterSpacing:2}}>ADVANCED INFO</div>
+ <button onClick={()=>closePopup(_setShowAdvInfo)} style={{background:"none",border:"1px solid #33445566",color:"#778899",fontSize:_mf(9),padding:"2px 8px",borderRadius:3,cursor:"pointer",fontFamily:"inherit"}}>CLOSE</button>
  </div>
- <div style={{color:"#667788",fontSize:8,letterSpacing:1,marginBottom:4}}>SAVE FILE</div>
+ <div style={{color:"#667788",fontSize:_mf(8),letterSpacing:1,marginBottom:4}}>SAVE FILE</div>
  {_row("Total local size",_fmt(_totSz))}
  {_row("Progress (meta)",_fmt(_metaSz))}
  {_row("History",_fmt(_histSz))}
  {_row("Replay data (local only)",_fmt(_rBytes))}
  {_row("Cloud upload size ≈",_fmt(_syncSz))}
- <div style={{color:"#667788",fontSize:8,letterSpacing:1,margin:"12px 0 4px"}}>DATA</div>
+ <div style={{color:"#667788",fontSize:_mf(8),letterSpacing:1,margin:"12px 0 4px"}}>DATA</div>
  {_row("Runs recorded",String(_hist.length))}
  {_row("Replays stored",String(_rCount)+" / 20")}
  {_row("High wave",String(meta.highWave||0))}
  {_row("Account",syncCode?("synced #"+syncCode):"local only")}
- <div style={{color:"#667788",fontSize:8,letterSpacing:1,margin:"12px 0 4px"}}>SYSTEM</div>
+ <div style={{color:"#667788",fontSize:_mf(8),letterSpacing:1,margin:"12px 0 4px"}}>SYSTEM</div>
  {_row("Resolution",`${GW}×${GH}`)}
  {_row("Device pixel ratio",String(window.devicePixelRatio||1))}
  {_row("Viewport",`${Math.round(window.innerWidth)}×${Math.round(window.innerHeight)}`)}
  <div style={{display:"flex",alignItems:"center",gap:8,marginTop:14,paddingTop:10,borderTop:"1px solid #1a1a2e"}}>
- <div onClick={()=>setMeta(prev=>{const nx={...prev,showFps:!prev.showFps};saveMeta(nx);return nx;})} style={{width:26,height:13,borderRadius:7,background:meta.showFps?"#44ccaa22":"#1a1a2e",border:"1px solid "+(meta.showFps?"#44ccaa66":"#33445566"),position:"relative",transition:"all 0.2s",flexShrink:0,cursor:"pointer"}}>
- <div style={{width:9,height:9,borderRadius:5,background:meta.showFps?"#44ccaa":"#556677",position:"absolute",top:1,left:meta.showFps?15:1,transition:"all 0.2s"}} />
+ <div onClick={()=>setMeta(prev=>{const nx={...prev,showFps:!prev.showFps};saveMeta(nx);return nx;})} style={{width:_mv(26,44),height:_mv(13,22),borderRadius:_mv(7,11),background:meta.showFps?"#44ccaa22":"#1a1a2e",border:"1px solid "+(meta.showFps?"#44ccaa66":"#33445566"),position:"relative",transition:"all 0.2s",flexShrink:0,cursor:"pointer"}}>
+ <div style={{width:_mv(9,16),height:_mv(9,16),borderRadius:_mv(5,8),background:meta.showFps?"#44ccaa":"#556677",position:"absolute",top:_mv(1,3),left:meta.showFps?_mv(15,25):_mv(1,3),transition:"all 0.2s"}} />
  </div>
- <span style={{fontSize:9,color:meta.showFps?"#88ccaa":"#778899"}}>Show FPS counter{meta.showFps?" — ON":" — OFF"}</span>
+ <span style={{fontSize:_mf(9),color:meta.showFps?"#88ccaa":"#778899"}}>Show FPS counter{meta.showFps?" — ON":" — OFF"}</span>
  </div>
- <div style={{color:"#556677",fontSize:8,marginTop:10,lineHeight:1.5}}>Replays are stored only on this device and never uploaded — they don't count toward your cloud save size.</div>
+ <div style={{color:"#556677",fontSize:_mf(8),marginTop:10,lineHeight:1.5}}>Replays are stored only on this device and never uploaded — they don't count toward your cloud save size.</div>
  </div>
  </div>;})()}
  </div>
  {showChangelog&&(
  <div onClick={()=>closePopup(setShowChangelog)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
- <div onClick={e=>e.stopPropagation()} className="vs-scroll" style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
+ <div onClick={e=>e.stopPropagation()} className="vs-scroll" style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44ccaa33",borderRadius:_mv(6,20),padding:_mv("16px 14px","18px 16px"),maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
- <div style={{color:"#ccddee",fontSize:14,fontWeight:"bold",letterSpacing:2}}>CHANGELOG</div>
- <button onClick={()=>closePopup(setShowChangelog)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ <div style={{color:"#ccddee",fontSize:_mv(_mf(14),13),fontWeight:"bold",letterSpacing:2}}>CHANGELOG</div>
+ <button onClick={()=>closePopup(setShowChangelog)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
  </div>
- <button onClick={()=>setClExpanded(p=>p.v301?{}:{v301:true})} style={{width:"100%",background:"none",border:"1px solid #44ccaa55",color:"#44ccaa",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:"bold",borderRadius:3,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><span>v3.0.1</span><span style={{fontSize:8}}>{clExpanded.v301?"▼":"►"}</span></button>{clExpanded.v301&&<div>
-   <div style={{color:"#99aabb",fontSize:10,lineHeight:1.75,marginBottom:12,marginTop:2}}>
+ <button onClick={()=>setClExpanded(p=>p.v31?{}:{v31:true})} style={{width:"100%",background:"none",border:"1px solid #44ccaa55",color:"#44ccaa",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(12),fontWeight:"bold",borderRadius:3,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><span>v3.1</span><span style={{fontSize:_mf(8)}}>{clExpanded.v31?"▼":"►"}</span></button>{clExpanded.v31&&<div>
+<div style={{color:"#44ccaa99",fontSize:_mf(9),fontWeight:"bold",letterSpacing:1,marginBottom:4}}>MOBILE</div>
+<div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.75,marginBottom:8}}>
+ • Full mobile layout for every screen<br/>
+ • Display mode setting — Auto, Desktop or Mobile<br/>
+</div>
+<div style={{color:"#bb99ff99",fontSize:_mf(9),fontWeight:"bold",letterSpacing:1,marginBottom:4}}>NEW</div>
+<div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.75,marginBottom:8}}>
+ • Lab+ — bonus lab research after long runs<br/>
+ • Blue dot for empty lab slots<br/>
+</div>
+<div style={{color:"#ff662299",fontSize:_mf(9),fontWeight:"bold",letterSpacing:1,marginBottom:4}}>BALANCE</div>
+<div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.75,marginBottom:8}}>
+ • Overheat costs 30% lower<br/>
+</div>
+<div style={{color:"#cc884499",fontSize:_mf(9),fontWeight:"bold",letterSpacing:1,marginBottom:4}}>FIXES</div>
+<div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.75,marginBottom:12}}>
+ • Health Bot, Seeker Swarm, Intro Sprint and Cargo fixes<br/>
+ • Paths tree fully reachable<br/>
+ • Sandbox runs no longer end after one wave<br/>
+ • Bug fixes<br/>
+</div>
+</div>}
+<button onClick={()=>setClExpanded(p=>p.v301?{}:{v301:true})} style={{width:"100%",background:"none",border:"1px solid #334455",color:"#778899",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><span>v3.0.1</span><span style={{fontSize:_mf(8)}}>{clExpanded.v301?"▼":"►"}</span></button>{clExpanded.v301&&<div>
+   <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.75,marginBottom:12,marginTop:2}}>
     • Lab, elite, and dealer rebalances<br/>
     • Bug fixes<br/>
    </div>
    </div>}
-  <button onClick={()=>setClExpanded(p=>p.v30?{}:{v30:true})} style={{width:"100%",background:"none",border:"1px solid #334455",color:"#778899",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><span>v3.0</span><span style={{fontSize:8}}>{clExpanded.v30?"▼":"►"}</span></button>{clExpanded.v30&&<div>
- <div style={{color:"#44ccaa99",fontSize:9,fontWeight:"bold",letterSpacing:1,marginBottom:4}}>NEW MODES AND SYSTEMS</div>
- <div style={{color:"#99aabb",fontSize:10,lineHeight:1.75,marginBottom:8}}>
+  <button onClick={()=>setClExpanded(p=>p.v30?{}:{v30:true})} style={{width:"100%",background:"none",border:"1px solid #334455",color:"#778899",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><span>v3.0</span><span style={{fontSize:_mf(8)}}>{clExpanded.v30?"▼":"►"}</span></button>{clExpanded.v30&&<div>
+ <div style={{color:"#44ccaa99",fontSize:_mf(9),fontWeight:"bold",letterSpacing:1,marginBottom:4}}>NEW MODES AND SYSTEMS</div>
+ <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.75,marginBottom:8}}>
  • Paths — a permanent upgrade tree bought with packages (▣)<br/>
  • Dealer — buff/nerf cards, plus an optional auto-dealer<br/>
  • Cargo — escort-the-train survival mode<br/>
@@ -3361,25 +3729,25 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  • Elites — tougher enemies that summon protected reinforcements<br/>
  • History replays — review and re-watch past runs<br/>
  </div>
- <div style={{color:"#bb99ff99",fontSize:9,fontWeight:"bold",letterSpacing:1,marginBottom:4}}>NEW LABS</div>
- <div style={{color:"#99aabb",fontSize:10,lineHeight:1.75,marginBottom:8}}>
+ <div style={{color:"#bb99ff99",fontSize:_mf(9),fontWeight:"bold",letterSpacing:1,marginBottom:4}}>NEW LABS</div>
+ <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.75,marginBottom:8}}>
  • Overheat Chance<br/>
  • Overheat Bot Multiplier<br/>
  • Overheat Wave Cost<br/>
  </div>
- <div style={{color:"#cc884499",fontSize:9,fontWeight:"bold",letterSpacing:1,marginBottom:4}}>QUALITY OF LIFE</div>
- <div style={{color:"#99aabb",fontSize:10,lineHeight:1.75,marginBottom:12}}>
+ <div style={{color:"#cc884499",fontSize:_mf(9),fontWeight:"bold",letterSpacing:1,marginBottom:4}}>QUALITY OF LIFE</div>
+ <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.75,marginBottom:12}}>
  • 4 new backgrounds<br/>
  • Higher resolution presets<br/>
  • Affordability dots on menu buttons<br/>
  • Epilepsy safety settings<br/>
  </div>
  </div>}
- <button onClick={()=>setClExpanded(p=>p.v222?{}:{v222:true})} style={{width:"100%",background:"none",border:"1px solid #334455",color:"#778899",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
- <span>v2.2.2</span><span style={{fontSize:8}}>{clExpanded.v222?"▼":"►"}</span>
+ <button onClick={()=>setClExpanded(p=>p.v222?{}:{v222:true})} style={{width:"100%",background:"none",border:"1px solid #334455",color:"#778899",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+ <span>v2.2.2</span><span style={{fontSize:_mf(8)}}>{clExpanded.v222?"▼":"►"}</span>
  </button>
  {clExpanded.v222&&<div style={{padding:"0 0 8px 0"}}>
- <div style={{color:"#778899",fontSize:9,lineHeight:1.8}}>
+ <div style={{color:"#778899",fontSize:_mf(9),lineHeight:1.8}}>
  • Account system: usernames, leaderboard, account locking<br/>
  • Smooth menu transitions and launch animation<br/>
  • Enforcer death screen with retry option<br/>
@@ -3387,23 +3755,23 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  • Various balance tweaks and bug fixes<br/>
  </div>
  </div>}
- <button onClick={()=>setClExpanded(p=>p.v221?{}:{v221:true})} style={{width:"100%",background:"none",border:"1px solid #334455",color:"#778899",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
- <span>v2.2.1</span><span style={{fontSize:8}}>{clExpanded.v221?"▼":"►"}</span>
+ <button onClick={()=>setClExpanded(p=>p.v221?{}:{v221:true})} style={{width:"100%",background:"none",border:"1px solid #334455",color:"#778899",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+ <span>v2.2.1</span><span style={{fontSize:_mf(8)}}>{clExpanded.v221?"▼":"►"}</span>
  </button>
  {clExpanded.v221&&<div style={{padding:"0 0 8px 0"}}>
- <div style={{color:"#778899",fontSize:9,lineHeight:1.8}}>
+ <div style={{color:"#778899",fontSize:_mf(9),lineHeight:1.8}}>
  • New lab: Sprint Currency Lifespan<br/>
  • Diffusion slot removal fixed<br/>
  • Enforcer rebalancing and sprint fixes<br/>
  • Lab cost rebalancing and UI tweaks<br/>
  </div>
  </div>}
- <button onClick={()=>setClExpanded(p=>p.v22?{}:{v22:true})} style={{width:"100%",background:"none",border:"1px solid #334455",color:"#778899",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
- <span>v2.2</span><span style={{fontSize:8}}>{clExpanded.v22?"▼":"►"}</span>
+ <button onClick={()=>setClExpanded(p=>p.v22?{}:{v22:true})} style={{width:"100%",background:"none",border:"1px solid #334455",color:"#778899",padding:"6px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3,textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+ <span>v2.2</span><span style={{fontSize:_mf(8)}}>{clExpanded.v22?"▼":"►"}</span>
  </button>
  {clExpanded.v22&&<div style={{padding:"8px 0 0 0"}}>
- <div style={{color:"#44ccaa88",fontSize:10,fontWeight:"bold",letterSpacing:1,marginBottom:4}}>NEW</div>
- <div style={{color:"#778899",fontSize:9,lineHeight:1.8}}>
+ <div style={{color:"#44ccaa88",fontSize:_mf(10),fontWeight:"bold",letterSpacing:1,marginBottom:4}}>NEW</div>
+ <div style={{color:"#778899",fontSize:_mf(9),lineHeight:1.8}}>
  • Custom ship designs — unlock 15 designs with boss shards<br/>
  • Boss shards — new currency dropped by bosses<br/>
  • View your labs from the pause menu<br/>
@@ -3411,8 +3779,8 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  • Enforcer mode rebalanced — new attack patterns<br/>
  • Codex improvements<br/>
  </div>
- <div style={{color:"#cc884488",fontSize:10,fontWeight:"bold",letterSpacing:1,marginTop:6,marginBottom:4}}>FIXES</div>
- <div style={{color:"#778899",fontSize:9,lineHeight:1.8}}>
+ <div style={{color:"#cc884488",fontSize:_mf(10),fontWeight:"bold",letterSpacing:1,marginTop:6,marginBottom:4}}>FIXES</div>
+ <div style={{color:"#778899",fontSize:_mf(9),lineHeight:1.8}}>
  • HyperEcho diffusion multiplier fixed<br/>
  • Sprint lab progress now works properly<br/>
  • Various UI and description fixes<br/>
@@ -3421,32 +3789,62 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  </div>
  </div>
  )}
+ {showDesignPopup&&(()=>{const _dCol=SHIP_COLORS.find(c=>c.id===(meta.designColor||"orange"))||SHIP_COLORS[0];return(
+ <div onClick={()=>closePopup(setShowDesignPopup)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+ <div onClick={e=>e.stopPropagation()} className="vs-scroll" style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #cc333333",borderRadius:_mv(6,20),padding:_mv("16px 14px","18px 16px"),maxWidth:420,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
+ <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+ <div style={{color:"#cc3333",fontSize:_mf(17),fontWeight:"bold",letterSpacing:2}}>CUSTOM DESIGNS</div>
+ <button onClick={()=>closePopup(setShowDesignPopup)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(11),borderRadius:3}}>✕</button>
+ </div>
+ <div style={{color:"#aabbcc",fontSize:_mf(12),marginBottom:12}}>Boss Shards: <span style={{color:"#cc3333",fontWeight:"bold",fontSize:_mf(14)}}>{CUR.bossShards.icon} {meta.bossShards||0}</span></div>
+ <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
+ {SHIP_DESIGNS.map((sd,sdi)=>{const owned=sd.cost===0||(meta.ownedDesigns||[]).includes(sd.id);const selected=(meta.shipDesign||"none")===sd.id;const canBuy=!owned&&(meta.bossShards||0)>=sd.cost;return(
+ <button key={sd.id} onClick={()=>{if(owned){setMeta(prev=>{const nx={...prev,shipDesign:sd.id};saveMeta(nx);return nx;});}else if(canBuy){setMeta(prev=>{const nx={...prev,bossShards:(prev.bossShards||0)-sd.cost,ownedDesigns:[...(prev.ownedDesigns||[]),sd.id],shipDesign:sd.id};saveMeta(nx);return nx;});}}}
+ style={{padding:"4px 2px",minHeight:90,background:selected?"#1a1420":owned?"#0a0a16":"#08080f",border:`2px solid ${selected?"#cc3333":owned?"#cc333344":"#22223322"}`,borderRadius:4,cursor:owned||canBuy?"pointer":"default",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s",position:"relative",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}
+ onMouseOver={e=>{if(owned||canBuy)e.currentTarget.style.borderColor="#cc3333";}} onMouseOut={e=>e.currentTarget.style.borderColor=selected?"#cc3333":owned?"#cc333344":"#22223322"}>
+ <canvas width={192} height={192} ref={cvs=>{if(!cvs)return;const cx=cvs.getContext("2d");cx.setTransform(3,0,0,3,0,0);cx.clearRect(0,0,64,64);const _shipC=SHIP_COLORS.find(c=>c.id===(meta.shipColor||"cyan"))||SHIP_COLORS[0];cx.fillStyle=_shipC.color;cx.shadowColor=_shipC.glow;cx.shadowBlur=5;const sz=13,px=32,py=34;cx.beginPath();cx.moveTo(px,py-sz-4);cx.lineTo(px-sz,py+sz);cx.lineTo(px,py+sz*0.4);cx.lineTo(px+sz,py+sz);cx.closePath();cx.fill();cx.shadowBlur=0;if(sd.draw){sd.draw(cx,px,py,sz,_dCol.color);cx.globalAlpha=1;}}} style={{display:"block",margin:"0 auto",width:64,height:64}} />
+ {!owned&&<div style={{color:canBuy?"#cc3333":"#44556688",fontSize:_mf(9),marginTop:2}}>{CUR.bossShards.icon} {sd.cost}</div>}
+ {selected&&<div style={{color:"#cc3333",fontSize:_mf(8),marginTop:2}}>equipped</div>}
+ </button>);})}
+ </div>
+ <div style={{color:"#8899aa",fontSize:_mf(10),marginTop:12,marginBottom:6,letterSpacing:1}}>DESIGN COLOUR</div>
+ <div style={{display:"grid",gridTemplateColumns:"repeat(8,1fr)",gap:4}}>
+ {SHIP_COLORS.map(sc=>{const _isShipCol=(meta.shipColor||"cyan")===sc.id;const sel=(meta.designColor||"orange")===sc.id&&!_isShipCol;return(
+ <button key={sc.id} onClick={()=>{if(_isShipCol)return;setMeta(prev=>{const nx={...prev,designColor:sc.id};saveMeta(nx);return nx;});}}
+ style={{padding:"6px 2px",background:sel?"#141428":"#0a0a16",border:`2px solid ${_isShipCol?"#22222233":sel?sc.color:sc.color+"33"}`,borderRadius:3,cursor:_isShipCol?"default":"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s",opacity:_isShipCol?0.25:1}}
+ onMouseOver={e=>{if(!_isShipCol)e.currentTarget.style.borderColor=sc.color;}} onMouseOut={e=>e.currentTarget.style.borderColor=_isShipCol?"#22222233":sel?sc.color:sc.color+"33"}>
+ <div style={{width:14,height:14,margin:"0 auto",background:sc.color,borderRadius:"50%",boxShadow:_isShipCol?"none":`0 0 6px ${sc.glow}66`}} />
+ </button>);})}
+ </div>
+ <div style={{color:"#667788",fontSize:_mf(10),marginTop:10,lineHeight:1.6}}>Earn boss shards from bosses. (Current boss shard drop rate: <span style={{color:"#44ccaa"}}>{(metaRef.current.lab?.completed?.boss_shard_drop||0)*8}%</span>)</div>
+ </div>
+ </div>);})()}
  {showShipPopup&&(
  <div onClick={()=>closePopup(setShowShipPopup)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
- <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
+ <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44ccaa33",borderRadius:_mv(6,20),padding:_mv("16px 14px","18px 16px"),maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
- <div style={{color:"#44ccaa",fontSize:15,fontWeight:"bold",letterSpacing:2}}>SHIP & BULLET COLOURS</div>
- <button onClick={()=>closePopup(setShowShipPopup)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ <div style={{color:"#44ccaa",fontSize:_mf(15),fontWeight:"bold",letterSpacing:2}}>SHIP & BULLET COLOURS</div>
+ <button onClick={()=>closePopup(setShowShipPopup)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
  </div>
  <div style={{marginBottom:10,display:"flex",justifyContent:"center",pointerEvents:"none"}}><ShipDisplay onClick={()=>{}} size={64} /></div>
- <div style={{color:"#8899aa",fontSize:9,marginBottom:6,letterSpacing:1}}>SHIP COLOUR</div>
+ <div style={{color:"#8899aa",fontSize:_mf(9),marginBottom:6,letterSpacing:1}}>SHIP COLOUR</div>
  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
  {SHIP_COLORS.map(sc=>{const sel=meta.shipColor===sc.id||(sc.id==="cyan"&&!meta.shipColor);return(
  <button key={sc.id} onClick={()=>{setMeta(prev=>{const nx={...prev,shipColor:sc.id};if(nx.designColor===sc.id){const _alt=SHIP_COLORS.find(c=>c.id!==sc.id);if(_alt)nx.designColor=_alt.id;}saveMeta(nx);return nx;});const _sc2=SHIP_COLORS.find(c=>c.id===sc.id)||SHIP_COLORS[0];if(gsRef.current)gsRef.current.shipCol=_sc2;}}
  style={{padding:"10px 6px",background:sel?"#141428":"#0a0a16",border:`2px solid ${sel?sc.color:sc.color+"33"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s"}}
  onMouseOver={e=>e.currentTarget.style.borderColor=sc.color} onMouseOut={e=>e.currentTarget.style.borderColor=sel?sc.color:sc.color+"33"}>
  <div style={{width:20,height:20,margin:"0 auto 6px",background:sc.color,borderRadius:"50%",boxShadow:`0 0 8px ${sc.glow}66`}} />
- <div style={{color:sel?sc.color:"#8899aa",fontSize:8,fontWeight:sel?"bold":"normal"}}>{sc.name}</div>
+ <div style={{color:sel?sc.color:"#8899aa",fontSize:_mf(8),fontWeight:sel?"bold":"normal"}}>{sc.name}</div>
  </button>);})}
  </div>
- <div style={{color:"#8899aa",fontSize:9,marginTop:14,marginBottom:6,letterSpacing:1}}>BULLET COLOUR</div>
+ <div style={{color:"#8899aa",fontSize:_mf(9),marginTop:14,marginBottom:6,letterSpacing:1}}>BULLET COLOUR</div>
  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6}}>
  {BULLET_COLORS.map(bc=>{const sel=meta.bulletColor===bc.id||(bc.id==="teal"&&(!meta.bulletColor||meta.bulletColor==="match"));const dispCol=bc.color;return(
  <button key={bc.id} onClick={()=>{setMeta(prev=>{const nx={...prev,bulletColor:bc.id};saveMeta(nx);return nx;});if(gsRef.current){const _bcId=bc.id;if(_bcId==="match")gsRef.current.bulCol="#44ddcc";else{const _bc2=BULLET_COLORS.find(c=>c.id===_bcId);gsRef.current.bulCol=_bc2?.color||"#44ddcc";}}}}
  style={{padding:"8px 4px",background:sel?"#141428":"#0a0a16",border:`2px solid ${sel?dispCol:dispCol+"33"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s"}}
  onMouseOver={e=>e.currentTarget.style.borderColor=dispCol} onMouseOut={e=>e.currentTarget.style.borderColor=sel?dispCol:dispCol+"33"}>
  <div style={{width:14,height:14,margin:"0 auto 4px",background:dispCol,borderRadius:"50%",boxShadow:`0 0 6px ${dispCol}66`}} />
- <div style={{color:sel?dispCol:"#8899aa",fontSize:7,fontWeight:sel?"bold":"normal"}}>{bc.name}</div>
+ <div style={{color:sel?dispCol:"#8899aa",fontSize:_mf(7),fontWeight:sel?"bold":"normal"}}>{bc.name}</div>
  </button>);})}
  </div>
  </div>
@@ -3454,10 +3852,10 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  )}
  {showBgPopup&&(
  <div onClick={()=>closePopup(setShowBgPopup)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
- <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44ccaa33",borderRadius:6,padding:"16px 14px",maxWidth:400,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
+ <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44ccaa33",borderRadius:_mv(6,20),padding:_mv("16px 14px","18px 16px"),maxWidth:400,width:"100%",maxHeight:"80vh",overflow:"auto"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
- <div style={{color:"#44ccaa",fontSize:15,fontWeight:"bold",letterSpacing:2}}>BACKGROUND</div>
- <button onClick={()=>closePopup(setShowBgPopup)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ <div style={{color:"#44ccaa",fontSize:_mf(15),fontWeight:"bold",letterSpacing:2}}>BACKGROUND</div>
+ <button onClick={()=>closePopup(setShowBgPopup)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
  </div>
  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6}}>
  {BG_DESIGNS.map(bg=>{const sel=(meta.bgDesign||"void")===bg.id;return(
@@ -3465,7 +3863,7 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  style={{padding:"8px 6px",background:sel?"#0a1a1a":"#08080f",border:`2px solid ${sel?"#44ddcc":"#22334433"}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all 0.2s",overflow:"hidden"}}
  onMouseOver={e=>!sel&&(e.currentTarget.style.borderColor="#44ddcc66")} onMouseOut={e=>!sel&&(e.currentTarget.style.borderColor="#22334433")}>
  <div style={{width:"100%",height:32,borderRadius:3,marginBottom:4,border:"1px solid #1a1a2e"}} ref={el=>{if(el){el.style.cssText=`width:100%;height:32px;border-radius:3px;margin-bottom:4px;border:1px solid #1a1a2e;${bg.css}`;el.className=bg.id==="galaxy"?"vs-galaxy-mini":"";}}} />
- <div style={{color:sel?"#44ddcc":"#ccddee",fontSize:8,fontWeight:sel?"bold":"normal"}}>{bg.name}</div>
+ <div style={{color:sel?"#44ddcc":"#ccddee",fontSize:_mf(8),fontWeight:sel?"bold":"normal"}}>{bg.name}</div>
  </button>);})}
  </div>
  </div>
@@ -3473,69 +3871,82 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  )}
  </div></div>
  )}
- {phase==="dealer"&&(
+ {phase==="dealer"&&_mob&&(()=>{const slots=meta._dealerSlots||1;const active=meta._dealerActive||[];const full=active.length>=slots;return _gShell(<>
+ {_gHead("THE DEALER","#bb77ff",()=>{_setDealerAuto(false);goTo("menu");})}
+ <div style={{color:"#c8cce6",fontSize:9.5,lineHeight:1.5,textAlign:"center",padding:"0 6px",flexShrink:0}}>Each card <span style={{color:"#7dffc0",fontWeight:"bold"}}>weakens</span> an enemy that killed you, but <span style={{color:"#ff9a8a",fontWeight:"bold"}}>empowers</span> another. Lasts one run.</div>
+ <div style={{..._gp("#bb77ff",16),padding:"10px 8px",flexShrink:0,display:"flex",flexDirection:"column",gap:6,height:296,boxSizing:"border-box",overflow:"hidden"}}>
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:"#fff",fontSize:11,fontWeight:"bold",letterSpacing:2}}>ACTIVE</span><span style={{color:"#e6d8ff",fontSize:10}}>{active.length}/{slots}</span></div>
+  <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>{[...active.map((c,ci)=>_dealerCardEl(c,ci,"active")),...Array(Math.max(0,slots-active.length)).fill(0).map((_x,pi)=>_dealerEmptySlot(pi))]}</div>
+ </div>
+ <div style={{flex:1,minHeight:0,display:"flex",flexDirection:"column",gap:6,..._gpDim("#bb77ff",16),padding:"10px 8px"}}>
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}><span style={{color:"#fff",fontSize:10,fontWeight:"bold",letterSpacing:2}}>ON OFFER</span>{full&&<span style={{color:"#ffaa66",fontSize:9}}>Slots full</span>}</div>
+  <div style={{flex:1,display:"flex",gap:8,justifyContent:"center",alignItems:"center",flexWrap:"wrap",minHeight:0}}>{(_dealerOffers||[]).map((c,ci)=>{const _burning=_dealerBurn!=null;const _picked=ci===_dealerBurn;return <div key={"off"+ci} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,...(_burning?{animation:(_picked?"cardFlyUp 780ms cubic-bezier(0.4,0,0.65,1) forwards":"cardBurn 720ms ease-in forwards"),pointerEvents:"none"}:{})}}>{_dealerCardEl(c,ci,full?"locked":"offer")}{!full&&!_burning&&<button onClick={()=>_pickDealerCard(c,ci)} style={{..._gBtn("#bb77ff",false),width:_mv(128,116),padding:"8px 0",fontSize:11,boxSizing:"border-box"}}>PICK</button>}</div>;})}</div>
+ </div>
+ {_dealerAuto?<button onClick={()=>{_setDealerAuto(false);initGame();}} style={{..._gBtn("#00e5ff",true),flexShrink:0,padding:"18px 16px",fontSize:16}}>PLAY WITH THIS LOADOUT</button>:<div style={{height:56,flexShrink:0}} />}
+</>);})()}
+{phase==="dealer"&&!_mob&&(
  <div className={_phaseClass("dealer")} style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:10,overflow:"hidden"}}>
  <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"20px 12px",position:"relative",zIndex:1,width:"100%",boxSizing:"border-box"}}>
- <h2 style={{color:"#bb77ff",fontSize:18,letterSpacing:3,margin:0}}>THE DEALER</h2>
- <p style={{color:"#ccddee",fontSize:9,marginTop:6,textAlign:"center",lineHeight:1.5,maxWidth:360}}>The Dealer reads who has been ending your recent runs. Each card <span style={{color:"#7dffc0"}}>weakens</span> an enemy that has killed you — at the price of <span style={{color:"#ff9a8a"}}>empowering</span> another. Cards last a single run.</p>
+ <h2 style={{color:"#bb77ff",fontSize:_mf(18),letterSpacing:3,margin:0}}>THE DEALER</h2>
+ <p style={{color:"#ccddee",fontSize:_mf(9),marginTop:6,textAlign:"center",lineHeight:1.5,maxWidth:360}}>The Dealer reads who has been ending your recent runs. Each card <span style={{color:"#7dffc0"}}>weakens</span> an enemy that has killed you — at the price of <span style={{color:"#ff9a8a"}}>empowering</span> another. Cards last a single run.</p>
  {(()=>{const slots=meta._dealerSlots||1;const active=meta._dealerActive||[];const full=active.length>=slots;return <>
- <div style={{display:"flex",alignItems:"center",gap:8,marginTop:16,marginBottom:4}}><span style={{color:"#aa88dd",fontSize:10,letterSpacing:2}}>ACTIVE CARDS</span><span style={{color:"#667788",fontSize:9}}>{active.length}/{slots}</span></div>
+ <div style={{display:"flex",alignItems:"center",gap:8,marginTop:16,marginBottom:4}}><span style={{color:"#aa88dd",fontSize:_mf(10),letterSpacing:2}}>ACTIVE CARDS</span><span style={{color:"#667788",fontSize:_mf(9)}}>{active.length}/{slots}</span></div>
  <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",maxWidth:430}}>
  {[...active.map((c,ci)=>_dealerCardEl(c,ci,"active")),...Array(Math.max(0,slots-active.length)).fill(0).map((_x,pi)=>_dealerEmptySlot(pi))]}
  </div>
  <div style={{height:1,background:"#22183a",width:"90%",maxWidth:400,margin:"18px 0 10px"}} />
- <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><span style={{color:"#aa88dd",fontSize:10,letterSpacing:2}}>ON OFFER</span>{full&&<span style={{color:"#cc8855",fontSize:8}}>Slots full</span>}</div>
+ <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><span style={{color:"#aa88dd",fontSize:_mf(10),letterSpacing:2}}>ON OFFER</span>{full&&<span style={{color:"#cc8855",fontSize:_mf(8)}}>Slots full</span>}</div>
  <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center",maxWidth:460}}>
- {(_dealerOffers||[]).map((c,ci)=>{const _burning=_dealerBurn!=null;const _picked=ci===_dealerBurn;return <div key={"off"+ci} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,...(_burning?{animation:(_picked?"cardFlyUp 780ms cubic-bezier(0.4,0,0.65,1) forwards":"cardBurn 720ms ease-in forwards"),pointerEvents:"none"}:{})}}>{_dealerCardEl(c,ci,full?"locked":"offer")}{!full&&!_burning&&<button onClick={()=>_pickDealerCard(c,ci)} style={{width:128,background:"#2a1850",border:"1px solid #9955dd",color:"#cc99ff",padding:"6px 0",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:4,letterSpacing:1,boxSizing:"border-box"}} onMouseOver={e=>e.currentTarget.style.background="#3a2068"} onMouseOut={e=>e.currentTarget.style.background="#2a1850"}>PICK</button>}</div>;})}
+ {(_dealerOffers||[]).map((c,ci)=>{const _burning=_dealerBurn!=null;const _picked=ci===_dealerBurn;return <div key={"off"+ci} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,...(_burning?{animation:(_picked?"cardFlyUp 780ms cubic-bezier(0.4,0,0.65,1) forwards":"cardBurn 720ms ease-in forwards"),pointerEvents:"none"}:{})}}>{_dealerCardEl(c,ci,full?"locked":"offer")}{!full&&!_burning&&<button onClick={()=>_pickDealerCard(c,ci)} style={{width:128,background:"#2a1850",border:"1px solid #9955dd",color:"#cc99ff",padding:"6px 0",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:4,letterSpacing:1,boxSizing:"border-box"}} onMouseOver={e=>e.currentTarget.style.background="#3a2068"} onMouseOut={e=>e.currentTarget.style.background="#2a1850"}>PICK</button>}</div>;})}
  </div>
  
  </>;})()}
- {_dealerAuto?<button onClick={()=>{_setDealerAuto(false);initGame();}} style={{...bs2("#00e5ff"),marginTop:16,padding:"11px 26px",fontSize:13}} {...hv("#00e5ff")}>PLAY WITH THIS LOADOUT</button>:<button onClick={()=>goTo("menu")} style={{...bs2("#55667744"),marginTop:16,padding:"8px 24px",fontSize:11,borderWidth:1,color:"#8899aa"}}>← BACK</button>}
+ {_dealerAuto?<button onClick={()=>{_setDealerAuto(false);initGame();}} style={{...bs2("#00e5ff"),marginTop:16,padding:"11px 26px",fontSize:_mf(13)}} {...hv("#00e5ff")}>PLAY WITH THIS LOADOUT</button>:<button onClick={()=>goTo("menu")} style={{...bs2("#55667744"),marginTop:16,padding:"8px 24px",fontSize:_mf(11),borderWidth:1,color:"#8899aa"}}>← BACK</button>}
  </div></div>
  )}
  {phase==="shop"&&shopData&&(
  <div className="vs-fade" style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",background:"rgba(6,6,14,0.93)",zIndex:10,overflow:"hidden"}}>
- <div style={{padding:"10px 14px",borderBottom:"1px solid #1a1a2e",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
- <div>
- <h2 style={{color:"#ccddee",fontSize:13,margin:0,letterSpacing:3}}>UPGRADE STATION</h2>{(()=>{const gs=gsRef.current;if(!gs||!has(gs,"drone"))return null;const g=gs._droneGift;if(g!==undefined&&g!==null&&!gs._droneGiftShown){gs._droneGiftShown=true;gs._droneGiftDisplay=g;}const dg=gs?._droneGiftDisplay;if(dg===undefined||dg===null)return null;const parts=[];if(dg.scrap)parts.push(`+${dg.scrap} ⬡`);if(dg.cores)parts.push(`+${dg.cores} ◆`);if(dg.plasma)parts.push(`+${dg.plasma} ✦`);if(parts.length===0)parts.push("nothing this wave");return <div style={{color:"#44ddcc",fontSize:10,marginTop:3,padding:"3px 8px",background:"#0a1a1a",border:"1px solid #44ddcc33",borderRadius:3}}>Drone gift: {parts.join(" ")}</div>;})()}
- <div style={{display:"flex",gap:10,marginTop:3,fontSize:12}}>
+ <div style={{padding:_mv("10px 14px","8px 10px 6px"),borderBottom:_mv("1px solid #1a1a2e","none"),display:"flex",flexDirection:_mv("row","column"),justifyContent:"space-between",alignItems:_mv("center","stretch"),gap:_mv(0,7)}}>
+ <div style={_mob?{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:4}:undefined}>
+ <h2 style={{color:_mv("#ccddee","#8899aa"),fontSize:_mv(_mf(13),10),margin:0,letterSpacing:_mv(3,2)}}>UPGRADE STATION</h2>{(()=>{const gs=gsRef.current;if(!gs||!has(gs,"drone"))return null;const g=gs._droneGift;if(g!==undefined&&g!==null&&!gs._droneGiftShown){gs._droneGiftShown=true;gs._droneGiftDisplay=g;}const dg=gs?._droneGiftDisplay;if(dg===undefined||dg===null)return null;const parts=[];if(dg.scrap)parts.push(`+${dg.scrap} ⬡`);if(dg.cores)parts.push(`+${dg.cores} ◆`);if(dg.plasma)parts.push(`+${dg.plasma} ✦`);if(parts.length===0)parts.push("nothing this wave");return <div style={{color:"#44ddcc",fontSize:_mf(10),marginTop:3,padding:"3px 8px",background:"#0a1a1a",border:"1px solid #44ddcc33",borderRadius:3}}>Drone gift: {parts.join(" ")}</div>;})()}
+ <div style={{display:"flex",gap:10,marginTop:_mv(3,0),fontSize:_mv(_mf(12),15),fontWeight:_mv("normal","bold")}}>
  <span style={{color:CUR.scrap.color}}>⬡{shopData.scrap}</span><span style={{color:CUR.cores.color}}>◆{shopData.cores}</span><span style={{color:CUR.plasma.color}}>✦{shopData.plasma}</span></div>
  </div>
- <div style={{display:"flex",gap:6}}>
- <button onClick={()=>{setShowAnalyser(false);setShowRegenAnalyser(false);setShowPainAnalyser(false);setShowStats(p=>!p);}} style={{background:"none",border:"1px solid #334455",color:showStats?"#4488ff":"#778899",padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:9}}>SHIP</button>
- <button onClick={()=>{setShowStats(false);setShowRegenAnalyser(false);setShowPainAnalyser(false);setShowAnalyser(p=>!p);}} style={{background:"none",border:"1px solid #334455",padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:9,color:showAnalyser?"#ff8866":"#778899"}}>DMG</button>
- <button onClick={()=>{setShowStats(false);setShowAnalyser(false);setShowPainAnalyser(false);setShowRegenAnalyser(p=>!p);}} style={{background:"none",border:"1px solid #334455",padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:9,color:showRegenAnalyser?"#44ff88":"#778899"}}>REGEN</button>
- <button onClick={()=>{setShowStats(false);setShowAnalyser(false);setShowRegenAnalyser(false);setShowPainAnalyser(p=>!p);}} style={{background:"none",border:"1px solid #334455",padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:9,color:showPainAnalyser?"#ff4466":"#778899"}}>PAIN</button>
- <button onClick={()=>{setShowWiki(true);setCodexOpen({controls:false,mechanics:false,currencies:false,enemies:false,abilities:false,scrap:false,cores:false,plasma:false,meta:false,metaab:false,designs:false,labs:false,overheat:false})}} style={{background:"none",border:"1px solid #334455",color:"#778899",padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:9}}>CODEX</button>
+ <div style={{display:"flex",gap:6,width:_mv("auto","100%")}}>
+ <button onClick={()=>{setShowAnalyser(false);setShowRegenAnalyser(false);setShowPainAnalyser(false);setShowStats(p=>!p);}} style={{flex:_mv("0 0 auto",1),border:"1px solid #334455",color:showStats?"#4488ff":"#778899",padding:_mv("3px 8px","12px 2px"),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),11),fontWeight:_mv("normal","bold"),background:_mv("none","#0c0c1a"),borderRadius:_mv(0,10)}}>SHIP</button>
+ <button onClick={()=>{setShowStats(false);setShowRegenAnalyser(false);setShowPainAnalyser(false);setShowAnalyser(p=>!p);}} style={{flex:_mv("0 0 auto",1),border:"1px solid #334455",padding:_mv("3px 8px","12px 2px"),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),11),fontWeight:_mv("normal","bold"),background:_mv("none","#0c0c1a"),borderRadius:_mv(0,10),color:showAnalyser?"#ff8866":"#778899"}}>DMG</button>
+ <button onClick={()=>{setShowStats(false);setShowAnalyser(false);setShowPainAnalyser(false);setShowRegenAnalyser(p=>!p);}} style={{flex:_mv("0 0 auto",1),border:"1px solid #334455",padding:_mv("3px 8px","12px 2px"),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),11),fontWeight:_mv("normal","bold"),background:_mv("none","#0c0c1a"),borderRadius:_mv(0,10),color:showRegenAnalyser?"#44ff88":"#778899"}}>REGEN</button>
+ <button onClick={()=>{setShowStats(false);setShowAnalyser(false);setShowRegenAnalyser(false);setShowPainAnalyser(p=>!p);}} style={{flex:_mv("0 0 auto",1),border:"1px solid #334455",padding:_mv("3px 8px","12px 2px"),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),11),fontWeight:_mv("normal","bold"),background:_mv("none","#0c0c1a"),borderRadius:_mv(0,10),color:showPainAnalyser?"#ff4466":"#778899"}}>PAIN</button>
+ <button onClick={()=>{setShowWiki(true);setCodexOpen({controls:false,mechanics:false,currencies:false,enemies:false,abilities:false,scrap:false,cores:false,plasma:false,meta:false,metaab:false,designs:false,labs:false,overheat:false})}} style={{flex:_mv("0 0 auto",1),border:"1px solid #334455",color:"#778899",padding:_mv("3px 8px","12px 2px"),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),11),fontWeight:_mv("normal","bold"),background:_mv("none","#0c0c1a"),borderRadius:_mv(0,10)}}>CODEX</button>
  </div>
  </div>
  
- {showStats&&(()=>{const gs=gsRef.current;return <div className="vs-scroll" style={{padding:"8px 14px",borderBottom:"1px solid #1a1a2e",maxHeight:280,overflow:"auto",display:"flex",justifyContent:"center"}}><ShipStats metaData={meta} gsData={gs} homeMode={false} /></div>;})()}
- {showAnalyser&&(()=>{const gs=gsRef.current;if(!gs)return null;
+ {showStats&&<ShopWrap onClose={()=>setShowStats(false)} col="#4488ff" title="SHIP STATS">{(()=>{const gs=gsRef.current;return <div className="vs-scroll" style={{padding:_mv("8px 14px","4px 10px 8px"),borderBottom:_mv("1px solid #1a1a2e","none"),maxHeight:_mv(280,"none"),overflow:"auto",display:"flex",justifyContent:"center"}}><ShipStats metaData={meta} gsData={gs} homeMode={false} /></div>;})()}</ShopWrap>}
+ {showAnalyser&&<ShopWrap onClose={()=>setShowAnalyser(false)} col="#ff8866" title="DAMAGE ANALYSER">{(()=>{const gs=gsRef.current;if(!gs)return null;
  const mkRows=(data,label)=>{const entries=Object.entries(data||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);const total=entries.reduce((s,[,v])=>s+v,0);
- return <div style={{marginBottom:8}}><div style={{color:"#99aabb",fontSize:10,fontWeight:"bold",marginBottom:4}}>{label}</div>
- {entries.length===0?<div style={{color:"#556677",fontSize:9}}>No damage dealt yet</div>:entries.map(([src,val])=>{const pct=total>0?val/total*100:0;return <div key={src} style={{marginBottom:4}}>
- <div style={{display:"flex",justifyContent:"space-between",fontSize:9}}><span style={{color:"#ccddee"}}>{src}</span><span style={{color:"#99aabb"}}>{Math.round(val).toLocaleString()} <span style={{color:"#667788"}}>({pct<1&&pct>0?"<1":Math.round(pct)}%)</span></span></div>
- <div style={{height:7,background:"#14142a",borderRadius:2,marginTop:2}}><div style={{height:7,background:"#ff886666",borderRadius:2,width:pct+"%"}} /></div></div>})}</div>};
+ return <div style={{marginBottom:8}}><div style={{color:"#99aabb",fontSize:_mf(10),fontWeight:"bold",marginBottom:4}}>{label}</div>
+ {entries.length===0?<div style={{color:"#556677",fontSize:_mf(9)}}>No damage dealt yet</div>:entries.map(([src,val])=>{const pct=total>0?val/total*100:0;return <div key={src} style={{marginBottom:4}}>
+ <div style={{display:"flex",justifyContent:"space-between",fontSize:_mf(9)}}><span style={{color:"#ccddee"}}>{src}</span><span style={{color:"#99aabb"}}>{Math.round(val).toLocaleString()} <span style={{color:"#667788"}}>({pct<1&&pct>0?"<1":Math.round(pct)}%)</span></span></div>
+ <div style={{height:_mv(7,8),background:_mv("#14142a","#ffffff14"),borderRadius:_mv(2,4),marginTop:_mv(2,3)}}><div style={{height:_mv(7,8),background:"#ff8866"+_mv("66","dd"),borderRadius:_mv(2,4),width:pct+"%"}} /></div></div>})}</div>};
  return <div className="vs-scroll" style={{padding:"6px 14px",borderBottom:"1px solid #1a1a2e",maxHeight:200,overflow:"auto"}}>
- {mkRows(gs.waveDmg,"This Wave")}{mkRows(gs.dmgTrack,"Entire Run")}</div>})()}
- {showRegenAnalyser&&(()=>{const gs=gsRef.current;if(!gs)return null;
+ {mkRows(gs.waveDmg,"This Wave")}{mkRows(gs.dmgTrack,"Entire Run")}</div>})()}</ShopWrap>}
+ {showRegenAnalyser&&<ShopWrap onClose={()=>setShowRegenAnalyser(false)} col="#44ff88" title="REGEN ANALYSER">{(()=>{const gs=gsRef.current;if(!gs)return null;
  const mkRows=(data,label)=>{const entries=Object.entries(data||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);const total=entries.reduce((s,[,v])=>s+v,0);
- return <div style={{marginBottom:8}}><div style={{color:"#44ff88",fontSize:10,fontWeight:"bold",marginBottom:4}}>{label}</div>
- {entries.length===0?<div style={{color:"#556677",fontSize:9}}>No healing yet</div>:entries.map(([src,val])=>{const pct=total>0?val/total*100:0;return <div key={src} style={{marginBottom:4}}>
- <div style={{display:"flex",justifyContent:"space-between",fontSize:9}}><span style={{color:"#ccddee"}}>{src}</span><span style={{color:"#99aabb"}}>{Math.round(val).toLocaleString()} <span style={{color:"#667788"}}>({pct<1&&pct>0?"<1":Math.round(pct)}%)</span></span></div>
- <div style={{height:7,background:"#14142a",borderRadius:2,marginTop:2}}><div style={{height:7,background:"#44ff8866",borderRadius:2,width:pct+"%"}} /></div></div>})}</div>};
+ return <div style={{marginBottom:8}}><div style={{color:"#44ff88",fontSize:_mf(10),fontWeight:"bold",marginBottom:4}}>{label}</div>
+ {entries.length===0?<div style={{color:"#556677",fontSize:_mf(9)}}>No healing yet</div>:entries.map(([src,val])=>{const pct=total>0?val/total*100:0;return <div key={src} style={{marginBottom:4}}>
+ <div style={{display:"flex",justifyContent:"space-between",fontSize:_mf(9)}}><span style={{color:"#ccddee"}}>{src}</span><span style={{color:"#99aabb"}}>{Math.round(val).toLocaleString()} <span style={{color:"#667788"}}>({pct<1&&pct>0?"<1":Math.round(pct)}%)</span></span></div>
+ <div style={{height:_mv(7,8),background:_mv("#14142a","#ffffff14"),borderRadius:_mv(2,4),marginTop:_mv(2,3)}}><div style={{height:_mv(7,8),background:"#44ff88"+_mv("66","dd"),borderRadius:_mv(2,4),width:pct+"%"}} /></div></div>})}</div>};
  return <div className="vs-scroll" style={{padding:"6px 14px",borderBottom:"1px solid #1a1a2e",maxHeight:200,overflow:"auto"}}>
- {mkRows(gs.waveHeal,"This Wave")}{mkRows(gs.healTrack,"Entire Run")}</div>})()}
- {showPainAnalyser&&(()=>{const gs=gsRef.current;if(!gs)return null;
+ {mkRows(gs.waveHeal,"This Wave")}{mkRows(gs.healTrack,"Entire Run")}</div>})()}</ShopWrap>}
+ {showPainAnalyser&&<ShopWrap onClose={()=>setShowPainAnalyser(false)} col="#ff4466" title="PAIN ANALYSER">{(()=>{const gs=gsRef.current;if(!gs)return null;
  const mkPainRows=(hpData,shData,label)=>{const allSrcs=new Set([...Object.keys(hpData||{}),...Object.keys(shData||{})]);const entries=[...allSrcs].map(src=>({src,hp:hpData?.[src]||0,sh:shData?.[src]||0,total:(hpData?.[src]||0)+(shData?.[src]||0)})).filter(e=>e.total>0).sort((a,b)=>b.total-a.total);const grandTotal=entries.reduce((s,e)=>s+e.total,0);
- return <div style={{marginBottom:8}}><div style={{color:"#ff4466",fontSize:10,fontWeight:"bold",marginBottom:4}}>{label}</div>
- {entries.length===0?<div style={{color:"#556677",fontSize:9}}>No damage taken yet</div>:entries.map(e=>{const pct=grandTotal>0?e.total/grandTotal*100:0;const hpPct=e.total>0?e.hp/e.total*100:0;return <div key={e.src} style={{marginBottom:4}}>
- <div style={{display:"flex",justifyContent:"space-between",fontSize:9}}><span style={{color:"#ccddee",textTransform:"capitalize"}}>{e.src}</span><span style={{color:"#99aabb"}}>{Math.round(e.hp)}HP{e.sh>0?` + ${Math.round(e.sh)}Shield`:""} <span style={{color:"#667788"}}>({pct<1&&pct>0?"<1":Math.round(pct)}%)</span></span></div>
- <div style={{height:7,background:"#14142a",borderRadius:2,marginTop:2,overflow:"hidden"}}><div style={{height:7,width:pct+"%",display:"flex",overflow:"hidden",borderRadius:2}}><div style={{height:7,background:"#ff446666",flex:e.hp,borderRadius:e.sh>0?"2px 0 0 2px":"2px"}} />{e.sh>0&&<div style={{height:7,background:"#44aaff66",flex:e.sh,borderRadius:"0 2px 2px 0"}} />}</div></div></div>})}</div>};
+ return <div style={{marginBottom:8}}><div style={{color:"#ff4466",fontSize:_mf(10),fontWeight:"bold",marginBottom:4}}>{label}</div>
+ {entries.length===0?<div style={{color:"#556677",fontSize:_mf(9)}}>No damage taken yet</div>:entries.map(e=>{const pct=grandTotal>0?e.total/grandTotal*100:0;const hpPct=e.total>0?e.hp/e.total*100:0;return <div key={e.src} style={{marginBottom:4}}>
+ <div style={{display:"flex",justifyContent:"space-between",fontSize:_mf(9)}}><span style={{color:"#ccddee",textTransform:"capitalize"}}>{e.src}</span><span style={{color:"#99aabb"}}>{Math.round(e.hp)}HP{e.sh>0?` + ${Math.round(e.sh)}Shield`:""} <span style={{color:"#667788"}}>({pct<1&&pct>0?"<1":Math.round(pct)}%)</span></span></div>
+ <div style={{height:_mv(7,8),background:_mv("#14142a","#ffffff14"),borderRadius:_mv(2,4),marginTop:_mv(2,3),overflow:"hidden"}}><div style={{height:_mv(7,8),width:pct+"%",display:"flex",overflow:"hidden",borderRadius:2}}><div style={{height:_mv(7,8),background:"#ff446666",flex:e.hp,borderRadius:e.sh>0?"2px 0 0 2px":"2px"}} />{e.sh>0&&<div style={{height:_mv(7,8),background:"#44aaff66",flex:e.sh,borderRadius:"0 2px 2px 0"}} />}</div></div></div>})}</div>};
  return <div className="vs-scroll" style={{padding:"6px 14px",borderBottom:"1px solid #1a1a2e",maxHeight:200,overflow:"auto"}}>
- {mkPainRows(gs.wavePain,gs.waveShieldPain,"This Wave")}{mkPainRows(gs.painTrack,gs.shieldPain,"Entire Run")}</div>})()}
- <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto"}}><div style={{padding:"5px 8px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,alignContent:"start"}}>
+ {mkPainRows(gs.wavePain,gs.waveShieldPain,"This Wave")}{mkPainRows(gs.painTrack,gs.shieldPain,"Entire Run")}</div>})()}</ShopWrap>}
+ <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,overflow:"auto"}}><div style={{padding:_mv("5px 8px","6px 10px"),display:"grid",gridTemplateColumns:"1fr 1fr",gap:_mv(4,7),alignContent:"start"}}>
  {[...SHOP].sort((a,b)=>{const aL=a.wave>shopData.wave?1:0,bL=b.wave>shopData.wave?1:0;if(aL!==bL)return aL-bL;if(aL===1)return a.wave-b.wave;return 0;}).map(up=>{
  const lvl=shopData.upgrades[up.id]||0,_shopOhB=metaRef.current?.overheatUpgrades?.[up.id]||0,maxed=lvl>=up.max+_shopOhB,_defaultMaxed=lvl>=up.max,locked=up.wave>shopData.wave;
  const _owcL2=metaRef.current?.lab?.completed?.overheat_wave_cost||0;const _owcM2=Math.max(0,1-_owcL2*0.01);let cost=lvl>=up.max?Math.ceil(up.base*Math.pow(1+lvl*up.scale*3.5,up.exp)*10*Math.pow(OVERCHARGE_GROWTH,lvl-up.max)*_owcM2):Math.ceil(up.base*Math.pow(1+lvl*up.scale,up.exp));
@@ -3544,39 +3955,39 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  const borderCol=locked?"#14142a":maxed?"#14142a":canAfford?"#44aacc66":"#22334444";
  return(
  <button key={up.id} onClick={()=>canAfford&&buyShop(up.id)} disabled={!canAfford}
- style={{padding:"5px 6px",
+ style={_mob?{padding:"8px 9px",...(locked?_gpDim("#556677",12):maxed?_gpMax(12):canAfford?_gpBuy("#44aacc",12):_gpDim("#556677",12)),cursor:canAfford?"pointer":"default",textAlign:"left",opacity:locked?0.45:1,fontFamily:"inherit",position:"relative",overflow:"hidden",minWidth:0}:{padding:"5px 6px",
  background:locked?"#06060e":maxed?(_shopOhB>0?"#0c1420":"#1a1408"):canAfford?"#0c1020":"#0a0a16",
  border:`1px solid ${maxed?(_shopOhB>0?"#88aadd33":"#ffcc4433"):borderCol}`,
  borderRadius:3,cursor:canAfford?"pointer":"default",textAlign:"left",
  opacity:locked?0.45:1,fontFamily:"inherit",transition:"all 0.15s",position:"relative",overflow:"hidden"}}
- onMouseOver={e=>canAfford&&(e.currentTarget.style.borderColor="#44ccee")}
- onMouseOut={e=>(e.currentTarget.style.borderColor=maxed?(_shopOhB>0?"#88aadd33":"#ffcc4433"):borderCol)}>
- {maxed&&<div className={_shopOhB>0?"platinum-shimmer":"gold-shimmer"}/>}{locked&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",color:"#8899aa",fontSize:9,fontWeight:"bold",zIndex:1,background:"rgba(6,6,14,0.65)",borderRadius:3}}>🔒 Wave {up.wave}</div>}
- <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:locked?"#667788":CC[up.cat],fontSize:10,fontWeight:"bold"}}>{up.name}</span><span style={{color:"#667788",fontSize:8}}>{lvl}/{up.max+_shopOhB}</span></div>
- <div style={{color:locked?"#556677":"#8899aa",fontSize:8,marginTop:1}}>{up.desc}</div>
+ onMouseOver={e=>{if(!_mob&&canAfford)e.currentTarget.style.borderColor="#44ccee";}}
+ onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor=maxed?(_shopOhB>0?"#88aadd33":"#ffcc4433"):borderCol;}}>
+ {maxed&&<div className={_shopOhB>0?"platinum-shimmer":"gold-shimmer"}/>}{locked&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",color:"#8899aa",fontSize:_mf(9),fontWeight:"bold",zIndex:1,background:"rgba(6,6,14,0.65)",borderRadius:3}}>🔒 Wave {up.wave}</div>}
+ <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:locked?"#667788":CC[up.cat],fontSize:_mf(10),fontWeight:"bold"}}>{up.name}</span><span style={{color:"#667788",fontSize:_mf(8)}}>{lvl}/{up.max+_shopOhB}</span></div>
+ <div style={{color:locked?"#556677":"#8899aa",fontSize:_mf(8),marginTop:1}}>{up.desc}</div>
  {!maxed&&!locked&&<div style={{display:"flex",alignItems:"center",gap:4,marginTop:1}}>
- <span style={{color:canAfford?CUR[up.cur]?.color:"#775555",fontSize:9,fontWeight:canAfford?"bold":"normal"}}>{cost} {up.cur}</span>
- {unlockedCantAfford&&<span style={{color:"#665555",fontSize:7}}>· can't afford</span>}
+ <span style={{color:canAfford?CUR[up.cur]?.color:"#775555",fontSize:_mf(9),fontWeight:canAfford?"bold":"normal"}}>{cost} {up.cur}</span>
+ {unlockedCantAfford&&<span style={{color:"#665555",fontSize:_mf(7)}}>· can't afford</span>}
  </div>}
- {maxed&&<div style={{color:"#556677",fontSize:8,marginTop:1}}>MAXED</div>}
+ {maxed&&<div style={{color:"#556677",fontSize:_mf(8),marginTop:1}}>MAXED</div>}
  </button>);
  })}
  </div></div>
- <div style={{padding:10,borderTop:"1px solid #1a1a2e",display:"flex",justifyContent:"center",gap:8,flexDirection:"column",alignItems:"center",flexShrink:0}}>
- {(()=>{const gs=gsRef.current;const _tutBlock=gs?.isTutorial&&(tutStep===3||tutStep===4);const _tutForfeitBlock=gs?.isTutorial&&tutStep===7||tutStep===8;return <button onClick={()=>{if(!_tutBlock&&!_tutForfeitBlock)cont();}} style={{...bs2(_tutBlock||_tutForfeitBlock?"#33445544":"#44ff88"),color:_tutBlock||_tutForfeitBlock?"#445566":"#44ff88",cursor:_tutBlock||_tutForfeitBlock?"default":"pointer"}}>{_tutBlock?"BUY UPGRADE FIRST":_tutForfeitBlock?"FORFEIT TO CONTINUE":"NEXT WAVE →"}</button>;})()}
- {gsRef.current?.isTutorial&&tutStep!==7?null:!confirmForfeit?<button onClick={()=>setConfirmForfeit(true)} style={{background:"none",border:"none",color:"#554444",fontSize:9,cursor:"pointer",fontFamily:"inherit",padding:"4px 8px"}}>FORFEIT RUN</button>
- :<div style={{textAlign:"center"}}><div style={{color:"#cc5555",fontSize:9,marginBottom:4}}>End this run? You'll receive <span style={{color:CUR.echoes.color}}>⬢ {calcEchoes(gsRef.current)}</span> echoes.</div>
- <div style={{display:"flex",gap:8,justifyContent:"center"}}><button onClick={forfeit} style={{...bs2("#ff3344"),padding:"5px 14px",fontSize:10,borderWidth:1}} {...hv("#ff3344")}>FORFEIT</button><button onClick={()=>setConfirmForfeit(false)} style={{...bs2("#55667744"),padding:"5px 14px",fontSize:10,borderWidth:1,color:"#8899aa"}}>CANCEL</button></div></div>}
+ <div style={{padding:_mv(10,"8px 10px 10px"),borderTop:_mv("1px solid #1a1a2e","none"),display:"flex",justifyContent:"center",gap:8,flexDirection:_mv("column",(confirmForfeit?"column":"row")),alignItems:_mv("center","stretch"),flexShrink:0}}>
+ {(()=>{const gs=gsRef.current;const _tutBlock=gs?.isTutorial&&(tutStep===3||tutStep===4);const _tutForfeitBlock=gs?.isTutorial&&tutStep===7||tutStep===8;return <button onClick={()=>{if(!_tutBlock&&!_tutForfeitBlock)cont();}} style={{...bs2(_tutBlock||_tutForfeitBlock?"#33445544":"#44ff88"),color:_mv(_tutBlock||_tutForfeitBlock?"#445566":"#44ff88","#fff"),cursor:_tutBlock||_tutForfeitBlock?"default":"pointer",...(_mob?{flex:2,padding:"16px 10px",fontSize:14}:{})}}>{_tutBlock?"BUY UPGRADE FIRST":_tutForfeitBlock?"FORFEIT TO CONTINUE":"NEXT WAVE →"}</button>;})()}
+ {gsRef.current?.isTutorial&&tutStep!==7?null:!confirmForfeit?<button onClick={()=>setConfirmForfeit(true)} style={_mob?{...bs2("#ff3344"),flex:1,padding:"16px 8px",fontSize:11,color:"#fff"}:{background:"none",border:"none",color:"#554444",fontSize:_mf(9),cursor:"pointer",fontFamily:"inherit",padding:"4px 8px"}}>{_mv("FORFEIT RUN","FORFEIT")}</button>
+ :<div style={{textAlign:"center",width:"100%"}}><div style={{color:_mv("#cc5555","#ffb0b0"),fontSize:_mv(_mf(9),12),marginBottom:_mv(4,8)}}>End this run? You'll receive <span style={{color:CUR.echoes.color,fontWeight:"bold"}}>⬢ {calcEchoes(gsRef.current)}</span> echoes.</div>
+ <div style={{display:"flex",gap:8,justifyContent:"center"}}><button onClick={forfeit} style={{...bs2("#ff3344"),padding:_mv("5px 14px","14px 10px"),fontSize:_mv(_mf(10),12),borderWidth:1,...(_mob?{flex:1,color:"#fff"}:{})}} {...hv("#ff3344")}>FORFEIT</button><button onClick={()=>setConfirmForfeit(false)} style={{...bs2("#55667744"),padding:_mv("5px 14px","14px 10px"),fontSize:_mv(_mf(10),12),borderWidth:1,color:_mv("#8899aa","#fff"),...(_mob?{flex:1}:{})}}>CANCEL</button></div></div>}
  </div>
  </div>
  )}
  {_cargoDeath&&(
  <div style={{position:"absolute",inset:0,background:"rgba(2,2,8,0.92)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:20,animation:"popupBgEnter 200ms ease-out both"}}>
- <div style={{background:"#0c0c1a",border:"1px solid #55cc8866",borderRadius:8,padding:"24px 28px",maxWidth:340,width:"100%",textAlign:"center",animation:"popupEnter 220ms cubic-bezier(0.22,1,0.36,1) both"}}>
- <div style={{color:"#55cc88",fontSize:18,fontWeight:"bold",letterSpacing:3,marginBottom:14}}>TRAIN DESTROYED</div>
- <div style={{color:"#ccddee",fontSize:14,marginBottom:4}}>Distance Travelled</div>
- <div style={{color:"#55cc88",fontSize:24,fontWeight:"bold",marginBottom:6}}>{_cargoDeath.distance}m</div>
- <div style={{color:"#ccaa66",fontSize:13,marginBottom:18}}>▣ {_cargoDeath.packages||0} packages earned</div>
+ <div style={{...(_mob?_gp("#55cc88",18):{background:"#0c0c1a",border:"1px solid #55cc8866",borderRadius:8}),padding:"24px 28px",maxWidth:340,width:"100%",textAlign:"center",animation:"popupEnter 220ms cubic-bezier(0.22,1,0.36,1) both"}}>
+ <div style={{color:"#55cc88",fontSize:_mf(18),fontWeight:"bold",letterSpacing:3,marginBottom:14}}>TRAIN DESTROYED</div>
+ <div style={{color:"#ccddee",fontSize:_mf(14),marginBottom:4}}>Distance Travelled</div>
+ <div style={{color:"#55cc88",fontSize:_mf(24),fontWeight:"bold",marginBottom:6}}>{_cargoDeath.distance}m</div>
+ <div style={{color:"#ccaa66",fontSize:_mf(13),marginBottom:18}}>▣ {_cargoDeath.packages||0} packages earned</div>
  <div style={{display:"flex",gap:10,justifyContent:"center"}}>
  <button onClick={()=>{_setCargoDeath(null);startCargo();}} style={{...bs2("#55cc88"),padding:"8px 22px"}} {...hv("#55cc88")}>RETRY</button>
  <button onClick={()=>{_setCargoDeath(null);goTo("menu");}} style={{...bs2("#55667744"),borderWidth:1,color:"#8899aa",padding:"8px 22px"}}>MENU</button>
@@ -3584,63 +3995,77 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  </div>
  </div>
  )}
- {_sideLockPopup&&(
+ {_sideLockPopup&&(_mob?(()=>{const _pct=Math.max(0,Math.min(100,((_sideLockPopup.current||0)/_sideLockPopup.required)*100));const _lc={PLAYGROUND:"#44bbdd",PRACTISE:"#cc9966",PHANTOM:"#cc66cc",CARGO:"#eebb44",DEALER:"#ff6688"}[_sideLockPopup.mode]||"#ffaa44";return(
+ <div onClick={()=>_setSideLockPopup(null)} style={{position:"absolute",inset:0,background:"rgba(2,2,10,0.78)",backdropFilter:"blur(3px)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:22,animation:"popupBgEnter 200ms ease-out both"}}>
+  <div onClick={e=>e.stopPropagation()} style={{position:"relative",overflow:"hidden",background:`radial-gradient(205% 185% at 30% 12%,${_lc}e0 0%,${_lc}a8 24%,${_lc}6a 42%,${_lc}3e 58%,${_lc}24 72%,${_lc}0f 88%,transparent 116%),#020204`,border:`1.5px solid ${_lc}`,borderRadius:22,padding:"26px 24px",maxWidth:340,width:"100%",textAlign:"center",boxShadow:`0 14px 34px ${_lc}44,inset 0 1px 0 #ffffff55`,animation:"popupEnter 220ms cubic-bezier(0.22,1,0.36,1) both"}}>
+   <div style={{position:"absolute",top:"-40%",left:"-30%",width:"90%",height:"200%",background:"linear-gradient(100deg,transparent 0%,transparent 34%,#ffffff08 46%,#ffffff12 50%,#ffffff08 54%,transparent 66%,transparent 100%)",transform:"rotate(16deg)",pointerEvents:"none"}} />
+   <div style={{position:"relative",zIndex:1,fontSize:30,marginBottom:6}}>🔒</div>
+   <div style={{position:"relative",zIndex:1,color:"#fff",fontSize:17,fontWeight:"bold",letterSpacing:2,marginBottom:8,textShadow:`0 0 12px ${_lc}aa`,fontFamily:"'DejaVu Sans Mono','Courier New',monospace"}}>{_sideLockPopup.mode} LOCKED</div>
+   <div style={{position:"relative",zIndex:1,color:"#fff0dd",fontSize:11,lineHeight:1.5,marginBottom:16,opacity:0.9,fontFamily:"'DejaVu Sans Mono','Courier New',monospace"}}>Requires a minimum of lifetime earned echoes to unlock.</div>
+   <div style={{position:"relative",zIndex:1,height:10,borderRadius:5,background:"#00000040",overflow:"hidden",marginBottom:8,border:"1px solid #ffffff2a"}}><div style={{width:_pct+"%",height:"100%",background:`linear-gradient(90deg,#ffffffaa,${_lc})`,boxShadow:`0 0 10px ${_lc}`}} /></div>
+   <div style={{position:"relative",zIndex:1,display:"flex",justifyContent:"space-between",marginBottom:16}}>
+    <span style={{fontSize:12,color:"#fff",fontWeight:"bold"}}>⬢ {(_sideLockPopup.current||0).toLocaleString()}</span>
+    <span style={{fontSize:12,color:"#ffe0b0",fontWeight:"bold"}}>⬢ {_sideLockPopup.required.toLocaleString()} needed</span>
+   </div>
+   <button onClick={()=>_setSideLockPopup(null)} style={{position:"relative",zIndex:1,width:"100%",padding:"13px",background:"#ffffff20",border:"1px solid #ffffff55",borderRadius:12,color:"#fff",fontSize:13,fontWeight:"bold",letterSpacing:1,fontFamily:"inherit",cursor:"pointer"}}>GOT IT</button>
+  </div>
+ </div>);})():(
  <div onClick={()=>_setSideLockPopup(null)} style={{position:"absolute",inset:0,background:"rgba(2,2,8,0.85)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:20,animation:"popupBgEnter 200ms ease-out both"}}>
- <div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:"1px solid #aa770055",borderRadius:8,padding:"22px 26px",maxWidth:340,width:"100%",textAlign:"center",animation:"popupEnter 220ms cubic-bezier(0.22,1,0.36,1) both"}}>
- <div style={{color:"#ffaa44",fontSize:15,fontWeight:"bold",letterSpacing:3,marginBottom:8}}>MODE LOCKED</div>
- <div style={{color:"#ccddee",fontSize:11,lineHeight:1.55,marginBottom:14}}>{_sideLockPopup.mode} requires a minimum of lifetime earned echoes to unlock.</div>
+ <div onClick={e=>e.stopPropagation()} style={{...(_mob?_gp("#aa7700",18):{background:"#0c0c1a",border:"1px solid #aa770055",borderRadius:8}),padding:"22px 26px",maxWidth:340,width:"100%",textAlign:"center",animation:"popupEnter 220ms cubic-bezier(0.22,1,0.36,1) both"}}>
+ <div style={{color:"#ffaa44",fontSize:_mf(15),fontWeight:"bold",letterSpacing:3,marginBottom:8}}>MODE LOCKED</div>
+ <div style={{color:"#ccddee",fontSize:_mf(11),lineHeight:1.55,marginBottom:14}}>{_sideLockPopup.mode} requires a minimum of lifetime earned echoes to unlock.</div>
  <div style={{display:"flex",justifyContent:"center",alignItems:"baseline",gap:14,marginBottom:10}}>
  <div>
- <span style={{color:"#8899aa",fontSize:9,letterSpacing:1,marginRight:6}}>YOU HAVE</span>
- <span style={{color:CUR.echoes.color,fontSize:14,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>⬢ {(_sideLockPopup.current||0).toLocaleString()}</span>
+ <span style={{color:"#8899aa",fontSize:_mf(9),letterSpacing:1,marginRight:6}}>YOU HAVE</span>
+ <span style={{color:CUR.echoes.color,fontSize:_mf(14),fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>⬢ {(_sideLockPopup.current||0).toLocaleString()}</span>
  </div>
- <div style={{color:"#445566",fontSize:11}}>·</div>
+ <div style={{color:"#445566",fontSize:_mf(11)}}>·</div>
  <div>
- <span style={{color:"#8899aa",fontSize:9,letterSpacing:1,marginRight:6}}>REQUIRED</span>
- <span style={{color:"#ffaa44",fontSize:14,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>⬢ {_sideLockPopup.required.toLocaleString()}</span>
+ <span style={{color:"#8899aa",fontSize:_mf(9),letterSpacing:1,marginRight:6}}>REQUIRED</span>
+ <span style={{color:"#ffaa44",fontSize:_mf(14),fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>⬢ {_sideLockPopup.required.toLocaleString()}</span>
  </div>
  </div>
- <div style={{color:"#667788",fontSize:9,marginBottom:12}}>{Math.max(0,_sideLockPopup.required-(_sideLockPopup.current||0)).toLocaleString()} echoes to go</div>
+ <div style={{color:"#667788",fontSize:_mf(9),marginBottom:12}}>{Math.max(0,_sideLockPopup.required-(_sideLockPopup.current||0)).toLocaleString()} echoes to go</div>
  <button onClick={()=>_setSideLockPopup(null)} style={{...bs2("#55667744"),borderWidth:1,color:"#aabbcc",padding:"7px 26px"}}>OK</button>
  </div>
  </div>
- )}
+ ))}
  {_histDetail&&(()=>{const r=_histDetail;const _has=!!r.stats;
- const _mkR=(data,label,col)=>{const ents=Object.entries(data||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);const tot=ents.reduce((s,[,v])=>s+v,0);return <div style={{marginBottom:8}}><div style={{color:col,fontSize:10,fontWeight:"bold",marginBottom:4}}>{label}</div>{ents.length===0?<div style={{color:"#556677",fontSize:9}}>None</div>:ents.map(([s,v])=>{const pct=tot>0?v/tot*100:0;return <div key={s} style={{marginBottom:3}}><div style={{display:"flex",justifyContent:"space-between",fontSize:9}}><span style={{color:"#ccddee",textTransform:"capitalize"}}>{s}</span><span style={{color:"#99aabb"}}>{Math.round(v).toLocaleString()} ({Math.round(pct)}%)</span></div><div style={{height:6,background:"#14142a",borderRadius:2,marginTop:2}}><div style={{height:6,background:col+"66",borderRadius:2,width:pct+"%"}} /></div></div>;})}</div>;};
- const _mkPR=(hpD,shD,label)=>{const allS=new Set([...Object.keys(hpD||{}),...Object.keys(shD||{})]);const ents=[...allS].map(s=>({s,hp:hpD?.[s]||0,sh:shD?.[s]||0,t:(hpD?.[s]||0)+(shD?.[s]||0)})).filter(e=>e.t>0).sort((a,b)=>b.t-a.t);const gt=ents.reduce((a,e)=>a+e.t,0);return <div style={{marginBottom:8}}><div style={{color:"#ff4466",fontSize:10,fontWeight:"bold",marginBottom:4}}>{label}</div>{ents.length===0?<div style={{color:"#556677",fontSize:9}}>No damage taken</div>:ents.map(e=>{const pct=gt>0?e.t/gt*100:0;return <div key={e.s} style={{marginBottom:4}}><div style={{display:"flex",justifyContent:"space-between",fontSize:9}}><span style={{color:"#ccddee",textTransform:"capitalize"}}>{e.s}</span><span style={{color:"#99aabb"}}>{Math.round(e.hp)}HP{e.sh>0?` + ${Math.round(e.sh)} Shield`:""} ({Math.round(pct)}%)</span></div><div style={{height:7,background:"#14142a",borderRadius:2,marginTop:2,overflow:"hidden"}}><div style={{height:7,width:pct+"%",display:"flex",overflow:"hidden",borderRadius:2}}><div style={{height:7,background:"#ff446666",flex:e.hp}} />{e.sh>0&&<div style={{height:7,background:"#44aaff66",flex:e.sh}} />}</div></div></div>;})}</div>;};
+ const _mkR=(data,label,col)=>{const ents=Object.entries(data||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);const tot=ents.reduce((s,[,v])=>s+v,0);return <div style={{marginBottom:8}}><div style={{color:col,fontSize:_mf(10),fontWeight:"bold",marginBottom:4}}>{label}</div>{ents.length===0?<div style={{color:"#556677",fontSize:_mf(9)}}>None</div>:ents.map(([s,v])=>{const pct=tot>0?v/tot*100:0;return <div key={s} style={{marginBottom:3}}><div style={{display:"flex",justifyContent:"space-between",fontSize:_mf(9)}}><span style={{color:"#ccddee",textTransform:"capitalize"}}>{s}</span><span style={{color:"#99aabb"}}>{Math.round(v).toLocaleString()} ({Math.round(pct)}%)</span></div><div style={{height:_mv(6,8),background:_mv("#14142a","#ffffff14"),borderRadius:_mv(2,4),marginTop:_mv(2,3)}}><div style={{height:_mv(6,8),background:col+_mv("66","dd"),borderRadius:_mv(2,4),width:pct+"%"}} /></div></div>;})}</div>;};
+ const _mkPR=(hpD,shD,label)=>{const allS=new Set([...Object.keys(hpD||{}),...Object.keys(shD||{})]);const ents=[...allS].map(s=>({s,hp:hpD?.[s]||0,sh:shD?.[s]||0,t:(hpD?.[s]||0)+(shD?.[s]||0)})).filter(e=>e.t>0).sort((a,b)=>b.t-a.t);const gt=ents.reduce((a,e)=>a+e.t,0);return <div style={{marginBottom:8}}><div style={{color:"#ff4466",fontSize:_mf(10),fontWeight:"bold",marginBottom:4}}>{label}</div>{ents.length===0?<div style={{color:"#556677",fontSize:_mf(9)}}>No damage taken</div>:ents.map(e=>{const pct=gt>0?e.t/gt*100:0;return <div key={e.s} style={{marginBottom:4}}><div style={{display:"flex",justifyContent:"space-between",fontSize:_mf(9)}}><span style={{color:"#ccddee",textTransform:"capitalize"}}>{e.s}</span><span style={{color:"#99aabb"}}>{Math.round(e.hp)}HP{e.sh>0?` + ${Math.round(e.sh)} Shield`:""} ({Math.round(pct)}%)</span></div><div style={{height:_mv(7,8),background:_mv("#14142a","#ffffff14"),borderRadius:_mv(2,4),marginTop:_mv(2,3),overflow:"hidden"}}><div style={{height:_mv(7,8),width:pct+"%",display:"flex",overflow:"hidden",borderRadius:2}}><div style={{height:_mv(7,8),background:"#ff446666",flex:e.hp}} />{e.sh>0&&<div style={{height:_mv(7,8),background:"#44aaff66",flex:e.sh}} />}</div></div></div>;})}</div>;};
  const _p=_histPanel;
- const _tabBtn=(id,txt,col)=>(<button onClick={()=>_setHistPanel(_p===id?null:id)} style={{background:"none",border:"1px solid #334455",padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:9,color:_p===id?col:"#778899",borderRadius:3}}>{txt}</button>);
+ const _tabBtn=(id,txt,col)=>(<button onClick={()=>_setHistPanel(_p===id?null:id)} style={{background:"none",border:"1px solid #334455",padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:_p===id?col:"#778899",borderRadius:3}}>{txt}</button>);
  return <div onClick={()=>{_setPopupClosing(true);setTimeout(()=>{_setHistDetail(null);_setHistPanel(null);_setPopupClosing(false);},170);}} style={{position:"absolute",inset:0,background:"rgba(2,2,8,0.92)",zIndex:35,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:14}}>
- <div onClick={e=>e.stopPropagation()} className="vs-scroll" style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44556677",borderRadius:6,padding:"14px 16px",maxWidth:420,width:"100%",maxHeight:"86%",overflow:"auto",fontSize:10}}>
+ <div onClick={e=>e.stopPropagation()} className="vs-scroll" style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #44556677",borderRadius:6,padding:"14px 16px",maxWidth:420,width:"100%",maxHeight:"86%",overflow:"auto",fontSize:_mf(10)}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:8}}>
- <div><div style={{color:"#99aacc",fontSize:13,fontWeight:"bold",letterSpacing:2}}>RUN DETAIL</div><div style={{color:"#667788",fontSize:8,marginTop:2}}>{new Date(r.date).toLocaleString()} · <span style={{color:r.forfeited?"#cc8899":"#ee8866"}}>{r.cause}</span></div></div>
- <button onClick={()=>{_setPopupClosing(true);setTimeout(()=>{_setHistDetail(null);_setHistPanel(null);_setPopupClosing(false);},170);}} style={{background:"none",border:"1px solid #33445566",color:"#778899",fontSize:9,padding:"2px 8px",borderRadius:3,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>CLOSE</button>
+ <div><div style={{color:"#99aacc",fontSize:_mf(13),fontWeight:"bold",letterSpacing:2}}>RUN DETAIL</div><div style={{color:"#667788",fontSize:_mf(8),marginTop:2}}>{new Date(r.date).toLocaleString()} · <span style={{color:r.forfeited?"#cc8899":"#ee8866"}}>{r.cause}</span></div></div>
+ <button onClick={()=>{_setPopupClosing(true);setTimeout(()=>{_setHistDetail(null);_setHistPanel(null);_setPopupClosing(false);},170);}} style={{background:"none",border:"1px solid #33445566",color:"#778899",fontSize:_mf(9),padding:"2px 8px",borderRadius:3,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>CLOSE</button>
  </div>
  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}}>
- <div style={{background:"#0e0e1a",padding:5,borderRadius:3,textAlign:"center"}}><div style={{color:"#667788",fontSize:7,letterSpacing:1}}>WAVE</div><div style={{color:"#ccddee",fontSize:13,fontWeight:"bold"}}>{r.wave}</div></div>
- <div style={{background:"#0e0e1a",padding:5,borderRadius:3,textAlign:"center"}}><div style={{color:"#667788",fontSize:7,letterSpacing:1}}>KILLS</div><div style={{color:"#ccddee",fontSize:13,fontWeight:"bold"}}>{r.kills}</div></div>
- <div style={{background:"#0e0e1a",padding:5,borderRadius:3,textAlign:"center"}}><div style={{color:"#667788",fontSize:7,letterSpacing:1}}>ECHOES</div><div style={{color:CUR.echoes.color,fontSize:13,fontWeight:"bold"}}>⬢{r.echoes}</div></div>
+ <div style={{background:"#0e0e1a",padding:5,borderRadius:3,textAlign:"center"}}><div style={{color:"#667788",fontSize:_mf(7),letterSpacing:1}}>WAVE</div><div style={{color:"#ccddee",fontSize:_mf(13),fontWeight:"bold"}}>{r.wave}</div></div>
+ <div style={{background:"#0e0e1a",padding:5,borderRadius:3,textAlign:"center"}}><div style={{color:"#667788",fontSize:_mf(7),letterSpacing:1}}>KILLS</div><div style={{color:"#ccddee",fontSize:_mf(13),fontWeight:"bold"}}>{r.kills}</div></div>
+ <div style={{background:"#0e0e1a",padding:5,borderRadius:3,textAlign:"center"}}><div style={{color:"#667788",fontSize:_mf(7),letterSpacing:1}}>ECHOES</div><div style={{color:CUR.echoes.color,fontSize:_mf(13),fontWeight:"bold"}}>⬢{r.echoes}</div></div>
  </div>
- <div style={{marginBottom:10,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><button disabled={!r.replay} onClick={r.replay?()=>{_setHistDetail(null);_setHistPanel(null);_startReplay(r.replay);}:undefined} style={{...bs2("#ffaa44"),padding:"6px 16px",fontSize:10,opacity:r.replay?1:0.4,cursor:r.replay?"pointer":"default",borderColor:r.replay?"#ffaa44":"#55556655",color:r.replay?"#ffaa44":"#778899"}} {...(r.replay?hv("#ffaa44"):{})}>▶ REPLAY LAST WAVE</button><div style={{color:"#667788",fontSize:8,fontStyle:"italic"}}>{r.replay?"Replays are saved locally only.":r.forfeited?"Forfeited runs don't save a replay.":"No replay saved for this run."}</div></div>
+ <div style={{marginBottom:10,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><button disabled={!r.replay} onClick={r.replay?()=>{_setHistDetail(null);_setHistPanel(null);_startReplay(r.replay);}:undefined} style={{...(r.replay?bs2("#ffaa44"):(_mob?{..._gpDim("#556677",14),padding:"19px 26px",fontFamily:"inherit",letterSpacing:2,fontWeight:"bold"}:bs2("#ffaa44"))),padding:_mv("6px 16px","15px 20px"),fontSize:_mv(_mf(10),12),opacity:r.replay?1:_mv(0.4,0.55),cursor:r.replay?"pointer":"default",borderColor:r.replay?"#ffaa44":"#55556655",color:r.replay?_mv("#ffaa44","#fff"):"#8899aa"}} {...(r.replay?hv("#ffaa44"):{})}>▶ REPLAY LAST WAVE</button><div style={{color:"#667788",fontSize:_mf(8),fontStyle:"italic"}}>{r.replay?"Replays are saved locally only.":r.forfeited?"Forfeited runs don't save a replay.":"No replay saved for this run."}</div></div>
  {_has?<>
  <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:10,flexWrap:"wrap"}}>
  {_tabBtn("dmg","DMG analyser","#ff8866")}
  {_tabBtn("regen","REGEN analyser","#44ff88")}
  {_tabBtn("pain","PAIN analyser","#ff4466")}
  </div>
- {_p==="dmg"&&<>{_mkR(r.stats.waveDmg,"Final Wave","#ff8866")}{_mkR(r.stats.dmg,"Entire Run","#ff8866")}</>}
- {_p==="regen"&&<>{_mkR(r.stats.waveHeal,"Final Wave","#44ff88")}{_mkR(r.stats.heal,"Entire Run","#44ff88")}</>}
- {_p==="pain"&&<>{_mkPR(r.stats.wavePain,r.stats.waveShieldPain,"Final Wave")}{_mkPR(r.stats.pain,r.stats.shieldPain,"Entire Run")}</>}
- </>:<div style={{color:"#778899",fontSize:10,textAlign:"center",padding:"24px 12px",fontStyle:"italic"}}>No data was recorded for this run.</div>}
+ {_p==="dmg"&&(_mob?<ShopWrap onClose={()=>_setHistPanel(null)} col="#ff8866" title="DAMAGE ANALYSER">{_mkR(r.stats.waveDmg,"Final Wave","#ff8866")}{_mkR(r.stats.dmg,"Entire Run","#ff8866")}</ShopWrap>:<>{_mkR(r.stats.waveDmg,"Final Wave","#ff8866")}{_mkR(r.stats.dmg,"Entire Run","#ff8866")}</>)}
+ {_p==="regen"&&(_mob?<ShopWrap onClose={()=>_setHistPanel(null)} col="#44ff88" title="REGEN ANALYSER">{_mkR(r.stats.waveHeal,"Final Wave","#44ff88")}{_mkR(r.stats.heal,"Entire Run","#44ff88")}</ShopWrap>:<>{_mkR(r.stats.waveHeal,"Final Wave","#44ff88")}{_mkR(r.stats.heal,"Entire Run","#44ff88")}</>)}
+ {_p==="pain"&&(_mob?<ShopWrap onClose={()=>_setHistPanel(null)} col="#ff4466" title="PAIN ANALYSER">{_mkPR(r.stats.wavePain,r.stats.waveShieldPain,"Final Wave")}{_mkPR(r.stats.pain,r.stats.shieldPain,"Entire Run")}</ShopWrap>:<>{_mkPR(r.stats.wavePain,r.stats.waveShieldPain,"Final Wave")}{_mkPR(r.stats.pain,r.stats.shieldPain,"Entire Run")}</>)}
+ </>:<div style={{color:"#778899",fontSize:_mf(10),textAlign:"center",padding:"24px 12px",fontStyle:"italic"}}>No data was recorded for this run.</div>}
  </div>
  </div>;})()}
  {_enforcerDeath&&(()=>{const _ed=_enforcerDeath;const _en=(_ed.enemy||"enemy").charAt(0).toUpperCase()+(_ed.enemy||"enemy").slice(1);const _win=_ed.defeated;const _col=_win?"#ff5577":"#ffaa44";return(
  <div style={{position:"absolute",inset:0,background:"rgba(2,2,8,0.92)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:20,animation:"popupBgEnter 200ms ease-out both"}}>
  <div style={{background:"#0c0c1a",border:"1px solid "+_col+"66",borderRadius:8,padding:"24px 28px",maxWidth:340,width:"100%",textAlign:"center",animation:"popupEnter 220ms cubic-bezier(0.22,1,0.36,1) both"}}>
- <div style={{color:_col,fontSize:18,fontWeight:"bold",letterSpacing:3,marginBottom:6}}>{_win?"ENFORCER DEFEATED":"DEFEATED"}</div>
- <div style={{color:"#ccddee",fontSize:12,marginBottom:14}}>{_en} Enforcer</div>
- <div style={{color:"#8899aa",fontSize:13,marginBottom:4}}>Time Survived</div>
- <div style={{color:_col,fontSize:24,fontWeight:"bold",marginBottom:18}}>{_ed.survived}s{_win?" \u00b7 CLEARED":""}</div>
+ <div style={{color:_col,fontSize:_mf(18),fontWeight:"bold",letterSpacing:3,marginBottom:6}}>{_win?"ENFORCER DEFEATED":"DEFEATED"}</div>
+ <div style={{color:"#ccddee",fontSize:_mf(12),marginBottom:14}}>{_en} Enforcer</div>
+ <div style={{color:"#8899aa",fontSize:_mf(13),marginBottom:4}}>Time Survived</div>
+ <div style={{color:_col,fontSize:_mf(24),fontWeight:"bold",marginBottom:18}}>{_ed.survived}s{_win?" \u00b7 CLEARED":""}</div>
  <div style={{display:"flex",gap:10,justifyContent:"center"}}>
  <button onClick={()=>{_setEnforcerDeath(null);startPlayground(_ed.enemy,true);}} style={{...bs2(_col),padding:"8px 22px"}} {...hv(_col)}>RETRY</button>
  <button onClick={()=>{_setEnforcerDeath(null);goTo("menu");}} style={{...bs2("#55667744"),borderWidth:1,color:"#8899aa",padding:"8px 22px"}}>MENU</button>
@@ -3648,12 +4073,22 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  </div>
  </div>
  );})()}
- {phase==="cargo"&&(
+ {phase==="cargo"&&_mob&&_gShell(<>
+ {_gHead("CARGO RUN","#55cc88",()=>goTo("menu"))}
+ <div style={{flex:1,minHeight:0,display:"flex",flexDirection:"column",justifyContent:"center",gap:10}}>
+  <div style={{flex:1,padding:"10px 12px",display:"flex",flexDirection:"column",justifyContent:"center",gap:16}}>
+   <div style={{color:"#fff",fontSize:22,fontWeight:"bold",letterSpacing:1,textAlign:"center",textShadow:"0 0 14px #55cc8888"}}>Escort the train through the void.</div>
+   {[["An engine and 4 carriages (150 HP each) roll through the void — keep them alive.","#fff"],["Enemies teleport in and attack the carriages, not just you.","#e0ffe8"],["Every 500m the train crosses a checkpoint and banks packages (▣) for each surviving carriage.","#ffe9a8"],["Each checkpoint raises the payout multiplier (×1, ×2, ×3…), so an intact train pays far more.","#ffe9a8"],["Packages are kept even if the train is destroyed — spend them on Paths.","#c8f0d8"],["Cargo runs earn no echoes and never advance labs.","#ffb8b8"]].map(([d,c],i)=><div key={i} style={{display:"flex",gap:10,alignItems:"flex-start"}}><span style={{color:c,fontSize:14,lineHeight:1.45,flexShrink:0}}>▸</span><span style={{color:c,fontSize:14.5,lineHeight:1.45}}>{d}</span></div>)}
+  </div>
+ </div>
+ <button onClick={()=>{startCargo();}} style={{..._gBtn("#55cc88",true),flexShrink:0,padding:"24px 16px",fontSize:19}}>PLAY CARGO MODE</button>
+</>)}
+{phase==="cargo"&&!_mob&&(
  <div className={_phaseClass("cargo")} style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:10,textAlign:"center"}}>
- <h2 style={{color:"#55cc88",fontSize:20,letterSpacing:4,margin:0}}>CARGO RUN</h2>
- <div style={{color:"#8899aa",fontSize:10,lineHeight:1.7,maxWidth:340,marginTop:12,marginBottom:6}}>Protect the train as it travels through the void. Enemies teleport in to attack the carriages — keep them alive as long as possible.</div>
- <div style={{color:"#556677",fontSize:9,marginTop:4}}>Engine + 4 carriages · 150 HP each</div>
- <div style={{display:"flex",gap:10,marginTop:16}}>
+ <h2 style={{color:"#55cc88",fontSize:_mf(20),letterSpacing:4,margin:0}}>CARGO RUN</h2>
+ <div style={{color:"#8899aa",fontSize:_mf(10),lineHeight:1.7,maxWidth:340,marginTop:12,marginBottom:6}}>Protect the train as it travels through the void. Enemies teleport in to attack the carriages — keep them alive as long as possible.</div>
+ <div style={{color:"#556677",fontSize:_mf(9),marginTop:4}}>Engine + 4 carriages · 150 HP each</div>
+ <div style={{display:"flex",flexDirection:_mv("row","column"),gap:10,marginTop:16,alignItems:"stretch"}}>
  <button onClick={()=>{
  startCargo();
  }} style={bs2("#55cc88")} {...hv("#55cc88")}>LAUNCH</button>
@@ -3662,88 +4097,88 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  </div>
  )}
  {phase==="dead"&&deathData&&(()=>{const _newMU=(()=>{const _nt=meta.totalEchoesEarned||0;const _ot=_nt-(deathData.echoesEarned||0);return [[100,"PLAYGROUND"],[250,"PRACTISE"],[500,"PHANTOM"],[1000,"CARGO"],[1500,"DEALER"]].filter(x=>_ot<x[0]&&_nt>=x[0]).map(x=>x[1]);})();const _hasMU=_newMU.length>0;return (
- <div className={deathData.cause==="Self"?"":"vs-fade"} style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"rgba(6,6,14,0.9)",zIndex:10}}>
- <h2 style={{color:"#ff3355",fontSize:24,letterSpacing:4,margin:0}}>VOID CLAIMED</h2>{_hasMU&&<div style={{color:"#44ddaa",fontSize:12,fontWeight:"bold",letterSpacing:1,marginTop:8,textShadow:"0 0 8px #44ddaa88"}}>New gamemode available!</div>}
- <div style={{color:"#667788",fontSize:10,marginTop:8}}>Killed by: <span style={{color:"#cc8899"}}>{deathData.cause}</span></div>
+ <div className={deathData.cause==="Self"?"":"vs-fade"} style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:_mv("rgba(6,6,14,0.9)","rgba(2,2,8,0.94)"),backdropFilter:_mv("none","blur(3px)"),zIndex:10}}>
+ <h2 style={{color:"#ff3355",fontSize:_mf(24),letterSpacing:4,margin:0,textShadow:_mv("none","0 0 18px #ff3355aa")}}>VOID CLAIMED</h2>{_hasMU&&<div style={{color:"#44ddaa",fontSize:_mf(12),fontWeight:"bold",letterSpacing:1,marginTop:8,textShadow:"0 0 8px #44ddaa88"}}>New gamemode available!</div>}
+ <div style={{color:"#667788",fontSize:_mf(10),marginTop:8}}>Killed by: <span style={{color:"#cc8899"}}>{deathData.cause}</span></div>
  {(()=>{const _mr=metaRef.current;const _t=_mr.metaTier||1;const _gsSide=gsRef.current;if(_t<2||(_gsSide&&(_gsSide.isPlayground||_gsSide.isNewMode||_gsSide.isPractise||_gsSide.isCargo||_gsSide.isTutorial)))return null;const _phW=_mr.phantomHighWave||0;const _prW=_mr.practiseHighWave||0;const _phL=(_mr.lab?.completed?.phantom_enhance||0)*0.001;const _prL=(_mr.lab?.completed?.practise_enhance||0)*0.001;const _tv=_t===3?2.5:_t===2?1.5:1;const _enf2=_t>=2?1+(_mr.enforcerKills||0)*0.025:1;const _des3=_t>=2?1+((_mr.ownedDesigns||[]).length)*0.004:1;const _em=_tv*(_t>=2?(1+_phW*(0.01+_phL)):1)*(_t>=2?(1+_prW*(0.006+_prL)):1)*_enf2*_des3*((gsRef.current?._diffuseMult||1)+((metaRef.current.pathsUpg?.pr_diff&&(metaRef.current.practiseHighWave||0)>0&&(metaRef.current.practiseHighWave||0)%5===0)?0.045:0));return(
  <div style={{display:"flex",alignItems:"center",gap:5,marginTop:6}}>
- <span style={{color:"#ffcc44",fontSize:10,fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>Echo ×{_em.toFixed(3)}</span>
- <div onClick={()=>setHeInfoId(heInfoId==="pause_echo"?null:"pause_echo")} style={{width:13,height:13,borderRadius:"50%",border:"1px solid #ffcc4466",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:8,color:"#ffcc4488",flexShrink:0}} onMouseOver={e=>e.currentTarget.style.color="#ffcc44"} onMouseOut={e=>e.currentTarget.style.color="#ffcc4488"}>?</div>
+ <span style={{color:"#ffcc44",fontSize:_mf(10),fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>Echo ×{_em.toFixed(3)}</span>
+ <div onClick={()=>setHeInfoId(heInfoId==="pause_echo"?null:"pause_echo")} style={{width:_mv(13,30),height:_mv(13,30),borderRadius:"50%",border:"1px solid #ffcc4466",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mv(_mf(8),16),color:"#ffcc4488",flexShrink:0}} onMouseOver={e=>{if(!_mob)e.currentTarget.style.color="#ffcc44";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.color="#ffcc4488";}}>?</div>
  </div>);})()}
  {(heInfoId==="pause_echo"||(heInfoId&&heInfoId.startsWith("ph_")))&&(()=>{const _mr2=metaRef.current;const _t2=_mr2.metaTier||1;const _phW2=_mr2.phantomHighWave||0;const _prW2=_mr2.practiseHighWave||0;const _phL2=(_mr2.lab?.completed?.phantom_enhance||0)*0.001;const _prL2=(_mr2.lab?.completed?.practise_enhance||0)*0.001;const _phV2=1+_phW2*(0.01+_phL2);const _prV2=1+_prW2*(0.006+_prL2);const _pMults=[{name:"Tier Bonus",color:"#bb99ff",val:_t2===3?2.5:_t2===2?1.5:1,desc:""},{name:"Phantom",color:"#cc66cc",val:_t2>=2?_phV2:1,desc:"+" + (0.01+_phL2).toFixed(3) + " per phantom max wave."},{name:"Practise",color:"#cc9966",val:_t2>=2?_prV2:1,desc:"+" + (0.006+_prL2).toFixed(3) + " per practise max wave."},{name:"Enforcer",color:"#ff5577",val:_t2>=2?1+(_mr2.enforcerKills||0)*0.025:1,desc:"+0.025 per enforcer defeated."},{name:"Designer",color:"#cc7744",val:_t2>=2?1+((_mr2.ownedDesigns||[]).length)*0.004:1,desc:"+0.004 per custom design owned."},{name:"Diffusion",color:"#44ddcc",val:(gsRef.current?._diffuseMult||1)+((metaRef.current.pathsUpg?.pr_diff&&(metaRef.current.practiseHighWave||0)>0&&(metaRef.current.practiseHighWave||0)%5===0)?0.045:0),desc:"Per-run bonus from diffusing ability slots."+((metaRef.current.pathsUpg?.pr_diff&&(metaRef.current.practiseHighWave||0)>0&&(metaRef.current.practiseHighWave||0)%5===0)?" Includes a permanent +0.045 because your best practise wave is a boss wave.":"")}];const _pTot=_pMults.reduce((a,m)=>a*m.val,1);return(
  <div onClick={()=>setHeInfoId(null)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
  <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a18",animation:_popupClosing?"popupExit 170ms ease-in forwards":"popupEnter 200ms cubic-bezier(0.22,1,0.36,1) both",border:"1px solid #ffcc4433",borderRadius:6,padding:"16px 14px",maxWidth:340,width:"100%"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
- <div style={{color:"#ffcc44",fontSize:15,fontWeight:"bold",letterSpacing:2}}>HYPERECHO</div>
- <button onClick={()=>setHeInfoId(null)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ <div style={{color:"#ffcc44",fontSize:_mf(15),fontWeight:"bold",letterSpacing:2}}>HYPERECHO</div>
+ <button onClick={()=>setHeInfoId(null)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
  </div>
  <div style={{display:"flex",flexDirection:"column",gap:4}}>
- {_pMults.map(m=><div key={m.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0"}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{color:m.color,fontSize:12,fontWeight:"bold"}}>{m.name}</span>{m.desc&&<div onClick={(e)=>{e.stopPropagation();setHeInfoId(heInfoId==="ph_"+m.name?null:"ph_"+m.name);}} style={{width:11,height:11,borderRadius:"50%",border:"1px solid "+m.color+"44",display:"inline-flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:6,color:m.color+"88",flexShrink:0}}>?</div>}</div><div style={{color:"#ccddee",fontSize:16,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>×{m.val.toFixed(3)}</div></div>)}
+ {_pMults.map(m=><div key={m.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0"}}><div style={{display:"flex",alignItems:"center",gap:4}}><span style={{color:m.color,fontSize:_mf(12),fontWeight:"bold"}}>{m.name}</span>{m.desc&&<div onClick={(e)=>{e.stopPropagation();setHeInfoId(heInfoId==="ph_"+m.name?null:"ph_"+m.name);}} style={{width:11,height:11,borderRadius:"50%",border:"1px solid "+m.color+"44",display:"inline-flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:_mf(6),color:m.color+"88",flexShrink:0}}>?</div>}</div><div style={{color:"#ccddee",fontSize:_mf(16),fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>×{m.val.toFixed(3)}</div></div>)}
  </div>
- {(()=>{const _hd=_pMults.find(m=>heInfoId==="ph_"+m.name);if(!_hd||!_hd.desc)return null;return <div style={{background:"#0a0e14",border:"1px solid "+_hd.color+"33",borderRadius:4,padding:"6px 10px",marginTop:4}}><span style={{color:_hd.color,fontSize:9}}>{_hd.desc}</span></div>;})()}
- <div style={{borderTop:"1px solid #44556644",marginTop:10,paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{color:"#ffcc44",fontSize:13,fontWeight:"bold"}}>TOTAL</div><div style={{color:"#ffcc44",fontSize:22,fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>×{_pTot.toFixed(3)}</div></div>
+ {(()=>{const _hd=_pMults.find(m=>heInfoId==="ph_"+m.name);if(!_hd||!_hd.desc)return null;return <div style={{background:"#0a0e14",border:"1px solid "+_hd.color+"33",borderRadius:4,padding:"6px 10px",marginTop:4}}><span style={{color:_hd.color,fontSize:_mf(9)}}>{_hd.desc}</span></div>;})()}
+ <div style={{borderTop:"1px solid #44556644",marginTop:10,paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{color:"#ffcc44",fontSize:_mf(13),fontWeight:"bold"}}>TOTAL</div><div style={{color:"#ffcc44",fontSize:_mf(22),fontWeight:"bold",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace"}}>×{_pTot.toFixed(3)}</div></div>
  </div>
  </div>);})()}
- <div style={{color:"#8899aa",fontSize:12,marginTop:16,textAlign:"center",lineHeight:2.2}}>
+ <div style={{color:"#8899aa",fontSize:_mf(12),marginTop:16,textAlign:"center",lineHeight:2.2}}>
  Waves: <span style={{color:"#dde"}}>{deathData.wave}</span> · Kills: <span style={{color:"#dde"}}>{deathData.kills}</span>
- <div style={{color:CUR.echoes.color,marginTop:6,fontSize:15}}>+{deathData.echoesEarned} Echoes</div>{(gsRef.current?._overheatPoints||0)>0&&<div style={{color:"#ff6622",marginTop:1,fontSize:12}}>+{gsRef.current._overheatPoints} Overheat</div>}</div>
- <div style={{display:"flex",gap:8,marginTop:12}}>
- <button onClick={()=>{setDeathRegenPopup(false);setDeathPainPopup(false);setDeathDmgPopup(p=>!p);}} style={{background:"none",border:"1px solid #334455",padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:9,color:deathDmgPopup?"#ff8866":"#778899",borderRadius:3}}>DMG analyser</button>
- <button onClick={()=>{setDeathDmgPopup(false);setDeathPainPopup(false);setDeathRegenPopup(p=>!p);}} style={{background:"none",border:"1px solid #334455",padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:9,color:deathRegenPopup?"#44ff88":"#778899",borderRadius:3}}>REGEN analyser</button>
- <button onClick={()=>{setDeathDmgPopup(false);setDeathRegenPopup(false);setDeathPainPopup(p=>!p);}} style={{background:"none",border:"1px solid #334455",padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:9,color:deathPainPopup?"#ff4466":"#778899",borderRadius:3}}>PAIN analyser</button>
+ <div style={{color:CUR.echoes.color,marginTop:6,fontSize:_mf(15)}}>+{deathData.echoesEarned} Echoes</div>{(gsRef.current?._overheatPoints||0)>0&&<div style={{color:"#ff6622",marginTop:1,fontSize:_mf(12)}}>+{gsRef.current._overheatPoints} Overheat</div>}{deathData.labPlus&&deathData.labPlus.length>0&&<div style={{color:"#44ddcc",marginTop:4,fontSize:_mf(10),maxWidth:280,lineHeight:1.5,textAlign:"center"}}>Lab+ triggered: {deathData.labPlus.map(lp=>`${lp.name} +${lp.levels} level${lp.levels===1?"":"s"} (+${lp.waves} waves)`).join(", ")}</div>}</div>
+ <div style={{display:"flex",gap:8,marginTop:12,width:_mv("auto","86%")}}>
+ <button onClick={()=>{setDeathRegenPopup(false);setDeathPainPopup(false);setDeathDmgPopup(p=>!p);}} style={{background:_mv("none","#0c0c1a"),border:"1px solid #334455",padding:_mv("4px 10px","13px 4px"),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),11),fontWeight:_mv("normal","bold"),flex:_mv("0 0 auto",1),color:deathDmgPopup?"#ff8866":"#778899",borderRadius:_mv(3,10)}}>DMG analyser</button>
+ <button onClick={()=>{setDeathDmgPopup(false);setDeathPainPopup(false);setDeathRegenPopup(p=>!p);}} style={{background:_mv("none","#0c0c1a"),border:"1px solid #334455",padding:_mv("4px 10px","13px 4px"),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),11),fontWeight:_mv("normal","bold"),flex:_mv("0 0 auto",1),color:deathRegenPopup?"#44ff88":"#778899",borderRadius:_mv(3,10)}}>REGEN analyser</button>
+ <button onClick={()=>{setDeathDmgPopup(false);setDeathRegenPopup(false);setDeathPainPopup(p=>!p);}} style={{background:_mv("none","#0c0c1a"),border:"1px solid #334455",padding:_mv("4px 10px","13px 4px"),cursor:"pointer",fontFamily:"inherit",fontSize:_mv(_mf(9),11),fontWeight:_mv("normal","bold"),flex:_mv("0 0 auto",1),color:deathPainPopup?"#ff4466":"#778899",borderRadius:_mv(3,10)}}>PAIN analyser</button>
  </div>
  {(deathDmgPopup||deathRegenPopup||deathPainPopup)&&(()=>{const gs=gsRef.current;if(!gs)return null;
  const mkR=(data,label,col)=>{const entries=Object.entries(data||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);const total=entries.reduce((s,[,v])=>s+v,0);
- return <div style={{marginBottom:8}}><div style={{color:col,fontSize:10,fontWeight:"bold",marginBottom:4}}>{label}</div>
- {entries.length===0?<div style={{color:"#556677",fontSize:9}}>None recorded</div>:entries.map(([src,val])=>{const pct=total>0?val/total*100:0;return <div key={src} style={{marginBottom:3}}>
- <div style={{display:"flex",justifyContent:"space-between",fontSize:9}}><span style={{color:"#ccddee"}}>{src}</span><span style={{color:"#99aabb"}}>{Math.round(val).toLocaleString()} ({pct<1&&pct>0?"<1":Math.round(pct)}%)</span></div>
- <div style={{height:5,background:"#14142a",borderRadius:2,marginTop:1}}><div style={{height:5,background:col+"66",borderRadius:2,width:pct+"%"}} /></div></div>})}</div>};
+ return <div style={{marginBottom:8}}><div style={{color:col,fontSize:_mf(10),fontWeight:"bold",marginBottom:4}}>{label}</div>
+ {entries.length===0?<div style={{color:"#556677",fontSize:_mf(9)}}>None recorded</div>:entries.map(([src,val])=>{const pct=total>0?val/total*100:0;return <div key={src} style={{marginBottom:3}}>
+ <div style={{display:"flex",justifyContent:"space-between",fontSize:_mf(9)}}><span style={{color:"#ccddee"}}>{src}</span><span style={{color:"#99aabb"}}>{Math.round(val).toLocaleString()} ({pct<1&&pct>0?"<1":Math.round(pct)}%)</span></div>
+ <div style={{height:_mv(5,8),background:_mv("#14142a","#ffffff14"),borderRadius:_mv(2,4),marginTop:_mv(1,3)}}><div style={{height:_mv(5,8),background:col+_mv("66","dd"),borderRadius:_mv(2,4),width:pct+"%"}} /></div></div>})}</div>};
  return <div style={{padding:"8px 12px",background:"#0a0a1a",border:"1px solid #22334444",borderRadius:4,maxWidth:400,width:"100%",marginTop:8}}>
- {deathDmgPopup&&<>{mkR(gs.waveDmg,"Final Wave","#ff8866")}{mkR(gs.dmgTrack,"Entire Run","#ff8866")}</>}
- {deathRegenPopup&&<>{mkR(gs.waveHeal,"Final Wave","#44ff88")}{mkR(gs.healTrack,"Entire Run","#44ff88")}</>}
- {deathPainPopup&&<>{(()=>{const mkPR=(hpD,shD,label)=>{const allS=new Set([...Object.keys(hpD||{}),...Object.keys(shD||{})]);const ents=[...allS].map(s=>({s,hp:hpD?.[s]||0,sh:shD?.[s]||0,t:(hpD?.[s]||0)+(shD?.[s]||0)})).filter(e=>e.t>0).sort((a,b)=>b.t-a.t);const gt=ents.reduce((a,e)=>a+e.t,0);return <div style={{marginBottom:8}}><div style={{color:"#ff4466",fontSize:10,fontWeight:"bold",marginBottom:4}}>{label}</div>{ents.length===0?<div style={{color:"#556677",fontSize:9}}>No damage taken</div>:ents.map(e=>{const pct=gt>0?e.t/gt*100:0;return <div key={e.s} style={{marginBottom:4}}><div style={{display:"flex",justifyContent:"space-between",fontSize:9}}><span style={{color:"#ccddee",textTransform:"capitalize"}}>{e.s}</span><span style={{color:"#99aabb"}}>{Math.round(e.hp)}HP{e.sh>0?` + ${Math.round(e.sh)}Shield`:""} ({Math.round(pct)}%)</span></div><div style={{height:7,background:"#14142a",borderRadius:2,marginTop:2,overflow:"hidden"}}><div style={{height:7,width:pct+"%",display:"flex",overflow:"hidden",borderRadius:2}}><div style={{height:7,background:"#ff446666",flex:e.hp,borderRadius:e.sh>0?"2px 0 0 2px":"2px"}} />{e.sh>0&&<div style={{height:7,background:"#44aaff66",flex:e.sh,borderRadius:"0 2px 2px 0"}} />}</div></div></div>})}</div>};return <>{mkPR(gs.wavePain,gs.waveShieldPain,"Final Wave")}{mkPR(gs.painTrack,gs.shieldPain,"Entire Run")}</>;})()}</>}
+ {deathDmgPopup&&<ShopWrap onClose={()=>setDeathDmgPopup(false)} col="#ff8866" title="DAMAGE ANALYSER">{mkR(gs.waveDmg,"Final Wave","#ff8866")}{mkR(gs.dmgTrack,"Entire Run","#ff8866")}</ShopWrap>}
+ {deathRegenPopup&&<ShopWrap onClose={()=>setDeathRegenPopup(false)} col="#44ff88" title="REGEN ANALYSER">{mkR(gs.waveHeal,"Final Wave","#44ff88")}{mkR(gs.healTrack,"Entire Run","#44ff88")}</ShopWrap>}
+ {deathPainPopup&&<ShopWrap onClose={()=>setDeathPainPopup(false)} col="#ff4466" title="PAIN ANALYSER">{(()=>{const mkPR=(hpD,shD,label)=>{const allS=new Set([...Object.keys(hpD||{}),...Object.keys(shD||{})]);const ents=[...allS].map(s=>({s,hp:hpD?.[s]||0,sh:shD?.[s]||0,t:(hpD?.[s]||0)+(shD?.[s]||0)})).filter(e=>e.t>0).sort((a,b)=>b.t-a.t);const gt=ents.reduce((a,e)=>a+e.t,0);return <div style={{marginBottom:8}}><div style={{color:"#ff4466",fontSize:_mf(10),fontWeight:"bold",marginBottom:4}}>{label}</div>{ents.length===0?<div style={{color:"#556677",fontSize:_mf(9)}}>No damage taken</div>:ents.map(e=>{const pct=gt>0?e.t/gt*100:0;return <div key={e.s} style={{marginBottom:4}}><div style={{display:"flex",justifyContent:"space-between",fontSize:_mf(9)}}><span style={{color:"#ccddee",textTransform:"capitalize"}}>{e.s}</span><span style={{color:"#99aabb"}}>{Math.round(e.hp)}HP{e.sh>0?` + ${Math.round(e.sh)}Shield`:""} ({Math.round(pct)}%)</span></div><div style={{height:_mv(7,8),background:_mv("#14142a","#ffffff14"),borderRadius:_mv(2,4),marginTop:_mv(2,3),overflow:"hidden"}}><div style={{height:_mv(7,8),width:pct+"%",display:"flex",overflow:"hidden",borderRadius:2}}><div style={{height:_mv(7,8),background:"#ff446666",flex:e.hp,borderRadius:e.sh>0?"2px 0 0 2px":"2px"}} />{e.sh>0&&<div style={{height:_mv(7,8),background:"#44aaff66",flex:e.sh,borderRadius:"0 2px 2px 0"}} />}</div></div></div>})}</div>};return <>{mkPR(gs.wavePain,gs.waveShieldPain,"Final Wave")}{mkPR(gs.painTrack,gs.shieldPain,"Entire Run")}</>;})()}</ShopWrap>}
  </div>;})()}
- <div style={{display:"flex",gap:10,marginTop:12}}>
- <button onClick={()=>{if(!_hasMU)goTo("metashop");}} style={{...bs2(_hasMU?"#44445533":"#bb77ff"),position:"relative",opacity:_hasMU?0.45:1,cursor:_hasMU?"default":"pointer"}} {...(_hasMU?{}:hv("#bb77ff"))}>META{!_hasMU&&_dotsOn&&_affordMeta().any&&<span style={_affDotBig} />}</button>
+ <div style={{display:"flex",flexDirection:_mv("row","column"),gap:10,marginTop:12,alignItems:"stretch",width:_mv("auto","82%")}}>
+ <button onClick={()=>{if(!_hasMU)goTo("metashop");}} style={{...bs2(_hasMU?"#44445533":"#bb77ff"),position:"relative",opacity:_hasMU?0.45:1,cursor:_hasMU?"default":"pointer"}} {...(_hasMU?{}:hv("#bb77ff"))}>META{!_hasMU&&_dotsOn&&(()=>{const _am=_affordMeta();return _am.any?<span style={_affDotBig} />:_am.labEmpty?<span style={_affDotBigBlue} />:null;})()}</button>
  <button onClick={()=>{if(!_hasMU)_startMainRun();}} style={{...bs2(_hasMU?"#33445522":"#00e5ff"),opacity:_hasMU?0.45:1,cursor:_hasMU?"default":"pointer"}} {...(_hasMU?{}:hv("#00e5ff"))}>RETRY</button>
  <button onClick={()=>{if(_hasMU)_setModeUnlock(_newMU);goTo("menu");}} style={{...bs2("#55667744"),borderWidth:1,color:"#8899aa",padding:"10px 20px"}}>MENU</button></div>
  </div>
  );})()}
  {phase==="metashop"&&(
  <div className={_phaseClass("metashop")} style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:10,overflow:"hidden"}}>
- <div style={{padding:"12px 14px 6px",borderBottom:"1px solid #1a1a2e",position:"relative",zIndex:1}}>
- <h2 style={{color:CUR.echoes.color,fontSize:15,margin:0,letterSpacing:3}}>META UPGRADES</h2>
+ <div style={_mob?{padding:"10px 10px 8px",position:"relative",zIndex:1,background:"#04040a"}:{padding:"12px 14px 6px",borderBottom:"1px solid #1a1a2e",position:"relative",zIndex:1}}>
+ {_mob?<div style={{display:"flex",alignItems:"center",gap:8}}><button onClick={()=>goTo("menu")} style={{background:"#ffffff14",border:"1px solid #ffffff2e",borderRadius:20,padding:"8px 13px",color:"#d8dfff",fontSize:10,fontWeight:"bold",fontFamily:"inherit",cursor:"pointer",flexShrink:0}}>‹ BACK</button><h2 style={{color:"#fff",fontSize:14,margin:0,letterSpacing:2,flex:1,textAlign:"center",textShadow:"0 0 10px #bb99ff66"}}>META UPGRADES</h2><div style={{minWidth:64}}/></div>:<h2 style={{color:CUR.echoes.color,fontSize:_mf(15),margin:0,letterSpacing:3}}>META UPGRADES</h2>}
  <div style={{display:"flex",gap:10,alignItems:"center",marginTop:3}}>
- <span style={{color:CUR.echoes.color,fontSize:13}}>⬢ {meta.echoes} Echoes</span>
- {metaTab==="abilities"&&<span style={{color:"#44ddcc",fontSize:11}}><span style={{fontSize:13}}>◈</span> {meta.shards||0} Shards</span>}
-{metaTab==="overheat"&&<span style={{color:"#ff6622",fontSize:11}}><span style={{fontSize:13}}>✹</span> {meta.overheat||0} Overheat</span>}
+ <span style={{color:CUR.echoes.color,fontSize:_mf(13)}}>⬢ {meta.echoes} Echoes</span>
+ {metaTab==="abilities"&&<span style={{color:"#44ddcc",fontSize:_mf(11)}}><span style={{fontSize:_mf(13)}}>◈</span> {meta.shards||0} Shards</span>}
+{metaTab==="overheat"&&<span style={{color:"#ff6622",fontSize:_mf(11)}}><span style={{fontSize:_mf(13)}}>✹</span> {meta.overheat||0} Overheat</span>}
  </div>
- <div style={{display:"flex",gap:4,marginTop:8}}>
- <button onClick={()=>{(()=>{_setMetaTabFrom(metaTab);setMetaTab("ship");})();setAbInfoId(null);}} style={{padding:"5px 9px",background:metaTab==="ship"?"#1a1a2e":"transparent",borderTop:`1px solid ${metaTab==="ship"?"#bb77ff66":"#33445544"}`,borderLeft:`1px solid ${metaTab==="ship"?"#bb77ff66":"#33445544"}`,borderRight:`1px solid ${metaTab==="ship"?"#bb77ff66":"#33445544"}`,borderBottom:"none",borderRadius:"4px 4px 0 0",color:metaTab==="ship"?"#bb99ff":"#667788",fontSize:8.5,cursor:"pointer",fontFamily:"inherit",position:"relative"}}>Ship Upgrades{_dotsOn&&_affordMeta().ship&&<span style={_affDot} />}</button>
- {tutStep===9||tutStep===10?<button style={{padding:"5px 14px",background:"transparent",borderTop:"1px solid #22223344",borderLeft:"1px solid #22223344",borderRight:"1px solid #22223344",borderBottom:"none",borderRadius:"4px 4px 0 0",color:"#334455",fontSize:10,fontFamily:"inherit",cursor:"default"}}>Ability Upgrades</button>
- :<button onClick={()=>{(()=>{_setMetaTabFrom(metaTab);setMetaTab("abilities");})();setAbInfoId(null);}} style={{padding:"5px 9px",background:metaTab==="abilities"?"#1a1a2e":"transparent",borderTop:`1px solid ${metaTab==="abilities"?"#44ddcc66":"#33445544"}`,borderLeft:`1px solid ${metaTab==="abilities"?"#44ddcc66":"#33445544"}`,borderRight:`1px solid ${metaTab==="abilities"?"#44ddcc66":"#33445544"}`,borderBottom:"none",borderRadius:"4px 4px 0 0",color:metaTab==="abilities"?"#44ddcc":"#667788",fontSize:8.5,cursor:"pointer",fontFamily:"inherit",position:"relative"}}>Ability Upgrades{_dotsOn&&_affordMeta().abilities&&<span style={_affDot} />}</button>}
- <button onClick={()=>{(()=>{_setMetaTabFrom(metaTab);setMetaTab("lab");})();setAbInfoId(null);}} style={{padding:"5px 9px",background:metaTab==="lab"?"#1a1a2e":"transparent",borderTop:`1px solid ${metaTab==="lab"?"#ff884466":"#33445544"}`,borderLeft:`1px solid ${metaTab==="lab"?"#ff884466":"#33445544"}`,borderRight:`1px solid ${metaTab==="lab"?"#ff884466":"#33445544"}`,borderBottom:"none",borderRadius:"4px 4px 0 0",color:metaTab==="lab"?"#ff9966":"#667788",fontSize:8.5,cursor:"pointer",fontFamily:"inherit",position:"relative"}}>Lab Upgrades{_dotsOn&&_affordMeta().lab&&<span style={_affDot} />}</button>
- <button onClick={()=>{(()=>{_setMetaTabFrom(metaTab);setMetaTab("bots");})();setAbInfoId(null);}} style={{padding:"5px 9px",background:metaTab==="bots"?"#1a1a2e":"transparent",borderTop:`1px solid ${metaTab==="bots"?"#4d9fff66":"#33445544"}`,borderLeft:`1px solid ${metaTab==="bots"?"#4d9fff66":"#33445544"}`,borderRight:`1px solid ${metaTab==="bots"?"#4d9fff66":"#33445544"}`,borderBottom:"none",borderRadius:"4px 4px 0 0",color:metaTab==="bots"?"#4d9fff":"#667788",fontSize:8.5,cursor:"pointer",fontFamily:"inherit",position:"relative"}}>Bot Upgrades{_dotsOn&&_affordMeta().bots&&<span style={_affDot} />}</button>
-<button onClick={()=>{(()=>{_setMetaTabFrom(metaTab);setMetaTab("overheat");})();setAbInfoId(null);}} style={{padding:"5px 9px",background:metaTab==="overheat"?"#1a1a2e":"transparent",borderTop:`1px solid ${metaTab==="overheat"?"#ff662266":"#33445544"}`,borderLeft:`1px solid ${metaTab==="overheat"?"#ff662266":"#33445544"}`,borderRight:`1px solid ${metaTab==="overheat"?"#ff662266":"#33445544"}`,borderBottom:"none",borderRadius:"4px 4px 0 0",color:metaTab==="overheat"?"#ff6622":"#667788",fontSize:8.5,cursor:"pointer",fontFamily:"inherit",position:"relative"}}>Overheat Upgrades{_dotsOn&&_affordMeta().overheat&&<span style={_affDot} />}</button>
+ <div onWheel={(e)=>{if(_mob)return;e.preventDefault();const _tbs=["ship","abilities","lab","bots","overheat"];const _tci=_tbs.indexOf(metaTab);if(_tci<0)return;const _tni=(_tci+(e.deltaY>0?1:-1)+_tbs.length)%_tbs.length;_setMetaTabFrom(metaTab);setMetaTab(_tbs[_tni]);setAbInfoId(null);}} style={{display:_mv("flex","grid"),gridTemplateColumns:_mv("none","repeat(5,1fr)"),gap:_mv(4,5),marginTop:_mv(8,6)}}>
+ <button onClick={()=>{(()=>{_setMetaTabFrom(metaTab);setMetaTab("ship");})();setAbInfoId(null);}} style={{padding:_devMob?"9px 13px":"5px 9px",background:metaTab==="ship"?"#1a1a2e":"transparent",borderTop:`1px solid ${metaTab==="ship"?"#bb77ff66":"#33445544"}`,borderLeft:`1px solid ${metaTab==="ship"?"#bb77ff66":"#33445544"}`,borderRight:`1px solid ${metaTab==="ship"?"#bb77ff66":"#33445544"}`,borderBottom:"none",borderRadius:"4px 4px 0 0",color:metaTab==="ship"?"#bb99ff":"#667788",fontSize:_mf(8.5),cursor:"pointer",fontFamily:"inherit",position:"relative",...(_mob?{...(metaTab==="ship"?_gp("#bb99ff",12):_gpDim("#bb99ff",12)),color:"#fff",fontSize:10.5,fontWeight:"bold",padding:"13px 2px",letterSpacing:0.2,textAlign:"center",whiteSpace:"nowrap",overflow:"visible"}:{})}}>{_mv("Ship Upgrades","SHIP")}{_dotsOn&&_affordMeta().ship&&<span style={_affDot} />}</button>
+ {tutStep===9||tutStep===10?<button style={{padding:"5px 14px",background:"transparent",borderTop:"1px solid #22223344",borderLeft:"1px solid #22223344",borderRight:"1px solid #22223344",borderBottom:"none",borderRadius:"4px 4px 0 0",color:"#334455",fontSize:_mf(10),fontFamily:"inherit",cursor:"default"}}>Ability Upgrades</button>
+ :<button onClick={()=>{(()=>{_setMetaTabFrom(metaTab);setMetaTab("abilities");})();setAbInfoId(null);}} style={{padding:_devMob?"9px 13px":"5px 9px",background:metaTab==="abilities"?"#1a1a2e":"transparent",borderTop:`1px solid ${metaTab==="abilities"?"#44ddcc66":"#33445544"}`,borderLeft:`1px solid ${metaTab==="abilities"?"#44ddcc66":"#33445544"}`,borderRight:`1px solid ${metaTab==="abilities"?"#44ddcc66":"#33445544"}`,borderBottom:"none",borderRadius:"4px 4px 0 0",color:metaTab==="abilities"?"#44ddcc":"#667788",fontSize:_mf(8.5),cursor:"pointer",fontFamily:"inherit",position:"relative",...(_mob?{...(metaTab==="abilities"?_gp("#44ddcc",12):_gpDim("#44ddcc",12)),color:"#fff",fontSize:10.5,fontWeight:"bold",padding:"13px 2px",letterSpacing:0.2,textAlign:"center",whiteSpace:"nowrap",overflow:"visible"}:{})}}>{_mv("Ability Upgrades","ABILITIES")}{_dotsOn&&_affordMeta().abilities&&<span style={_affDot} />}</button>}
+ <button onClick={()=>{(()=>{_setMetaTabFrom(metaTab);setMetaTab("lab");})();setAbInfoId(null);}} style={{padding:_devMob?"9px 13px":"5px 9px",background:metaTab==="lab"?"#1a1a2e":"transparent",borderTop:`1px solid ${metaTab==="lab"?"#ff884466":"#33445544"}`,borderLeft:`1px solid ${metaTab==="lab"?"#ff884466":"#33445544"}`,borderRight:`1px solid ${metaTab==="lab"?"#ff884466":"#33445544"}`,borderBottom:"none",borderRadius:"4px 4px 0 0",color:metaTab==="lab"?"#ff9966":"#667788",fontSize:_mf(8.5),cursor:"pointer",fontFamily:"inherit",position:"relative",...(_mob?{...(metaTab==="lab"?_gp("#ff9966",12):_gpDim("#ff9966",12)),color:"#fff",fontSize:10.5,fontWeight:"bold",padding:"13px 2px",letterSpacing:0.2,textAlign:"center",whiteSpace:"nowrap",overflow:"visible"}:{})}}>{_mv("Lab Upgrades","LAB")}{_dotsOn&&(()=>{const _am=_affordMeta();return _am.lab?<span style={_affDot} />:_am.labEmpty?<span style={_affDotBlue} />:null;})()}</button>
+ <button onClick={()=>{(()=>{_setMetaTabFrom(metaTab);setMetaTab("bots");})();setAbInfoId(null);}} style={{padding:_devMob?"9px 13px":"5px 9px",background:metaTab==="bots"?"#1a1a2e":"transparent",borderTop:`1px solid ${metaTab==="bots"?"#4d9fff66":"#33445544"}`,borderLeft:`1px solid ${metaTab==="bots"?"#4d9fff66":"#33445544"}`,borderRight:`1px solid ${metaTab==="bots"?"#4d9fff66":"#33445544"}`,borderBottom:"none",borderRadius:"4px 4px 0 0",color:metaTab==="bots"?"#4d9fff":"#667788",fontSize:_mf(8.5),cursor:"pointer",fontFamily:"inherit",position:"relative",...(_mob?{...(metaTab==="bots"?_gp("#4d9fff",12):_gpDim("#4d9fff",12)),color:"#fff",fontSize:10.5,fontWeight:"bold",padding:"13px 2px",letterSpacing:0.2,textAlign:"center",whiteSpace:"nowrap",overflow:"visible"}:{})}}>{_mv("Bot Upgrades","BOTS")}{_dotsOn&&_affordMeta().bots&&<span style={_affDot} />}</button>
+<button onClick={()=>{(()=>{_setMetaTabFrom(metaTab);setMetaTab("overheat");})();setAbInfoId(null);}} style={{padding:_devMob?"9px 13px":"5px 9px",background:metaTab==="overheat"?"#1a1a2e":"transparent",borderTop:`1px solid ${metaTab==="overheat"?"#ff662266":"#33445544"}`,borderLeft:`1px solid ${metaTab==="overheat"?"#ff662266":"#33445544"}`,borderRight:`1px solid ${metaTab==="overheat"?"#ff662266":"#33445544"}`,borderBottom:"none",borderRadius:"4px 4px 0 0",color:metaTab==="overheat"?"#ff6622":"#667788",fontSize:_mf(8.5),cursor:"pointer",fontFamily:"inherit",position:"relative",...(_mob?{...(metaTab==="overheat"?_gp("#ff6622",12):_gpDim("#ff6622",12)),color:"#fff",fontSize:10.5,fontWeight:"bold",padding:"13px 2px",letterSpacing:0.2,textAlign:"center",whiteSpace:"nowrap",overflow:"visible"}:{})}}>{_mv("Overheat Upgrades","HEAT")}{_dotsOn&&_affordMeta().overheat&&<span style={_affDot} />}</button>
  </div>
  </div>
  <div key={metaTab} style={{flex:"1 1 0",minHeight:0,display:"flex",flexDirection:"column",animation:(_transStage==="exiting"&&_transFrom==="metashop")?undefined:((()=>{const _tabs=["ship","abilities","lab","bots","overheat"];const _ci=_tabs.indexOf(metaTab);const _pi=_tabs.indexOf(_metaTabFrom||metaTab);return _ci>_pi?"tabSlideRight":"tabSlideLeft";})()+" 200ms cubic-bezier(0.22,1,0.36,1) both")}}>
  {metaTab==="ship"&&(()=>{const tier=meta.metaTier||1;const allMaxed=META.every(up=>(meta.levels[up.id]||0)>=up.max*tier);const echoesToMax=META.reduce((s,up)=>{let t=0;for(let l=meta.levels[up.id]||0;l<up.max*tier;l++)t+=metaCost(up,l,tier);return s+t;},0);
- return <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,padding:10,display:"flex",flexDirection:"column",gap:5,overflow:"auto"}}>
- <div style={{color:"#667788",fontSize:8,textAlign:"center",marginBottom:2}}>Tier {tier} · Ship upgrades focus on additive stat boosts that improve your starting loadout</div>
+ return <div className="vs-scroll" style={_mob?{flex:"1 1 0",minHeight:0,padding:"6px 10px 8px",display:"grid",gridTemplateColumns:"1fr 1fr",gridAutoRows:"minmax(0,1fr)",gap:6,overflow:"hidden",alignContent:"stretch"}:{flex:"1 1 0",minHeight:0,padding:10,display:"flex",flexDirection:"column",gap:5,overflow:"auto"}}>
+ {!_mob&&<div style={{color:"#667788",fontSize:_mf(8),textAlign:"center",marginBottom:2}}>Tier {tier} · Ship upgrades focus on additive stat boosts that improve your starting loadout</div>}
  {META.map(up=>{const lvl=meta.levels[up.id]||0,mx=up.max*tier,maxed=lvl>=mx,cost=metaCost(up,lvl,tier),canBuy=!maxed&&meta.echoes>=cost;
  return(<button key={up.id} onClick={()=>buyMeta(up.id)} disabled={!canBuy}
- style={{padding:"8px 10px",background:maxed?"#1a1408":canBuy?"#0e0e22":"#0a0a14",border:`1px solid ${maxed?"#ffcc4466":"#bb77ff22"}`,borderRadius:3,cursor:canBuy?"pointer":"default",textAlign:"left",opacity:maxed?1:1,fontFamily:"inherit",display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative",overflow:"hidden",boxShadow:maxed?"0 0 8px #ffcc4418":"none",flexShrink:0}}
+ style={_mob?{...(maxed?_gpMax(12):canBuy?_gpBuy("#bb99ff",12):_gpDim("#bb99ff",12)),padding:"8px 10px",cursor:canBuy?"pointer":"default",textAlign:"left",fontFamily:"inherit",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:4,position:"relative",overflow:"hidden",minWidth:0}:{padding:"8px 10px",background:maxed?"#1a1408":canBuy?"#0e0e22":"#0a0a14",border:`1px solid ${maxed?"#ffcc4466":"#bb77ff22"}`,borderRadius:3,cursor:canBuy?"pointer":"default",textAlign:"left",opacity:maxed?1:1,fontFamily:"inherit",display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative",overflow:"hidden",boxShadow:maxed?"0 0 8px #ffcc4418":"none",flexShrink:0}}
  onMouseOver={e=>canBuy&&(e.currentTarget.style.borderColor="#bb77ff")} onMouseOut={e=>(e.currentTarget.style.borderColor=maxed?"#ffcc4466":"#bb77ff22")}>{maxed&&<div className="gold-shimmer"/>}
- <div><div style={{color:"#ccddee",fontSize:11,fontWeight:"bold"}}>{up.name} <span style={{color:"#556677",fontSize:9}}>Lv.{lvl}/{mx}</span></div><div style={{color:"#8899aa",fontSize:9}}>{up.desc}</div></div>
- <div style={{color:maxed?"#445566":CUR.echoes.color,fontSize:12,whiteSpace:"nowrap",marginLeft:8}}>{maxed?"MAX":`⬢ ${cost}`}</div>
+ <div style={{minWidth:0}}><div style={{color:_mv("#ccddee","#fff"),fontSize:_mv(_mf(11),13),fontWeight:"bold",whiteSpace:_mv("normal","nowrap"),overflow:"hidden",textOverflow:"ellipsis"}}>{up.name} <span style={{color:_mv("#556677","#e6e6f2"),fontSize:_mv(_mf(9),10),opacity:_mv(1,0.75)}}>Lv.{lvl}/{mx}</span></div><div style={{color:_mv("#8899aa","#dde"),fontSize:_mv(_mf(9),10),lineHeight:1.3,display:_mob?"-webkit-box":"block",WebkitLineClamp:_mob?2:undefined,WebkitBoxOrient:_mob?"vertical":undefined,overflow:"hidden"}}>{up.desc}</div></div>
+ <div style={{color:maxed?_mv("#445566","#ffcc44"):_mv(CUR.echoes.color,"#fff"),fontSize:_mv(_mf(12),13),whiteSpace:"nowrap",marginLeft:_mv(8,0),fontWeight:_mv("normal","bold"),alignSelf:_mv("auto","flex-end")}}>{maxed?"MAX":`⬢ ${cost}`}</div>
  </button>);})}
- <div style={{padding:"10px",background:tier>=3?"#1a1408":"#0a0a1a",border:`1px solid ${tier>=3?"#ffcc4466":"#bb77ff22"}`,borderRadius:4,flexShrink:0,position:"relative",overflow:"hidden"}}>{tier>=3&&<div className="gold-shimmer"/>}
- <div style={{color:"#bb99ff",fontSize:10,fontWeight:"bold",marginBottom:4}}>TIER SYSTEM</div>
- <div style={{color:"#778899",fontSize:8,lineHeight:1.5,marginBottom:6}}>Max all upgrades at the current tier to unlock the next. Current tier: <span style={{color:"#bb99ff"}}>{tier}</span></div>
- {!allMaxed&&<div style={{color:"#667788",fontSize:8,marginBottom:6}}>Echoes needed to max current tier: <span style={{color:CUR.echoes.color}}>{echoesToMax}</span></div>}
+ <div style={_mob?{...(tier>=3?_gpMax(12):_gpDim("#bb99ff",12)),padding:"8px 10px",gridColumn:"1 / -1",position:"relative",overflow:"hidden",minWidth:0}:{padding:"10px",background:tier>=3?"#1a1408":"#0a0a1a",border:`1px solid ${tier>=3?"#ffcc4466":"#bb77ff22"}`,borderRadius:4,flexShrink:0,position:"relative",overflow:"hidden"}}>{tier>=3&&<div className="gold-shimmer"/>}
+ {_mob?<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:6}}><div style={{color:"#bb99ff",fontSize:12,fontWeight:"bold"}}>TIER {tier}</div><div style={{color:"#dde",fontSize:9.5}}>{allMaxed?"All maxed":<>To max: <span style={{color:CUR.echoes.color}}>⬢{echoesToMax}</span></>}</div></div>:<><div style={{color:"#bb99ff",fontSize:_mf(10),fontWeight:"bold",marginBottom:4}}>TIER SYSTEM</div>
+ <div style={{color:"#778899",fontSize:_mf(8),lineHeight:1.5,marginBottom:6}}>Max all upgrades at the current tier to unlock the next. Current tier: <span style={{color:"#bb99ff"}}>{tier}</span></div>
+ {!allMaxed&&<div style={{color:"#667788",fontSize:_mf(8),marginBottom:6}}>Echoes needed to max current tier: <span style={{color:CUR.echoes.color}}>{echoesToMax}</span></div>}</>}
  <button onClick={buyTier} disabled={!allMaxed||meta.echoes<800}
- style={{padding:"6px 16px",background:allMaxed&&tier<3?"#1a1408":"#0a0a14",border:`1px solid ${tier>=3?"#ffcc4466":allMaxed?"#bb77ff66":"#33445522"}`,borderRadius:3,cursor:allMaxed&&tier<3?"pointer":"default",fontFamily:"inherit",fontSize:10,color:tier>=3?"#ffcc44":allMaxed?CUR.echoes.color:"#445566",opacity:allMaxed||tier>=3?1:0.5,position:tier>=3?"relative":"static",overflow:"hidden"}}>{tier>=3&&<div className="gold-shimmer"/>}
+ style={{padding:_mv("6px 16px","11px 12px"),width:_mv("auto","100%"),fontWeight:_mv("normal","bold"),background:allMaxed&&tier<3?"#1a1408":"#0a0a14",border:`1px solid ${tier>=3?"#ffcc4466":allMaxed?"#bb77ff66":"#33445522"}`,borderRadius:3,cursor:allMaxed&&tier<3?"pointer":"default",fontFamily:"inherit",fontSize:_mf(10),color:tier>=3?"#ffcc44":allMaxed?CUR.echoes.color:"#445566",opacity:allMaxed||tier>=3?1:0.5,position:tier>=3?"relative":"static",overflow:"hidden"}}>{tier>=3&&<div className="gold-shimmer"/>}
  {tier>=3?"TIER 3 — MAX":allMaxed?`Unlock Tier ${tier+1} · ⬢ ${tier===1?800:25000}`:`Max all tier ${tier} upgrades first`}
  </button>
  </div>
@@ -3757,23 +4192,33 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  const hasMastery=(abId)=>!!abUp[abId+"_mastery"];
  const canBuySub=(abId,n)=>!hasSub(abId,n)&&shards>=1;
  const canBuyMastery=(abId)=>!hasMastery(abId)&&hasSub(abId,1)&&hasSub(abId,2)&&shards>=3;
- const buyAbShard=()=>{if(!canBuyShard)return;setMeta(prev=>{const nx={...prev,echoes:prev.echoes-shardCost,shards:(prev.shards||0)+1,shardsBought:(prev.shardsBought||0)+1};saveMeta(nx);return nx;});};
+ const buyAbShard=()=>{if(!canBuyShard||allShardsOwned)return;setMeta(prev=>{const nx={...prev,echoes:prev.echoes-shardCost,shards:(prev.shards||0)+1,shardsBought:(prev.shardsBought||0)+1};saveMeta(nx);return nx;});};
  const buyAbUp=(abId,type)=>{
  if(type==="mastery"){if(!canBuyMastery(abId))return;setMeta(prev=>{const nx={...prev,shards:(prev.shards||0)-3,abUpgrades:{...(prev.abUpgrades||{}),[abId+"_mastery"]:true}};saveMeta(nx);return nx;});}
  else{const n=type;if(!canBuySub(abId,n))return;setMeta(prev=>{const nx={...prev,shards:(prev.shards||0)-1,abUpgrades:{...(prev.abUpgrades||{}),[abId+"_sub"+n]:true}};saveMeta(nx);return nx;});}
  };
+ if(_mob)return <>
+ <div style={{padding:"6px 10px 0",display:"flex",gap:6,flexShrink:0}}>
+  <div style={{..._gpDim("#44ddcc",12),padding:"8px 10px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0,minWidth:64}}><span style={{color:"#44ddcc",fontSize:18,fontWeight:"bold",lineHeight:1}}>◈ {shards}</span><span style={{color:"#aeb6cc",fontSize:8.5,marginTop:3}}>{shardsLeft} to max</span></div>
+  <button onClick={buyAbShard} disabled={!canBuyShard||allShardsOwned} style={{flex:1,...((canBuyShard&&!allShardsOwned)?_gpBuy("#44ddcc",12):_gpDim("#44ddcc",12)),padding:"10px 12px",color:"#fff",fontSize:13,fontWeight:"bold",fontFamily:"inherit",cursor:(canBuyShard&&!allShardsOwned)?"pointer":"default",opacity:(canBuyShard&&!allShardsOwned)?1:0.5,lineHeight:1.25,letterSpacing:1}}>{allShardsOwned?"ALL SHARDS OWNED":<>BUY SHARD <span style={{fontSize:11,fontWeight:"normal",opacity:0.9}}>· ⬢{shardCost}</span></>}</button>
+  <button onClick={()=>setConfirmRespec(true)} style={{..._gpDim("#ff8866",12),padding:"10px 14px",color:"#ff9977",fontSize:12,fontWeight:"bold",fontFamily:"inherit",cursor:"pointer",flexShrink:0}}>RESPEC</button>
+ </div>
+ <div style={{flex:"1 1 0",minHeight:0,padding:"6px 10px 10px",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gridAutoRows:"1fr",gap:6}}>
+  {ABILITIES.map(ab=>{const s1=hasSub(ab.id,1),s2=hasSub(ab.id,2),mas=hasMastery(ab.id);const _all=s1&&s2&&mas;const _any=canBuySub(ab.id,1)||canBuySub(ab.id,2)||canBuyMastery(ab.id);return <button key={ab.id} onClick={()=>setAbInfoId(ab.id)} style={{..._mTile(_all?"max":_any?"buy":"none"),padding:"8px 4px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,cursor:"pointer",fontFamily:"inherit",position:"relative",overflow:"hidden",minWidth:0}}><AbilityIcon id={ab.id} size={30} color={_all?"#ffcc44":"#fff"} /><div style={{color:"#fff",fontSize:9.5,fontWeight:"bold",textAlign:"center",lineHeight:1.2}}>{ab.name}</div><div style={{display:"flex",gap:4}}>{[[s1,"1"],[s2,"2"],[mas,"★"]].map(([on,l],i)=><span key={i} style={{width:18,height:18,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:"bold",background:on?(l==="★"?"#ffcc4433":"#44ddcc33"):"#00000044",border:`1px solid ${on?(l==="★"?"#ffcc44":"#44ddcc"):"#ffffff22"}`,color:on?(l==="★"?"#ffcc44":"#44ddcc"):"#556677"}}>{l}</span>)}</div></button>;})}
+ </div>
+</>;
  return <><div style={{padding:"6px 10px",borderBottom:"1px solid #1a1a2e"}}>
  <div style={{padding:"8px 10px",background:"#0a0a1a",border:"1px solid #44ddcc22",borderRadius:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
- <div><div style={{color:"#44ddcc",fontSize:11,fontWeight:"bold"}}>◈ Ability Shards</div>
- <div style={{color:"#778899",fontSize:8}}>Used to unlock ability sub-upgrades and masteries. Each shard costs more than the last</div>
- <div style={{color:"#667788",fontSize:8}}>You have: <span style={{color:"#44ddcc"}}>{shards}</span> · Purchased: {bought} · Left to max: <span style={{color:shardsLeft>0?"#cc8855":"#44ddcc"}}>{shardsLeft}</span> · Cost to max: <span style={{color:CUR.echoes.color}}>{(()=>{let c=0;const b2=meta.shardsBought||0;for(let i=0;i<shardsLeft;i++){const n=b2+i;c+=Math.ceil(100*Math.pow(1+n*0.12,1.6)+(n>15?Math.pow(n-15,1.8)*0.8:0)+(n>30?Math.pow(n-30,1.5)*2.5:0));}return c;})()}⬢</span></div></div>
+ <div><div style={{color:"#44ddcc",fontSize:_mf(11),fontWeight:"bold"}}>◈ Ability Shards</div>
+ <div style={{color:"#778899",fontSize:_mf(8)}}>Used to unlock ability sub-upgrades and masteries. Each shard costs more than the last</div>
+ <div style={{color:"#667788",fontSize:_mf(8)}}>You have: <span style={{color:"#44ddcc"}}>{shards}</span> · Purchased: {bought} · Left to max: <span style={{color:shardsLeft>0?"#cc8855":"#44ddcc"}}>{shardsLeft}</span> · Cost to max: <span style={{color:CUR.echoes.color}}>{(()=>{let c=0;const b2=meta.shardsBought||0;for(let i=0;i<shardsLeft;i++){const n=b2+i;c+=Math.ceil(100*Math.pow(1+n*0.12,1.6)+(n>15?Math.pow(n-15,1.8)*0.8:0)+(n>30?Math.pow(n-30,1.5)*2.5:0));}return c;})()}⬢</span></div></div>
  <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
  <button onClick={()=>setConfirmRespec(true)}
- style={{padding:"6px 10px",background:"#0a0a14",border:"1px solid #cc555544",borderRadius:3,cursor:"pointer",fontFamily:"inherit",color:"#886666",fontSize:9,whiteSpace:"nowrap"}}>
+ style={{padding:"6px 10px",background:"#0a0a14",border:"1px solid #cc555544",borderRadius:3,cursor:"pointer",fontFamily:"inherit",color:"#886666",fontSize:_mf(9),whiteSpace:"nowrap"}}>
  {"Respec · ⬢ "+Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))}
  </button>
  <button onClick={buyAbShard} disabled={!canBuyShard||allShardsOwned}
- style={{padding:"6px 14px",background:allShardsOwned?"#1a1408":canBuyShard?"#0e1a1a":"#0a0a14",border:`1px solid ${allShardsOwned?"#ffcc4466":canBuyShard?"#44ddcc66":"#33445522"}`,borderRadius:3,cursor:canBuyShard&&!allShardsOwned?"pointer":"default",fontFamily:"inherit",color:allShardsOwned?"#ffcc44":canBuyShard?CUR.echoes.color:"#445566",fontSize:11,whiteSpace:"nowrap",position:"relative",overflow:"hidden",boxShadow:allShardsOwned?"0 0 8px #ffcc4418":"none"}}
+ style={{padding:"6px 14px",background:allShardsOwned?"#1a1408":canBuyShard?"#0e1a1a":"#0a0a14",border:`1px solid ${allShardsOwned?"#ffcc4466":canBuyShard?"#44ddcc66":"#33445522"}`,borderRadius:3,cursor:canBuyShard&&!allShardsOwned?"pointer":"default",fontFamily:"inherit",color:allShardsOwned?"#ffcc44":canBuyShard?CUR.echoes.color:"#445566",fontSize:_mf(11),whiteSpace:"nowrap",position:"relative",overflow:"hidden",boxShadow:allShardsOwned?"0 0 8px #ffcc4418":"none"}}
  onMouseOver={e=>canBuyShard&&!allShardsOwned&&(e.currentTarget.style.borderColor="#44ddcc")} onMouseOut={e=>(e.currentTarget.style.borderColor=allShardsOwned?"#ffcc4466":canBuyShard?"#44ddcc66":"#33445522")}>
  {allShardsOwned&&<div className="gold-shimmer"/>}
  {allShardsOwned?"MAX":`⬢ ${shardCost}`}
@@ -3781,11 +4226,11 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  </div>
  </div>
  {confirmRespec&&<div style={{padding:"8px",background:"#1a0a0a",border:"1px solid #cc555544",borderRadius:4,margin:"4px 0"}}>
- <div style={{color:"#cc8888",fontSize:9,marginBottom:6}}>Are you sure you want to respec for {Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))} echoes? You will get back all of your ability shards to respend.</div>
+ <div style={{color:"#cc8888",fontSize:_mf(9),marginBottom:6}}>Are you sure you want to respec for {Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))} echoes? You will get back all of your ability shards to respend.</div>
  <div style={{display:"flex",gap:6}}><button onClick={()=>{const _respecCost=Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20));if(meta.echoes<_respecCost)return;const au=meta.abUpgrades||{};let refund=0;ABILITIES.forEach(ab=>{if(au[ab.id+"_sub1"])refund++;if(au[ab.id+"_sub2"])refund++;if(au[ab.id+"_mastery"])refund+=3;});setMeta(prev=>{const _rc=Math.max(0,200-((prev.lab?.completed?.cheaper_respec||0)*20));const nx={...prev,echoes:prev.echoes-_rc,shards:(prev.shards||0)+refund,abUpgrades:{}};saveMeta(nx);return nx;});setConfirmRespec(false);}}
- style={{padding:"4px 12px",background:"none",border:"1px solid #cc5555",color:"#cc5555",cursor:meta.echoes>=Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))?"pointer":"default",fontFamily:"inherit",fontSize:9,borderRadius:3,opacity:meta.echoes>=Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))?1:0.4}}>{"Respec · ⬢ "+Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))}</button>
- <button onClick={()=>setConfirmRespec(false)} style={{padding:"4px 12px",background:"none",border:"1px solid #33445544",color:"#778899",cursor:"pointer",fontFamily:"inherit",fontSize:9,borderRadius:3}}>Cancel</button></div></div>}
- <div style={{color:"#556677",fontSize:8,textAlign:"center",margin:"4px 0"}}>Each ability has 2 sub-upgrades (◈1 each) and 1 mastery (◈3, requires both subs)</div>
+ style={{padding:"4px 12px",background:"none",border:"1px solid #cc5555",color:"#cc5555",cursor:meta.echoes>=Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))?"pointer":"default",fontFamily:"inherit",fontSize:_mf(9),borderRadius:3,opacity:meta.echoes>=Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))?1:0.4}}>{"Respec · ⬢ "+Math.max(0,200-((meta.lab?.completed?.cheaper_respec||0)*20))}</button>
+ <button onClick={()=>setConfirmRespec(false)} style={{padding:"4px 12px",background:"none",border:"1px solid #33445544",color:"#778899",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),borderRadius:3}}>Cancel</button></div></div>}
+ <div style={{color:"#556677",fontSize:_mf(8),textAlign:"center",margin:"4px 0"}}>Each ability has 2 sub-upgrades (◈1 each) and 1 mastery (◈3, requires both subs)</div>
  </div>
  <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,padding:10,overflow:"auto",display:"flex",flexDirection:"column",gap:6}}>
  {ABILITIES.map(ab=>{
@@ -3793,45 +4238,46 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  const cs1=canBuySub(ab.id,1),cs2=canBuySub(ab.id,2),cm=canBuyMastery(ab.id);
  const allOwned=s1&&s2&&mas;const collapsed=!!_abCol[ab.id];const _abTgl=()=>{const nv=!collapsed;_setAbCol(p=>({...p,[ab.id]:nv}));setMeta(prev=>{const _x={...prev,abCollapsed:{...(prev.abCollapsed||{}),[ab.id]:nv}};saveMeta(_x);return _x;});};
  const _abDescs=AB_DESCS; const _abDescsOld={orbitals_sub1:"Increase the number of electrons by 2.",orbitals_sub2:"Hitting an enemy with any electron deals 30% damage, once per enemy. Marked enemies burn blue and take double flame damage.",orbitals_mastery:"Gain another layer of 4 electrons, that travel in an elliptical orbit.",chain_sub1:"Chain lightning now targets 4 enemies.",chain_sub2:"The original target of the chain lightning gets electrocuted and it receives 60% of damage.",chain_mastery:"Echo Clone, Seeker Swarm and Combat Drone now apply a green chain lightning: it targets 4 enemies for every 3rd successful hit, dealing 25% damage on arc and 40% damage on electrocution.",homing_sub1:"Fires missiles every second.",homing_sub2:"Missiles now have a 15% chance to be critical, dealing 2.5x damage.",homing_mastery:"Missiles activate a burning bomb on hit with a radius of 6 that applies burn that does 10% dmg/s for 5 seconds.",slowfield_sub1:"Increase radius to 18.",slowfield_sub2:"The field effects the max pickup range, causing it to expand to 1.25x what it usually is, before contracting to its regular size, repeating continuously over 6s cycles.",slowfield_mastery:"Slows down bomber enemies that enter your Temporal Drag at the same rate that bullets are slowed down, and any bombers killed in the Temporal Drag will only release half the amount of bullets.",mirror_sub1:"Make the clone have the same fire rate as your main ship.",mirror_sub2:"Currency drops can be picked up by the clone if it directly collides with them.",mirror_mastery:"Every 12 seconds, the clone unleashes a lasso, that winds up for 2 seconds before launching at the most dense group of enemies and moves them away from you, of a radius of 10 and lasts for 4 seconds. Captured enemies cannot attack.",drone_sub1:"If you take HP damage from an enemy, your drone gets mad at it, firing at 2x firing rate. It will solely target that enemy until it is dead.",drone_sub2:"Adds 3% to its damage percentage compared to your main weapon for every other ability you own.",drone_mastery:"Gives you a gift after every wave equal to half of all the pickups you failed to pick up during the wave, rounded up to the nearest integer. Does not activate during intro sprint.",gravity_sub1:"Bullets that are in the gravity well get smaller by 4% every second, for a maximum of 32% size reduction.",gravity_sub2:"The vortex gets a second, conjoined vortex with a radius of 7 that has its own gravitational pull.",gravity_mastery:"Every other time a vortex is activated, it turns golden, and any enemies killed in those golden vortexes drop double the currency.",overcharge_sub1:"Max overcharge amount is increased to 140% of max health.",overcharge_sub2:"Plasma pickups now heal 6 HP instead of 3.",overcharge_mastery:"Overcharge now persists between waves, with a limit of 110% of max health.",blackhole_sub1:"Increase bullets removed to 50%.",blackhole_sub2:"Sniper bullets will be removed first, and any snipers about to fire will have their attack fail.",blackhole_mastery:"Ability will be triggered on shield loss as well as HP damage.",void_regen_sub1:"Increase the max that can be regenerated to 90% of max health (without Overcharge active).",void_regen_sub2:"If you kill at least 1 enemy whilst waiting for void regen to start, the windup time is reduced to 3 seconds.",void_regen_mastery:"Taking no damage for an entire wave grants a golden shield with invincibility frames. Golden shields persist between waves but when lost are lost forever. Maximum of 5 golden shields.",ricochet_sub1:"Bullets that ricochet receive a random small angle offset.",ricochet_sub2:"Bullets can hit one more wall before being destroyed.",ricochet_mastery:"When a ricocheted bullet hits an enemy, it performs a rage slice with a length of 12, dealing 200% damage to the first enemy it hits and 120% damage to all others.",nova_sub1:"Increase the physical size of the landmine by 60%, making it easier for enemies to trigger.",nova_sub2:"Landmines deal 4x damage to any bosses that are damaged by the landmine.",nova_mastery:"Landmines persist after waves instead of being cleared."};
- const boxStyle=(owned,canBuy)=>({flex:1,minHeight:56,padding:"10px 8px",background:owned?"#0e1a1a":canBuy?"#0c0c1a":"#08080f",border:`1px solid ${owned?"#44ddcc55":canBuy?"#44ddcc33":"#22223344"}`,borderRadius:3,cursor:canBuy&&!owned?"pointer":"default",textAlign:"center",fontFamily:"inherit",opacity:owned?1:canBuy?0.9:0.4,transition:"all 0.15s",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"});
+ const boxStyle=(owned,canBuy)=>({flex:1,minHeight:_devMob?76:56,padding:_devMob?"12px 8px":"10px 8px",...(_mob?(owned?_gpMax(12):canBuy?_gpBuy("#44ddcc",12):_gpDim("#44ddcc",12)):{background:owned?"#0e1a1a":canBuy?"#0c0c1a":"#08080f",border:`1px solid ${owned?"#44ddcc55":canBuy?"#44ddcc33":"#22223344"}`,borderRadius:3}),cursor:canBuy&&!owned?"pointer":"default",textAlign:"center",fontFamily:"inherit",opacity:owned?1:canBuy?0.9:0.4,transition:"all 0.15s",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"});
  return <div key={ab.id} style={{display:"flex",alignItems:collapsed?"center":"flex-start",gap:6,padding:collapsed?"6px 8px":"10px 8px",background:allOwned?"#1a1408":"#0a0a14",borderRadius:3,border:`1px solid ${allOwned?"#ffcc4466":"#14142a"}`,boxShadow:allOwned?"0 0 12px #ffcc4418, inset 0 0 8px #ffcc4408":"none",transition:"all 0.2s",position:"relative",overflow:"hidden",flexShrink:0}}>
           {allOwned&&<div className="gold-shimmer"/>}
-          <div onClick={_abTgl} title={collapsed?"Expand":"Collapse"} style={{cursor:"pointer",color:"#66778899",fontSize:16,width:16,flexShrink:0,textAlign:"center",userSelect:"none",lineHeight:"16px",marginTop:collapsed?0:1,zIndex:1}} onMouseOver={e=>e.currentTarget.style.color="#aabbcc"} onMouseOut={e=>e.currentTarget.style.color="#66778899"}>{collapsed?"▸":"▾"}</div>
+          <div onClick={_abTgl} title={collapsed?"Expand":"Collapse"} style={{cursor:"pointer",color:"#66778899",fontSize:_mf(16),width:16,flexShrink:0,textAlign:"center",userSelect:"none",lineHeight:"16px",marginTop:collapsed?0:1,zIndex:1}} onMouseOver={e=>e.currentTarget.style.color="#aabbcc"} onMouseOut={e=>e.currentTarget.style.color="#66778899"}>{collapsed?"▸":"▾"}</div>
           <div style={{width:collapsed?"auto":82,flex:collapsed?"1 1 auto":"0 0 82px",flexShrink:0,minWidth:0,zIndex:1}}>
-           <div style={{color:allOwned?"#ffd98a":"#ccddee",fontSize:10,fontWeight:"bold",display:"flex",alignItems:"center",gap:3}}><AbilityIcon id={ab.id} size={14} color={allOwned?"#ffcc44":"#ccddee"} />{ab.name}</div>
-           {!collapsed&&<div onClick={(e)=>{e.stopPropagation();setAbInfoId(abInfoId===ab.id?null:ab.id);}} style={{color:"#44667788",fontSize:9,cursor:"pointer",marginTop:3,display:"inline-flex",alignItems:"center",gap:3}} onMouseOver={e=>e.currentTarget.style.color="#6688aa"} onMouseOut={e=>e.currentTarget.style.color="#44667788"}><span style={{display:"inline-block",width:13,height:13,borderRadius:"50%",border:"1px solid currentColor",textAlign:"center",lineHeight:"12px",fontSize:8}}>i</span></div>}
+           <div style={{color:allOwned?"#ffd98a":"#ccddee",fontSize:_mf(10),fontWeight:"bold",display:"flex",alignItems:"center",gap:3}}><AbilityIcon id={ab.id} size={14} color={allOwned?"#ffcc44":"#ccddee"} />{ab.name}</div>
+           {!collapsed&&<div onClick={(e)=>{e.stopPropagation();setAbInfoId(abInfoId===ab.id?null:ab.id);}} style={{color:"#44667788",fontSize:_mf(9),cursor:"pointer",marginTop:3,display:"inline-flex",alignItems:"center",gap:3}} onMouseOver={e=>e.currentTarget.style.color="#6688aa"} onMouseOut={e=>e.currentTarget.style.color="#44667788"}><span style={{display:"inline-block",width:_mv(13,30),height:_mv(13,30),borderRadius:"50%",border:"1px solid currentColor",textAlign:"center",lineHeight:_mv("12px","30px"),fontSize:_mv(_mf(8),16)}}>i</span></div>}
           </div>
-          {collapsed?<div style={{display:"flex",gap:5,alignItems:"center",marginLeft:"auto",flexShrink:0,zIndex:1}}>{[["1",s1],["2",s2]].map(([_l,_ow])=><span key={_l} style={{width:16,height:16,borderRadius:3,border:`1px solid ${_ow?"#44ddcc":"#33445544"}`,color:_ow?"#44ddcc":"#556677",background:_ow?"#0e1a1a":"transparent",fontSize:9,fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>{_ow?"✓":_l}</span>)}<span style={{width:16,height:16,borderRadius:3,border:`1px solid ${mas?"#ffcc44":"#33445544"}`,color:mas?"#ffcc44":"#556677",background:mas?"#1a1408":"transparent",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>★</span></div>:
+          {collapsed?<div style={{display:"flex",gap:5,alignItems:"center",marginLeft:"auto",flexShrink:0,zIndex:1}}>{[["1",s1],["2",s2]].map(([_l,_ow])=><span key={_l} style={{width:16,height:16,borderRadius:3,border:`1px solid ${_ow?"#44ddcc":"#33445544"}`,color:_ow?"#44ddcc":"#556677",background:_ow?"#0e1a1a":"transparent",fontSize:_mf(9),fontWeight:"bold",display:"flex",alignItems:"center",justifyContent:"center"}}>{_ow?"✓":_l}</span>)}<span style={{width:16,height:16,borderRadius:3,border:`1px solid ${mas?"#ffcc44":"#33445544"}`,color:mas?"#ffcc44":"#556677",background:mas?"#1a1408":"transparent",fontSize:_mf(10),display:"flex",alignItems:"center",justifyContent:"center"}}>★</span></div>:
           <div style={{flex:1,display:"flex",alignItems:"center",gap:5,zIndex:1}}>
           <div style={{flex:1,display:"flex",flexDirection:"column",gap:4}}>
           <button onClick={()=>buyAbUp(ab.id,1)} disabled={s1||!cs1} style={boxStyle(s1,cs1)} onMouseOver={e=>cs1&&!s1&&(e.currentTarget.style.borderColor="#44ddcc")} onMouseOut={e=>(e.currentTarget.style.borderColor=s1?"#44ddcc55":cs1?"#44ddcc33":"#22223344")}>
-          <div style={{color:s1?"#44ddcc":"#889999",fontSize:10,lineHeight:1.3}}>{_abDescs[ab.id+"_sub1"]||"???"}</div>
-          <div style={{color:s1?"#44ddcc":"#556677",fontSize:9,marginTop:3}}>{s1?"✓":"◈ 1"}</div>
+          <div style={{color:s1?"#44ddcc":"#889999",fontSize:_mf(10),lineHeight:1.3}}>{_abDescs[ab.id+"_sub1"]||"???"}</div>
+          <div style={{color:s1?"#44ddcc":"#556677",fontSize:_mf(9),marginTop:3}}>{s1?"✓":"◈ 1"}</div>
           </button>
           <button onClick={()=>buyAbUp(ab.id,2)} disabled={s2||!cs2} style={boxStyle(s2,cs2)} onMouseOver={e=>cs2&&!s2&&(e.currentTarget.style.borderColor="#44ddcc")} onMouseOut={e=>(e.currentTarget.style.borderColor=s2?"#44ddcc55":cs2?"#44ddcc33":"#22223344")}>
-          <div style={{color:s2?"#44ddcc":"#889999",fontSize:10,lineHeight:1.3}}>{_abDescs[ab.id+"_sub2"]||"???"}</div>
-          <div style={{color:s2?"#44ddcc":"#556677",fontSize:9,marginTop:3}}>{s2?"✓":"◈ 1"}</div>
+          <div style={{color:s2?"#44ddcc":"#889999",fontSize:_mf(10),lineHeight:1.3}}>{_abDescs[ab.id+"_sub2"]||"???"}</div>
+          <div style={{color:s2?"#44ddcc":"#556677",fontSize:_mf(9),marginTop:3}}>{s2?"✓":"◈ 1"}</div>
           </button>
           </div>
-          <div style={{color:s1&&s2?"#44ddcc66":"#22334444",fontSize:14,flexShrink:0,width:18,textAlign:"center"}}>→</div>
+          <div style={{color:s1&&s2?"#44ddcc66":"#22334444",fontSize:_mf(14),flexShrink:0,width:18,textAlign:"center"}}>→</div>
           <div style={{flex:1,display:"flex"}}>
           <button onClick={()=>buyAbUp(ab.id,"mastery")} disabled={mas||!cm} style={{...boxStyle(mas,cm),minHeight:92,border:`1px solid ${mas?"#ffcc4455":cm?"#ffcc4433":"#22223344"}`,background:mas?"#1a1408":cm?"#0c0c1a":"#08080f"}} onMouseOver={e=>cm&&!mas&&(e.currentTarget.style.borderColor="#ffcc44")} onMouseOut={e=>(e.currentTarget.style.borderColor=mas?"#ffcc4455":cm?"#ffcc4433":"#22223344")}>
-          <div style={{color:mas?"#ffcc44":"#889999",fontSize:10,lineHeight:1.3}}>{mas&&<span style={{color:"#ffcc44",marginRight:4}}>★</span>}{_abDescs[ab.id+"_mastery"]||"???"}</div>
-          <div style={{color:mas?"#ffcc44":"#556677",fontSize:9,marginTop:3}}>{mas?"MASTERY":"◈ 3"}</div>
+          <div style={{color:mas?"#ffcc44":"#889999",fontSize:_mf(10),lineHeight:1.3}}>{mas&&<span style={{color:"#ffcc44",marginRight:4}}>★</span>}{_abDescs[ab.id+"_mastery"]||"???"}</div>
+          <div style={{color:mas?"#ffcc44":"#556677",fontSize:_mf(9),marginTop:3}}>{mas?"MASTERY":"◈ 3"}</div>
           </button>
           </div>
           </div>}
           </div>;
  })}
  {}
- {abInfoId&&(()=>{const ab=ABILITIES.find(a=>a.id===abInfoId);if(!ab)return null;return(
+ 
+{abInfoId&&!(_mob&&phase==="metashop")&&(()=>{const ab=ABILITIES.find(a=>a.id===abInfoId);if(!ab)return null;return(
  <div onClick={()=>setAbInfoId(null)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
- <div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:"1px solid #44ddcc44",borderRadius:6,padding:"14px 16px",maxWidth:320,width:"100%"}}>
+ <div onClick={e=>e.stopPropagation()} style={{...(_mob?_gp("#44ddcc",18):{background:"#0c0c1a",border:"1px solid #44ddcc44",borderRadius:6}),padding:"14px 16px",maxWidth:320,width:"100%"}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
- <div style={{color:"#ccddee",fontSize:13,fontWeight:"bold",display:"inline-flex",alignItems:"center",gap:4}}><AbilityIcon id={ab.id} size={18} color="#ccddee" />{ab.name}</div>
- <button onClick={()=>setAbInfoId(null)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ <div style={{color:"#ccddee",fontSize:_mf(13),fontWeight:"bold",display:"inline-flex",alignItems:"center",gap:4}}><AbilityIcon id={ab.id} size={18} color="#ccddee" />{ab.name}</div>
+ <button onClick={()=>setAbInfoId(null)} style={{background:"none",border:"1px solid #334455",color:"#8899aa",padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>✕</button>
  </div>
- <div style={{color:"#99aabb",fontSize:10,lineHeight:1.5}}>{ab.desc}</div>
+ <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.5}}>{ab.desc}</div>
  </div>
  </div>);})()}
  </div></>;
@@ -3878,8 +4324,47 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  });
  setLabConfirm(null);
  };
- return <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,padding:10,display:"flex",flexDirection:"column",gap:8,overflow:"auto"}}>
- <div style={{color:"#667788",fontSize:8,textAlign:"center"}}>Research upgrades by completing waves across runs. All active research progresses simultaneously.</div>
+ if(_mob){const _labFx=(research,lu)=>(()=>{const _lu=LAB_UPGRADES.find(l=>l.id===research.id);if(!_lu)return null;const _curLvl=completedLevels[research.id]||0;if(lu?.id==="boss_shard_drop")return ` · ${_curLvl===0?0:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="intro_sprint")return ` · ${_curLvl===0?0:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="sprint_efficiency")return ` · ${_curLvl===0?30:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="cheaper_respec")return ` · -${_curLvl===0?0:lu.levels[_curLvl-1]?.reduce||0}⬢ → -${lu.levels[_curLvl]?.reduce||0}⬢`;if(lu?.id==="phantom_enhance")return ` · +${(_curLvl===0?'0.000':(_curLvl*0.001).toFixed(3))} → +${((_curLvl+1)*0.001).toFixed(3)}`;if(lu?.id==="practise_enhance")return ` · +${(_curLvl===0?'0.000':(_curLvl*0.001).toFixed(3))} → +${((_curLvl+1)*0.001).toFixed(3)}`;if(lu?.id==="diffusion_chance")return ` · ${_curLvl===0?0:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="diffusion_multi")return ` · +${(_curLvl===0?'0.000':(_curLvl*0.009).toFixed(3))} → +${((_curLvl+1)*0.009).toFixed(3)}`;if(lu?.id==="overheat_bot_mult")return ` · +${_curLvl} → +${_curLvl+1} overheat`;if(lu?.id==="overheat_wave_cost")return ` · -${_curLvl}% → -${_curLvl+1}%`;if(lu?.id==="overheat_chance")return ` · ${_curLvl===0?25:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;return null;})();
+  const _lpAll3=slotsUnlocked>=3;const _lpUnlocked=!!lab.plusUnlocked;const _lpUp=lab.plusUp||{waves:0,thresh:0,sprint:0};const _lpW=5+(_lpUp.waves||0),_lpT=55-(_lpUp.thresh||0),_lpS=_lpUp.sprint||0;const _lpAllMax=_lpUnlocked&&["waves","thresh","sprint"].every(k=>((lab.plusUp||{})[k]||0)>=20);const _lpSl=[1,2,3][Math.min(meta.lab?.completed?.labplus_slots||0,2)];
+  const _lpBuyUn=()=>{if(!_lpAll3||(meta.echoes||0)<100000)return;setMeta(prev=>{const nx={...prev,echoes:prev.echoes-100000,lab:{...(prev.lab||{}),plusUnlocked:true,plusUp:{waves:0,thresh:0,sprint:0}}};saveMeta(nx);return nx;});};
+  const _lpBuy=(key,costFn)=>{const cur=(lab.plusUp||{})[key]||0;if(cur>=20)return;const cost=costFn(cur);if((meta.echoes||0)<cost)return;setMeta(prev=>{const nx={...prev,echoes:prev.echoes-cost,lab:{...(prev.lab||{}),plusUp:{...(prev.lab?.plusUp||{waves:0,thresh:0,sprint:0}),[key]:cur+1}}};saveMeta(nx);return nx;});};
+  const _one={whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"};
+  return <div style={{flex:"1 1 0",minHeight:0,padding:"6px 10px 10px",display:"flex",flexDirection:"column",gap:7}}>
+   {[0,1,2].map(i=>{const un=slotsUnlocked>i;const canBuy=!un&&slotsUnlocked>=i&&meta.echoes>=LAB_SLOT_COSTS[i];const r=activeResearch[i];const lu=r?LAB_UPGRADES.find(l=>l.id===r.id):null;const cl=r?(completedLevels[r.id]||0):0;const pct=r?Math.min(100,(r.wavesProgress/r.wavesNeeded)*100):0;
+    const box={flex:"1 1 0",minHeight:0,boxSizing:"border-box",borderRadius:14,display:"flex",flexDirection:"column",justifyContent:"center",padding:"8px 14px",fontFamily:"inherit",cursor:"pointer",position:"relative",textAlign:"left",width:"100%"};
+    const tag=<div style={{position:"absolute",top:7,left:14,color:un?"#ff9966":"#778899",fontSize:9.5,fontWeight:"bold",letterSpacing:1.5}}>LAB {i+1}</div>;
+    if(!un)return <button key={i} onClick={()=>canBuy&&buySlot(i)} disabled={!canBuy} style={{...box,alignItems:"center",background:"#0a0a14",border:`1px solid ${canBuy?"#ff9966aa":"#ffffff16"}`,cursor:canBuy?"pointer":"default"}}>{tag}<div style={{color:canBuy?"#fff":"#9aa3b8",fontSize:14,fontWeight:"bold"}}>Unlock {i===0?"lab":"slot "+(i+1)}</div><div style={{color:canBuy?CUR.echoes.color:"#7a8399",fontSize:12,marginTop:4}}>⬢ {LAB_SLOT_COSTS[i].toLocaleString()}{!canBuy&&i>slotsUnlocked?" · unlock slot "+i+" first":""}</div>{_dotsOn&&canBuy&&<span style={_affDot}/>}</button>;
+    if(!r)return <button key={i} onClick={()=>setLabConfirm("pick_"+i)} style={{...box,alignItems:"center",background:"#0a0a14",border:"1px dashed #66bbee88"}}>{tag}<div style={{color:"#c8d4e6",fontSize:14,fontWeight:"bold"}}>Lab offline</div><div style={{color:"#8fa0b8",fontSize:11,marginTop:4}}>Tap to choose research</div>{_dotsOn&&<span style={_affDotBlue}/>}</button>;
+    return <button key={i} onClick={()=>setLabConfirm("pick_"+i)} style={{...box,background:"#0a0a14",border:"1px solid #ff996655",paddingTop:22}}>{tag}
+     <div style={{display:"flex",alignItems:"baseline",gap:8}}><span style={{color:"#fff",fontSize:13.5,fontWeight:"bold",flex:1,minWidth:0,..._one}}>{lu?.name||"?"}</span><span style={{color:"#ff9966",fontSize:10.5,flexShrink:0}}>Lv {cl} → {cl+1}</span></div>
+     <div style={{color:"#9aa3b8",fontSize:10.5,marginTop:3,..._one}}>{lu?.desc||""}</div>
+     <div style={{height:9,background:"#ffffff12",borderRadius:5,marginTop:7}}><div style={{height:9,background:"linear-gradient(90deg,#ff8844,#ffaa66)",borderRadius:5,width:pct+"%"}}/></div>
+     <div style={{color:"#c8cce6",fontSize:10.5,marginTop:5,..._one}}>{r.wavesProgress}/{r.wavesNeeded} waves{_labFx(r,lu)}</div>
+    </button>;})}
+   <div style={{flex:"1.55 1 0",minHeight:0,boxSizing:"border-box",borderRadius:14,background:_lpAllMax?"#12100a":"#0a0a14",border:`1px solid ${_lpAllMax?"#ffcc4466":"#44ddcc55"}`,padding:"10px 12px",display:"flex",flexDirection:"column",gap:8,position:"relative"}}>
+    <div style={{color:_lpAllMax?"#ffcc44":"#44ddcc",fontSize:9.5,fontWeight:"bold",letterSpacing:1.5}}>LAB+</div>
+    {!_lpUnlocked?<button onClick={_lpBuyUn} disabled={!_lpAll3||(meta.echoes||0)<100000} style={{flex:1,minHeight:0,background:"transparent",border:"none",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,cursor:_lpAll3&&(meta.echoes||0)>=100000?"pointer":"default"}}>
+      <div style={{color:"#fff",fontSize:14,fontWeight:"bold"}}>Unlock Lab+</div>
+      <div style={{color:"#b8bfd4",fontSize:10.5,lineHeight:1.4,textAlign:"center",maxWidth:300}}>Bonus research for your active labs at the end of a long run.</div>
+      <div style={{color:_lpAll3&&(meta.echoes||0)>=100000?CUR.echoes.color:"#7a8399",fontSize:12}}>⬢ 100,000</div>
+      {!_lpAll3&&<div style={{color:"#dd8877",fontSize:10.5}}>Needs all 3 lab slots</div>}
+     </button>
+    :<>
+     <div style={{color:"#c8cce6",fontSize:10.5,lineHeight:1.45,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>Reach wave <b style={{color:"#44ddcc"}}>{_lpT}</b> and {_lpSl>1?_lpSl+" active labs get":"a random active lab gets"} <b style={{color:"#44ddcc"}}>{_lpW}</b> bonus waves of progress{_lpS>0?<>, plus <b style={{color:"#44ddcc"}}>+{_lpS}%</b> sprint lab efficiency next run</>:null}.</div>
+     <div style={{flex:"1 1 0",minHeight:0,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+      {[["waves","Extra waves",_lpW,labPlusCostWaves],["thresh","Wave needed",_lpT,labPlusCostThresh],["sprint","Sprint bonus","+"+_lpS+"%",labPlusCostSprint]].map(([key,name,val,costFn])=>{const lvl=(lab.plusUp||{})[key]||0;const mx=lvl>=20;const cost=costFn(lvl);const can=!mx&&(meta.echoes||0)>=cost;
+       return <button key={key} onClick={()=>can&&_lpBuy(key,costFn)} disabled={!can} style={{..._mTile(mx?"max":can?"buy":"none"),minHeight:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,fontFamily:"inherit",cursor:can?"pointer":"default",padding:"4px 2px"}}>
+        <div style={{color:"#9aa3b8",fontSize:9.5,whiteSpace:"nowrap"}}>{name}</div>
+        <div style={{color:mx?"#ffcc44":"#44ddcc",fontSize:17,fontWeight:"bold"}}>{val}</div>
+        <div style={{color:"#8a93a8",fontSize:9}}>{lvl}/20</div>
+        <div style={{color:mx?"#ffcc44":can?"#fff":"#7a8399",fontSize:10,whiteSpace:"nowrap"}}>{mx?"MAX":"⬢"+_ohFmt(cost)}</div>
+       </button>;})}
+     </div>
+    </>}
+   </div>
+  </div>;}
+ return <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,padding:_mv(10,"6px 10px 8px"),display:"flex",flexDirection:"column",gap:_mv(8,6),overflow:_mv("auto","hidden")}}>
+ {!_mob&&<div style={{color:"#667788",fontSize:_mf(8),textAlign:"center"}}>Research upgrades by completing waves across runs. All active research progresses simultaneously.</div>}
  {}
  {[0,1,2].map(slotIdx=>{
  const unlocked=slotsUnlocked>slotIdx;
@@ -3890,44 +4375,101 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
  const pct=research?Math.min(100,(research.wavesProgress/research.wavesNeeded)*100):0;
  return <div key={slotIdx} style={{borderRadius:5,overflow:"hidden",flexShrink:0,border:`1px solid ${unlocked?"#ff884422":"#1a1a2e"}`}}>
  <div style={{padding:"3px 10px",background:unlocked?"#0e1420":"#08080f"}}>
- <span style={{color:unlocked?"#ff9966":"#445566",fontSize:8,fontWeight:"bold",letterSpacing:1}}>Lab {slotIdx+1}</span>
+ <span style={{color:unlocked?"#ff9966":"#445566",fontSize:_mf(8),fontWeight:"bold",letterSpacing:1}}>Lab {slotIdx+1}</span>
  </div>
  {!unlocked?(
  <button onClick={()=>canBuy&&buySlot(slotIdx)} style={{width:"100%",padding:"28px 14px",background:"#0a0a14",borderTop:"none",border:"none",cursor:canBuy?"pointer":"default",fontFamily:"inherit",textAlign:"center",opacity:canBuy?1:0.55}}>
- <div style={{color:"#aabbcc",fontSize:12,fontWeight:"bold"}}>Unlock {slotIdx===0?"Lab":"slot "+(slotIdx+1)}</div>
- <div style={{color:canBuy?CUR.echoes.color:"#667788",fontSize:11,marginTop:4}}>⬢ {LAB_SLOT_COSTS[slotIdx]}</div>
+ <div style={{color:"#aabbcc",fontSize:_mf(12),fontWeight:"bold"}}>Unlock {slotIdx===0?"Lab":"slot "+(slotIdx+1)}</div>
+ <div style={{color:canBuy?CUR.echoes.color:"#667788",fontSize:_mf(11),marginTop:4}}>⬢ {LAB_SLOT_COSTS[slotIdx]}</div>
  </button>
  ):!research?(
  <button onClick={()=>setLabConfirm("pick_"+slotIdx)} style={{width:"100%",padding:"28px 14px",background:"#0a0a14",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"center"}}
  onMouseOver={e=>e.currentTarget.style.background="#0c0c1a"} onMouseOut={e=>e.currentTarget.style.background="#0a0a14"}>
- <div style={{color:"#778899",fontSize:13}}>Lab Offline</div>
- <div style={{color:"#556677",fontSize:9,marginTop:4}}>Tap to assign research</div>
+ <div style={{color:"#778899",fontSize:_mf(13)}}>Lab Offline</div>
+ <div style={{color:"#556677",fontSize:_mf(9),marginTop:4}}>Tap to assign research</div>
  </button>
  ):(
  <button onClick={()=>setLabConfirm("pick_"+slotIdx)} style={{width:"100%",padding:"14px",background:"#0a0a14",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}
  onMouseOver={e=>e.currentTarget.style.background="#0c0c1a"} onMouseOut={e=>e.currentTarget.style.background="#0a0a14"}>
- <div style={{color:"#ccddee",fontSize:11,fontWeight:"bold"}}>{lu?.name||"?"} <span style={{color:"#667788",fontSize:8}}>Lv.{curLvl} → Lv.{curLvl+1}</span></div>
- <div style={{color:"#8899aa",fontSize:8,marginTop:3}}>{lu?.desc||""}</div>
+ <div style={{color:"#ccddee",fontSize:_mf(11),fontWeight:"bold"}}>{lu?.name||"?"} <span style={{color:"#667788",fontSize:_mf(8)}}>Lv.{curLvl} → Lv.{curLvl+1}</span></div>
+ <div style={{color:"#8899aa",fontSize:_mf(8),marginTop:3}}>{lu?.desc||""}</div>
  <div style={{height:8,background:"#14142a",borderRadius:4,marginTop:8}}><div style={{height:8,background:"linear-gradient(90deg, #ff8844, #ffaa66)",borderRadius:4,width:pct+"%",transition:"width 0.3s"}} /></div>
- <div style={{color:"#778899",fontSize:8,marginTop:4}}>{research.wavesProgress}/{research.wavesNeeded} waves{(()=>{const _lu=LAB_UPGRADES.find(l=>l.id===research.id);if(!_lu)return null;const _curLvl=completedLevels[research.id]||0;if(lu?.id==="boss_shard_drop")return ` · ${_curLvl===0?0:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="intro_sprint")return ` · ${_curLvl===0?0:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="sprint_efficiency")return ` · ${_curLvl===0?30:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="cheaper_respec")return ` · -${_curLvl===0?0:lu.levels[_curLvl-1]?.reduce||0}⬢ → -${lu.levels[_curLvl]?.reduce||0}⬢`;if(lu?.id==="phantom_enhance")return ` · +${(_curLvl===0?'0.000':(_curLvl*0.001).toFixed(3))} → +${((_curLvl+1)*0.001).toFixed(3)}`;if(lu?.id==="practise_enhance")return ` · +${(_curLvl===0?'0.000':(_curLvl*0.001).toFixed(3))} → +${((_curLvl+1)*0.001).toFixed(3)}`;if(lu?.id==="sprint_currency_lifespan")return ` · ${_curLvl+1} → ${_curLvl+2} waves`;if(lu?.id==="diffusion_chance")return ` · ${_curLvl===0?0:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="diffusion_multi")return ` · +${(_curLvl===0?'0.000':(_curLvl*0.009).toFixed(3))} → +${((_curLvl+1)*0.009).toFixed(3)}`;if(lu?.id==="overheat_bot_mult")return ` · +${_curLvl} → +${_curLvl+1} overheat`;if(lu?.id==="overheat_wave_cost")return ` · -${_curLvl}% → -${_curLvl+1}%`;if(lu?.id==="overheat_chance")return ` · ${_curLvl===0?25:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;return null;})()}</div>
+ <div style={{color:"#778899",fontSize:_mf(8),marginTop:4}}>{research.wavesProgress}/{research.wavesNeeded} waves{(()=>{const _lu=LAB_UPGRADES.find(l=>l.id===research.id);if(!_lu)return null;const _curLvl=completedLevels[research.id]||0;if(lu?.id==="boss_shard_drop")return ` · ${_curLvl===0?0:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="intro_sprint")return ` · ${_curLvl===0?0:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="sprint_efficiency")return ` · ${_curLvl===0?30:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="cheaper_respec")return ` · -${_curLvl===0?0:lu.levels[_curLvl-1]?.reduce||0}⬢ → -${lu.levels[_curLvl]?.reduce||0}⬢`;if(lu?.id==="phantom_enhance")return ` · +${(_curLvl===0?'0.000':(_curLvl*0.001).toFixed(3))} → +${((_curLvl+1)*0.001).toFixed(3)}`;if(lu?.id==="practise_enhance")return ` · +${(_curLvl===0?'0.000':(_curLvl*0.001).toFixed(3))} → +${((_curLvl+1)*0.001).toFixed(3)}`;if(lu?.id==="diffusion_chance")return ` · ${_curLvl===0?0:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;if(lu?.id==="diffusion_multi")return ` · +${(_curLvl===0?'0.000':(_curLvl*0.009).toFixed(3))} → +${((_curLvl+1)*0.009).toFixed(3)}`;if(lu?.id==="overheat_bot_mult")return ` · +${_curLvl} → +${_curLvl+1} overheat`;if(lu?.id==="overheat_wave_cost")return ` · -${_curLvl}% → -${_curLvl+1}%`;if(lu?.id==="overheat_chance")return ` · ${_curLvl===0?25:lu.levels[_curLvl-1]?.pct||0}% → ${lu.levels[_curLvl]?.pct||0}%`;return null;})()}</div>
  </button>
  )}
  </div>;
  })}
+ {(()=>{
+   const _lpAll3=slotsUnlocked>=3;
+   const _lpUnlocked=!!lab.plusUnlocked;
+   const _lpUp=lab.plusUp||{waves:0,thresh:0,sprint:0};
+   const _lpWavesVal=5+(_lpUp.waves||0);
+   const _lpThreshVal=55-(_lpUp.thresh||0);
+   const _lpSprintVal=_lpUp.sprint||0;
+   const _lpAllMax=_lpUnlocked&&["waves","thresh","sprint"].every(k=>((lab.plusUp||{})[k]||0)>=20);
+   const buyLabPlusUnlock=()=>{if(!_lpAll3||(meta.echoes||0)<100000)return;setMeta(prev=>{const nx={...prev,echoes:prev.echoes-100000,lab:{...(prev.lab||{}),plusUnlocked:true,plusUp:{waves:0,thresh:0,sprint:0}}};saveMeta(nx);return nx;});};
+   const buyLabPlusUp=(key,costFn)=>{const cur=(lab.plusUp||{})[key]||0;if(cur>=20)return;const cost=costFn(cur);if((meta.echoes||0)<cost)return;setMeta(prev=>{const nx={...prev,echoes:prev.echoes-cost,lab:{...(prev.lab||{}),plusUp:{...(prev.lab?.plusUp||{waves:0,thresh:0,sprint:0}),[key]:cur+1}}};saveMeta(nx);return nx;});};
+   return <div style={{borderRadius:5,overflow:"hidden",flexShrink:0,border:`1px solid ${_lpAllMax?"#ffcc4466":"#44ddcc22"}`,marginTop:2,position:"relative",boxShadow:_lpAllMax?"0 0 12px #ffcc4418":"none"}}>
+    {_lpAllMax&&<div className="gold-shimmer"/>}
+    <div style={{padding:"3px 10px",background:_lpAllMax?"#1a1408":"#0e2020",position:"relative",zIndex:1}}><span style={{color:_lpAllMax?"#ffcc44":"#44ddcc",fontSize:_mf(8),fontWeight:"bold",letterSpacing:1}}>LAB+</span></div>
+    {!_lpUnlocked?
+    <button onClick={buyLabPlusUnlock} disabled={!_lpAll3||(meta.echoes||0)<100000} style={{width:"100%",padding:"20px 14px",background:"#0a0a14",border:"none",cursor:_lpAll3&&(meta.echoes||0)>=100000?"pointer":"default",fontFamily:"inherit",textAlign:"center"}}>
+     <div style={{color:"#aabbcc",fontSize:_mf(12),fontWeight:"bold"}}>Unlock Lab+</div>
+     <div style={{color:_lpAll3&&(meta.echoes||0)>=100000?CUR.echoes.color:"#667788",fontSize:_mf(11),marginTop:4}}>⬢ 100,000</div>
+     {!_lpAll3&&<div style={{color:"#cc6666",fontSize:_mf(9),marginTop:6}}>Requires all 3 lab slots unlocked</div>}
+    </button>
+    :<div style={{padding:"8px 10px",position:"relative",zIndex:1}}>
+     <div style={{color:"#8899aa",fontSize:_mf(8),lineHeight:1.6,marginBottom:8}}>If a run reaches wave <span style={{color:"#44ddcc"}}>{_lpThreshVal}</span> or higher, Lab+ grants <span style={{color:"#44ddcc"}}>{_lpWavesVal}</span> extra waves of progress to{(()=>{const _sl=[1,2,3][Math.min(meta.lab?.completed?.labplus_slots||0,2)];return _sl>1?` ${_sl} random active labs`:" a random active lab";})()} at the end of the run{_lpSprintVal>0?<>, and boosts Sprint Lab Efficiency by an extra <span style={{color:"#44ddcc"}}>+{_lpSprintVal}%</span> for your next run</>:null}.</div>
+     <div style={{display:"flex",gap:5}}>
+      {[["waves","Extra Waves",_lpWavesVal,labPlusCostWaves],["thresh","Wave Required",_lpThreshVal,labPlusCostThresh],["sprint","Sprint Bonus","+"+_lpSprintVal+"%",labPlusCostSprint]].map(([key,name,val,costFn])=>{
+       const lvl=(lab.plusUp||{})[key]||0;const maxed=lvl>=20;const cost=costFn(lvl);const canAfford=(meta.echoes||0)>=cost;
+       return <button key={key} onClick={()=>!maxed&&canAfford&&buyLabPlusUp(key,costFn)} disabled={maxed||!canAfford} style={{flex:1,minHeight:64,padding:"8px 5px",background:maxed?"#1a1408":canAfford?"#0c0c1a":"#08080f",border:`1px solid ${maxed?"#ffcc4455":canAfford?"#44ddcc44":"#22223344"}`,borderRadius:4,cursor:maxed||!canAfford?"default":"pointer",fontFamily:"inherit",textAlign:"center",position:"relative",overflow:"hidden"}}>
+        <div style={{color:"#8899aa",fontSize:_mf(8),zIndex:1,position:"relative"}}>{name}</div>
+        <div style={{color:maxed?"#ffcc44":"#44ddcc",fontSize:_mf(13),fontWeight:"bold",zIndex:1,position:"relative"}}>{val}</div>
+        <div style={{color:"#556677",fontSize:_mf(7),zIndex:1,position:"relative"}}>+{lvl}/20</div>
+        <div style={{color:maxed?"#ffcc44":canAfford?"#44ddcc":"#554433",fontSize:_mf(8.5),marginTop:1,zIndex:1,position:"relative"}}>{maxed?"MAX":<><span style={{color:CUR.echoes.color}}>⬢</span>{cost.toLocaleString()}</>}</div>
+       </button>;
+      })}
+     </div>
+    </div>}
+   </div>;
+  })()}
  </div>;
  })()}
 {metaTab==="bots"&&(()=>{
  const owned=meta.bots||{};const ownedCount=Object.keys(owned).length;
  const unlockCost=BOT_UNLOCK[Math.min(ownedCount,BOT_UNLOCK.length-1)];
- const statVal=(def,lv,stat)=>{const l=lv[stat]||0;if(stat==="size")return (5+l*0.5).toFixed(1);if(stat==="time")return (2+l*0.5).toFixed(1)+"s";return def.custom.fmt(botCustomRaw(def,lv));};
+ const statVal=(def,lv,stat)=>{const l=lv[stat]||0;if(stat==="size")return (5+l*0.5).toFixed(1);if(stat==="time")return (2+l*0.5).toFixed(1)+"s";if(def.id==="health"&&stat==="custom")return "+"+(botCustomRaw(def,lv)*100).toFixed(1)+_mv("%/kill","%");return def.custom.fmt(botCustomRaw(def,lv));};
  const STK=[{k:"size",name:"Field Size"},{k:"time",name:"Active Time"}];
- const boxStyle=(maxed,canBuy,col)=>({flex:1,minHeight:64,padding:"8px 5px",background:maxed?"#1a1408":canBuy?"#0c0c1a":"#08080f",border:`1px solid ${maxed?"#ffcc4455":canBuy?col+"44":"#22223344"}`,borderRadius:3,cursor:canBuy&&!maxed?"pointer":"default",textAlign:"center",fontFamily:"inherit",opacity:maxed?1:canBuy?0.95:0.5,transition:"all 0.15s",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,position:"relative",overflow:"hidden",boxSizing:"border-box"});
+ if(_mob){const _toMax=(()=>{let _t=0;let _o=ownedCount;BOTS.forEach(d=>{if(!owned[d.id]){_t+=BOT_UNLOCK[Math.min(_o,BOT_UNLOCK.length-1)];_o++;}});BOTS.forEach(d=>{const _l=owned[d.id]||{size:0,time:0,custom:0};["size","time","custom"].forEach(k=>{for(let i=(_l[k]||0);i<20;i++)_t+=botUpCost(i);});});return _t;})();const _sd=BOTS.find(b=>b.id===_botSel);
+ const _icon=(def,col,sz)=><canvas width={sz*3} height={sz*3} style={{width:sz,height:sz}} ref={el=>{if(el){const cx=el.getContext("2d");if(cx){cx.setTransform(3,0,0,3,0,0);cx.clearRect(0,0,sz,sz);cx.globalAlpha=1;_drawBotIcon(cx,def.id,sz/2,sz/2,sz*0.36,col);}}}} />;
+ return <div style={{flex:"1 1 0",minHeight:0,display:"flex",flexDirection:"column",padding:"6px 10px 10px",gap:6}}>
+  <div style={{color:"#c8cce6",fontSize:10.5,textAlign:"center",flexShrink:0}}>Owned {ownedCount}/{BOTS.length} · cost to max everything <span style={{color:CUR.echoes.color}}>⬢ {_toMax.toLocaleString()}</span></div>
+  <div style={{flex:"1 1 0",minHeight:0,display:"grid",gridTemplateColumns:"1fr 1fr",gridAutoRows:"1fr",gap:8}}>
+   {BOTS.map(def=>{const lv=owned[def.id];const allMax=lv&&["size","time","custom"].every(k=>(lv[k]||0)>=20);const canAny=lv?["size","time","custom"].some(k=>(lv[k]||0)<20&&(meta.echoes||0)>=botUpCost(lv[k]||0)):(meta.echoes||0)>=unlockCost;
+    return <button key={def.id} onClick={()=>_setBotSel(def.id)} style={{..._mTile(allMax?"max":canAny?"buy":"none"),...(canAny&&!allMax?{border:`1px solid ${def.col}aa`}:{}),padding:"10px 8px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,cursor:"pointer",fontFamily:"inherit",minHeight:0,minWidth:0,position:"relative",overflow:"hidden"}}>
+     <div style={{display:"flex",alignItems:"center",gap:8}}>{_icon(def,lv?(allMax?"#ffcc44":def.col):"#667788",40)}<div style={{color:lv?(allMax?"#ffcc44":def.col):"#aab3c8",fontSize:14,fontWeight:"bold"}}>{def.name}</div></div>
+     <div style={{color:"#a8b0c4",fontSize:10.5,lineHeight:1.4,textAlign:"center",padding:"0 4px",maxHeight:74,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:5,WebkitBoxOrient:"vertical"}}>{def.desc}</div>
+     {lv?<div style={{display:"flex",flexDirection:"column",gap:7,width:"100%",padding:"0 6px",boxSizing:"border-box"}}>{[["size","Field"],["time","Time"],["custom",def.custom.label]].map(([k,n])=>{const l=lv[k]||0;return <div key={k} style={{display:"flex",alignItems:"center",gap:5}}><span style={{color:"#a8b0c4",fontSize:10,width:50,textAlign:"left",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{n}</span><div style={{flex:1,height:8,background:"#ffffff12",borderRadius:4}}><div style={{width:(l/20*100)+"%",height:8,borderRadius:4,background:l>=20?"#ffcc44":def.col}}/></div><span style={{color:l>=20?"#ffcc44":"#fff",fontSize:10.5,width:46,textAlign:"right",whiteSpace:"nowrap"}}>{statVal(def,lv,k)}</span></div>;})}</div>
+     :<div style={{color:(meta.echoes||0)>=unlockCost?"#fff":"#7a8399",fontSize:11,fontWeight:"bold"}}>LOCKED · <span style={{color:CUR.echoes.color}}>⬢ {unlockCost.toLocaleString()}</span></div>}
+     {_dotsOn&&canAny&&!allMax&&<span style={_affDot}/>}
+    </button>;})}
+  </div>
+  {_sd&&(()=>{const def=_sd;const lv=owned[def.id];const cU=!lv&&(meta.echoes||0)>=unlockCost;
+   return _mPop(def.col,()=>_setBotSel(null),<>
+    {_mPopHead(_icon(def,def.col,40),def.name,def.col,def.desc)}
+    {!lv?_mRow("un","UNLOCK BOT",def.col,"Your "+(["1st","2nd","3rd","4th"][ownedCount]||"next")+" bot. Unlocking any bot raises the price of the next.",_mAct(cU?"buy":"no","UNLOCK","⬢ "+unlockCost.toLocaleString(),()=>buyBotUnlock(def.id),def.col),false)
+    :[["size","FIELD SIZE"],["time","ACTIVE TIME"],["custom",def.custom.label.toUpperCase()]].map(([k,n])=>{const l=lv[k]||0;const mx=l>=20;const c=botUpCost(l);const can=!mx&&(meta.echoes||0)>=c;const nxt={...lv,[k]:l+1};return _mRow(k,n+" · "+l+"/20",mx?"#ffcc44":def.col,mx?<>Maxed at <b style={{color:"#fff"}}>{statVal(def,lv,k)}</b></>:<>Now <b style={{color:"#fff"}}>{statVal(def,lv,k)}</b> → next <b style={{color:def.col}}>{statVal(def,nxt,k)}</b></>,mx?_mAct("owned","MAX"):_mAct(can?"buy":"no","BUY","⬢ "+c.toLocaleString(),()=>buyBotStat(def.id,k),def.col),mx);})}
+    {_mClose(()=>_setBotSel(null))}
+   </>);})()}
+ </div>;}
+ const boxStyle=(maxed,canBuy,col)=>({flex:1,minHeight:_devMob?84:64,padding:_devMob?"11px 5px":"8px 5px",...(_mob?(maxed?_gpMax(12):canBuy?_gpBuy((col||"#44ddcc").slice(0,7),12):_gpDim((col||"#44ddcc").slice(0,7),12)):{background:maxed?"#1a1408":canBuy?"#0c0c1a":"#08080f",border:`1px solid ${maxed?"#ffcc4455":canBuy?col+"44":"#22223344"}`,borderRadius:3}),cursor:canBuy&&!maxed?"pointer":"default",textAlign:"center",fontFamily:"inherit",opacity:maxed?1:canBuy?0.95:0.5,transition:"all 0.15s",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,position:"relative",overflow:"hidden",boxSizing:"border-box"});
  return <>
  <div style={{padding:"6px 10px",borderBottom:"1px solid #1a1a2e"}}>
  <div style={{padding:"8px 10px",background:"#0a0a1a",border:"1px solid #44cc9922",borderRadius:4}}>
- <div style={{color:"#55ddaa",fontSize:11,fontWeight:"bold"}}>Bots</div>
- <div style={{color:"#778899",fontSize:8,marginTop:2}}>Drifting fields that periodically expand to affect enemies inside them. Active in all modes except Cargo. Each bot has three upgrade tracks.</div>
- <div style={{color:"#667788",fontSize:8,marginTop:2}}>Owned: {ownedCount}/{BOTS.length} · Cost to max all: <span style={{color:CUR.echoes.color}}>⬢ {(()=>{let _t=0;let _o=ownedCount;BOTS.forEach(d=>{if(!owned[d.id]){_t+=BOT_UNLOCK[Math.min(_o,BOT_UNLOCK.length-1)];_o++;}});BOTS.forEach(d=>{const _l=owned[d.id]||{size:0,time:0,custom:0};["size","time","custom"].forEach(k=>{for(let i=(_l[k]||0);i<20;i++)_t+=botUpCost(i);});});return _t.toLocaleString();})()}</span></div>
+ {!_mob&&<><div style={{color:"#55ddaa",fontSize:_mf(11),fontWeight:"bold"}}>Bots</div>
+ <div style={{color:"#778899",fontSize:_mf(8),marginTop:2}}>Drifting fields that periodically expand to affect enemies inside them. Active in all modes except Cargo. Each bot has three upgrade tracks.</div></>}
+ <div style={{color:"#667788",fontSize:_mf(8),marginTop:2}}>Owned: {ownedCount}/{BOTS.length} · Cost to max all: <span style={{color:CUR.echoes.color}}>⬢ {(()=>{let _t=0;let _o=ownedCount;BOTS.forEach(d=>{if(!owned[d.id]){_t+=BOT_UNLOCK[Math.min(_o,BOT_UNLOCK.length-1)];_o++;}});BOTS.forEach(d=>{const _l=owned[d.id]||{size:0,time:0,custom:0};["size","time","custom"].forEach(k=>{for(let i=(_l[k]||0);i<20;i++)_t+=botUpCost(i);});});return _t.toLocaleString();})()}</span></div>
  </div>
  </div>
  <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,padding:10,overflow:"auto",display:"flex",flexDirection:"column",gap:6}}>
@@ -3937,13 +4479,13 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
    return <div key={def.id} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 8px",background:"#0a0a14",borderRadius:3,border:"1px solid #14142a",flexShrink:0,minHeight:96,boxSizing:"border-box"}}>
     <div style={{width:84,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
      <canvas width={120} height={120} style={{width:34,height:34}} ref={el=>{if(el){const cx=el.getContext("2d");if(cx){cx.setTransform(3,0,0,3,0,0);cx.clearRect(0,0,40,40);cx.globalAlpha=1;_drawBotIcon(cx,def.id,20,20,13,"#556677");}}}} />
-     <div style={{color:"#8899aa",fontSize:9,fontWeight:"bold",textAlign:"center",lineHeight:1.15}}>{def.name}</div>
-     <div onClick={()=>_setBotInfo(_botInfo===def.id?null:def.id)} style={{width:13,height:13,borderRadius:"50%",border:"1px solid #44667788",textAlign:"center",lineHeight:"12px",fontSize:8,color:"#667788",cursor:"pointer"}}>i</div>
+     <div style={{color:"#8899aa",fontSize:_mf(9),fontWeight:"bold",textAlign:"center",lineHeight:1.15}}>{def.name}</div>
+     <div onClick={()=>_setBotInfo(_botInfo===def.id?null:def.id)} style={{width:_mv(13,30),height:_mv(13,30),borderRadius:"50%",border:"1px solid #44667788",textAlign:"center",lineHeight:_mv("12px","30px"),fontSize:_mv(_mf(8),16),color:"#667788",cursor:"pointer"}}>i</div>
     </div>
     <div style={{flex:1,display:"flex",justifyContent:"center"}}>
      <button onClick={()=>canAfford&&buyBotUnlock(def.id)} disabled={!canAfford} style={{...boxStyle(false,canAfford,def.col),maxWidth:180}}>
-      <div style={{color:canAfford?def.col:"#667788",fontSize:11,fontWeight:"bold",letterSpacing:1}}>🔒 UNLOCK</div>
-      <div style={{color:"#ccddee",fontSize:9,marginTop:2}}><span style={{color:CUR.echoes.color}}>⬢</span> {unlockCost.toLocaleString()}</div>
+      <div style={{color:canAfford?def.col:"#667788",fontSize:_mf(11),fontWeight:"bold",letterSpacing:1}}>🔒 UNLOCK</div>
+      <div style={{color:"#ccddee",fontSize:_mf(9),marginTop:2}}><span style={{color:CUR.echoes.color}}>⬢</span> {unlockCost.toLocaleString()}</div>
      </button>
     </div>
    </div>;}
@@ -3952,24 +4494,24 @@ _setLaunching(true);setTimeout(()=>{_setLaunching(false);initGame();},800);}} st
    {allMax&&<div className="gold-shimmer"/>}
    <div style={{width:84,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:3,zIndex:1}}>
     <canvas width={120} height={120} style={{width:34,height:34}} ref={el=>{if(el){const cx=el.getContext("2d");if(cx){cx.setTransform(3,0,0,3,0,0);cx.clearRect(0,0,40,40);cx.globalAlpha=1;_drawBotIcon(cx,def.id,20,20,13,def.col);}}}} />
-    <div style={{color:def.col,fontSize:9,fontWeight:"bold",textAlign:"center",lineHeight:1.15}}>{def.name}</div>
-    <div onClick={()=>_setBotInfo(_botInfo===def.id?null:def.id)} style={{width:13,height:13,borderRadius:"50%",border:"1px solid #44667788",textAlign:"center",lineHeight:"12px",fontSize:8,color:"#667788",cursor:"pointer"}}>i</div>
+    <div style={{color:def.col,fontSize:_mf(9),fontWeight:"bold",textAlign:"center",lineHeight:1.15}}>{def.name}</div>
+    <div onClick={()=>_setBotInfo(_botInfo===def.id?null:def.id)} style={{width:_mv(13,30),height:_mv(13,30),borderRadius:"50%",border:"1px solid #44667788",textAlign:"center",lineHeight:_mv("12px","30px"),fontSize:_mv(_mf(8),16),color:"#667788",cursor:"pointer"}}>i</div>
    </div>
    <div style={{flex:1,display:"flex",gap:5,zIndex:1}}>
     {stats.map(st=>{const l=lv[st.k]||0;const maxed=l>=20;const cost=botUpCost(l);const canAfford=(meta.echoes||0)>=cost;return <button key={st.k} onClick={()=>!maxed&&canAfford&&buyBotStat(def.id,st.k)} disabled={maxed||!canAfford} style={boxStyle(maxed,canAfford,def.col)}>
      {maxed&&<div className="gold-shimmer"/>}
-     <div style={{color:"#8899aa",fontSize:8,zIndex:1,lineHeight:1.1}}>{st.name}</div>
-     <div style={{color:maxed?"#ffcc44":def.col,fontSize:13,fontWeight:"bold",zIndex:1}}>{statVal(def,lv,st.k)}</div>
-     <div style={{color:"#556677",fontSize:7,zIndex:1}}>+{l}/20</div>
-     <div style={{color:maxed?"#ffcc44":canAfford?def.col:"#554433",fontSize:8.5,marginTop:1,zIndex:1}}>{maxed?"MAX":<><span style={{color:CUR.echoes.color}}>⬢</span>{cost.toLocaleString()}</>}</div>
+     <div style={{color:"#8899aa",fontSize:_mf(8),zIndex:1,lineHeight:1.1}}>{st.name}</div>
+     <div style={{color:maxed?"#ffcc44":def.col,fontSize:_mf(13),fontWeight:"bold",zIndex:1}}>{statVal(def,lv,st.k)}{def.id==="health"&&st.k==="custom"&&<span style={{fontSize:_mf(9),fontWeight:"normal",color:"#8899aa"}}> ({((75+gml("m_hp")*12)*botCustomRaw(def,lv)).toFixed(1)} HP)</span>}</div>
+     <div style={{color:"#556677",fontSize:_mf(7),zIndex:1}}>+{l}/20</div>
+     <div style={{color:maxed?"#ffcc44":canAfford?def.col:"#554433",fontSize:_mf(8.5),marginTop:1,zIndex:1}}>{maxed?"MAX":<><span style={{color:CUR.echoes.color}}>⬢</span>{cost.toLocaleString()}</>}</div>
     </button>;})}
    </div>
   </div>;
  })}
  {_botInfo&&(()=>{const def=BOTS.find(b=>b.id===_botInfo);if(!def)return null;return <div onClick={()=>_setBotInfo(null)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:30,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-  <div onClick={e=>e.stopPropagation()} style={{background:"#0c0c1a",border:`1px solid ${def.col}44`,borderRadius:6,padding:"14px 16px",maxWidth:320,width:"100%"}}>
-   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><canvas width={120} height={120} style={{width:32,height:32}} ref={el=>{if(el){const cx=el.getContext("2d");if(cx){cx.setTransform(3,0,0,3,0,0);cx.clearRect(0,0,40,40);_drawBotIcon(cx,def.id,20,20,13,def.col);}}}} /><div style={{color:def.col,fontSize:13,fontWeight:"bold"}}>{def.name}</div></div>
-   <div style={{color:"#bbccdd",fontSize:10,lineHeight:1.6}}>{def.desc}</div>
+  <div onClick={e=>e.stopPropagation()} style={{...(_mob?_gp((def.col||"#8899aa").slice(0,7),18):{background:"#0c0c1a",border:`1px solid ${def.col}44`,borderRadius:6}),padding:"14px 16px",maxWidth:320,width:"100%"}}>
+   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><canvas width={120} height={120} style={{width:32,height:32}} ref={el=>{if(el){const cx=el.getContext("2d");if(cx){cx.setTransform(3,0,0,3,0,0);cx.clearRect(0,0,40,40);_drawBotIcon(cx,def.id,20,20,13,def.col);}}}} /><div style={{color:def.col,fontSize:_mf(13),fontWeight:"bold"}}>{def.name}</div></div>
+   <div style={{color:"#bbccdd",fontSize:_mf(10),lineHeight:1.6}}>{def.desc}</div>
   </div>
  </div>;})()}
  </div>
@@ -3982,70 +4524,105 @@ const unlockOhItem=(uid)=>{const _eC=OH_COSTS.itemEc(uid),_oC=OH_COSTS.itemOhCos
 const buyOhLevel=(uid)=>{const ohLvl=ohUpgrades[uid]||0;if(ohLvl>=OH_COSTS.maxLvl)return;const _lvlCost=OH_COSTS.lvlCost(uid,ohLvl);if(ohPts<_lvlCost)return;setMeta(prev=>{const nx={...prev,overheat:(prev.overheat||0)-_lvlCost,overheatUpgrades:{...(prev.overheatUpgrades||{}),[uid]:(prev.overheatUpgrades?.[uid]||0)+1}};saveMeta(nx);return nx;});};
 const _ohShop=SHOP.filter(u=>u.id!=="rear"&&u.id!=="shield");
 if(!ohUnlocked)return <div style={{flex:"1 1 0",minHeight:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20,textAlign:"center"}}>
-<div style={{color:"#ff6622",fontSize:16,fontWeight:"bold",letterSpacing:3,marginBottom:12}}>OVERHEAT</div>
-<div style={{color:"#8899aa",fontSize:10,lineHeight:1.7,maxWidth:340,marginBottom:20}}>Unlock the overheat system. Enemies killed by flame or while burning have a 25% chance to earn overheat points. Spend them to push wave upgrades beyond their normal limits.</div>
-<button onClick={buyOhUnlock} disabled={meta.echoes<OH_COSTS.unlock} style={{padding:"10px 28px",background:meta.echoes>=OH_COSTS.unlock?"#1a0e08":"#0a0a14",border:"1px solid "+(meta.echoes>=OH_COSTS.unlock?"#ff662266":"#33445522"),borderRadius:4,cursor:meta.echoes>=OH_COSTS.unlock?"pointer":"default",fontFamily:"inherit",fontSize:12,color:meta.echoes>=OH_COSTS.unlock?"#ff6622":"#556677",letterSpacing:1,opacity:meta.echoes>=OH_COSTS.unlock?1:0.5}} onMouseOver={e=>{if(meta.echoes>=OH_COSTS.unlock){e.currentTarget.style.borderColor="#ff6622";e.currentTarget.style.background="#2a1608";}}} onMouseOut={e=>{e.currentTarget.style.borderColor=meta.echoes>=OH_COSTS.unlock?"#ff662266":"#33445522";e.currentTarget.style.background=meta.echoes>=OH_COSTS.unlock?"#1a0e08":"#0a0a14";}}>UNLOCK · ⬢ {OH_COSTS.unlock.toLocaleString()}</button>
+<div style={{color:"#ff6622",fontSize:_mf(16),fontWeight:"bold",letterSpacing:3,marginBottom:12}}>OVERHEAT</div>
+<div style={{color:"#8899aa",fontSize:_mf(10),lineHeight:1.7,maxWidth:340,marginBottom:20}}>Unlock the overheat system. Enemies killed by flame or while burning have a 25% chance to drop Overheat. Spend it to push wave upgrades beyond their normal limits.</div>
+<button onClick={buyOhUnlock} disabled={meta.echoes<OH_COSTS.unlock} style={{padding:"10px 28px",background:meta.echoes>=OH_COSTS.unlock?"#1a0e08":"#0a0a14",border:"1px solid "+(meta.echoes>=OH_COSTS.unlock?"#ff662266":"#33445522"),borderRadius:4,cursor:meta.echoes>=OH_COSTS.unlock?"pointer":"default",fontFamily:"inherit",fontSize:_mf(12),color:meta.echoes>=OH_COSTS.unlock?"#ff6622":"#556677",letterSpacing:1,opacity:meta.echoes>=OH_COSTS.unlock?1:0.5}} onMouseOver={e=>{if(meta.echoes>=OH_COSTS.unlock){e.currentTarget.style.borderColor="#ff6622";e.currentTarget.style.background="#2a1608";}}} onMouseOut={e=>{e.currentTarget.style.borderColor=meta.echoes>=OH_COSTS.unlock?"#ff662266":"#33445522";e.currentTarget.style.background=meta.echoes>=OH_COSTS.unlock?"#1a0e08":"#0a0a14";}}>UNLOCK · ⬢ {OH_COSTS.unlock.toLocaleString()}</button>
 </div>;
 const _renderItem=(up)=>{const ohLvl=ohUpgrades[up.id]||0;const itemUn=!!ohItemUnlocked[up.id];const ohMaxed=ohLvl>=OH_COSTS.maxLvl;
-if(!itemUn){const canUn=meta.echoes>=OH_COSTS.itemEc(up.id)&&ohPts>=OH_COSTS.itemOhCost(up.id);return <div key={up.id} style={{flex:"1 1 0",padding:0,background:"#08080e",border:"1px solid #22223322",borderRadius:3,textAlign:"left",fontFamily:"inherit",position:"relative",overflow:"hidden",display:"flex",height:66,flexShrink:0,alignItems:"stretch",boxSizing:"border-box",minWidth:0}}>
-<div style={{flex:"1 1 0",padding:"7px 8px",opacity:0.4,display:"flex",flexDirection:"column",justifyContent:"center"}}>
-<div style={{color:CC[up.cat],fontSize:10,fontWeight:"bold"}}>{up.name}</div>
-<div style={{color:"#556677",fontSize:8,marginTop:2}}>{up.desc}</div>
+if(!itemUn){const canUn=meta.echoes>=OH_COSTS.itemEc(up.id)&&ohPts>=OH_COSTS.itemOhCost(up.id);return <div key={up.id} style={{flex:"1 1 0",padding:0,background:"#08080e",border:"1px solid #22223322",borderRadius:3,textAlign:"left",fontFamily:"inherit",position:"relative",overflow:"hidden",display:"flex",height:_mv(66,"auto"),minHeight:_mv(0,0),flexShrink:0,alignItems:"stretch",boxSizing:"border-box",minWidth:0}}>
+<div style={{flex:"1 1 0",padding:_mv("7px 8px","8px 9px"),opacity:0.4,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+<div style={{color:CC[up.cat],fontSize:_mv(_mf(10),11.5),fontWeight:"bold"}}>{up.name}</div>
+<div style={{color:"#556677",fontSize:_mv(_mf(8),9),marginTop:2,lineHeight:1.3,...(_mob?{display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}:{})}}>{up.desc}</div>
 </div>
-<button onClick={()=>canUn&&unlockOhItem(up.id)} disabled={!canUn} style={{width:70,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,background:canUn?"#ff662218":"#0c0c14",border:"1px solid "+(canUn?"#ff662244":"#22223322"),opacity:canUn?1:0.45,padding:"4px 2px",margin:"6px 6px 6px 4px",borderRadius:3,cursor:canUn?"pointer":"default",fontFamily:"inherit",flexShrink:0}} onMouseOver={e=>canUn&&(e.currentTarget.style.borderColor="#ff6622")} onMouseOut={e=>(e.currentTarget.style.borderColor=canUn?"#ff662244":"#22223322")}>
-<div style={{color:canUn?"#ff6622":"#667788",fontSize:9,fontWeight:"bold",letterSpacing:0.5}}>UNLOCK</div>
-<div style={{color:"#ccddee",fontSize:8}}><span style={{color:CUR.echoes.color}}>⬢</span>{_ohFmt(OH_COSTS.itemEc(up.id))} <span style={{color:"#ff6622"}}>✹</span>{_ohFmt(OH_COSTS.itemOhCost(up.id))}</div>
+<button onClick={()=>canUn&&unlockOhItem(up.id)} disabled={!canUn} style={{width:_mv(70,64),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,background:canUn?"#ff662218":"#0c0c14",border:"1px solid "+(canUn?"#ff662244":"#22223322"),opacity:canUn?1:0.45,padding:"4px 2px",margin:"6px 6px 6px 4px",borderRadius:3,cursor:canUn?"pointer":"default",fontFamily:"inherit",flexShrink:0}} onMouseOver={e=>{if(!_mob&&canUn)e.currentTarget.style.borderColor="#ff6622";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor=canUn?"#ff662244":"#22223322";}}>
+<div style={{color:canUn?"#ff6622":"#667788",fontSize:_mv(_mf(9),11),fontWeight:"bold",letterSpacing:0.5}}>UNLOCK</div>
+<div style={{color:"#ccddee",fontSize:_mf(8)}}><span style={{color:CUR.echoes.color}}>⬢</span>{_ohFmt(OH_COSTS.itemEc(up.id))} <span style={{color:"#ff6622"}}>✹</span>{_ohFmt(OH_COSTS.itemOhCost(up.id))}</div>
 </button>
 </div>;}
 const _curLvlCost=OH_COSTS.lvlCost(up.id,ohLvl);const canBuy=!ohMaxed&&ohPts>=_curLvlCost;
-return <button key={up.id} onClick={()=>canBuy&&buyOhLevel(up.id)} disabled={!canBuy} style={{flex:"1 1 0",padding:"7px 8px",background:ohMaxed?"#0c1420":canBuy?"#1a0e08":"#0a0a14",height:66,border:"1px solid "+(ohMaxed?"#88aadd33":canBuy?"#ff662244":"#22334422"),borderRadius:3,cursor:canBuy?"pointer":"default",textAlign:"left",fontFamily:"inherit",position:"relative",overflow:"hidden",boxShadow:ohMaxed?"0 0 8px #88aadd18":"none",flexShrink:0,boxSizing:"border-box",minWidth:0}} onMouseOver={e=>canBuy&&(e.currentTarget.style.borderColor="#ff6622")} onMouseOut={e=>(e.currentTarget.style.borderColor=ohMaxed?"#88aadd33":canBuy?"#ff662244":"#22334422")}>{ohMaxed&&<div className="platinum-shimmer"/>}
-<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:CC[up.cat],fontSize:10,fontWeight:"bold"}}>{up.name}</span><span style={{color:"#88aadd",fontSize:8}}>Max Level: {up.max} <span style={{color:"#ff6622"}}>+{ohLvl}</span></span></div>
-<div style={{color:"#8899aa",fontSize:8,marginTop:1}}>{up.desc}</div>
-{!ohMaxed?<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}><span style={{color:canBuy?"#ff6622":"#554433",fontSize:9}}>✹ {_curLvlCost.toLocaleString()}</span><span style={{color:"#556677",fontSize:8}}>+{ohLvl}/{OH_COSTS.maxLvl}</span></div>:<div style={{color:"#88aadd",fontSize:8,marginTop:1}}>MAXED +{OH_COSTS.maxLvl}</div>}
+return <button key={up.id} onClick={()=>canBuy&&buyOhLevel(up.id)} disabled={!canBuy} style={{flex:"1 1 0",padding:_mv("7px 8px","8px 9px"),background:ohMaxed?"#0c1420":canBuy?_mv("#1a0e08","#0c0c1a"):"#0a0a14",height:_mv(66,"auto"),minHeight:_mv(0,0),border:"1px solid "+(ohMaxed?"#88aadd33":canBuy?_mv("#ff662244","#ff662299"):"#22334422"),borderRadius:_mv(3,12),cursor:canBuy?"pointer":"default",textAlign:"left",fontFamily:"inherit",position:"relative",overflow:"hidden",boxShadow:ohMaxed?"0 0 8px #88aadd18":"none",flexShrink:0,boxSizing:"border-box",minWidth:0}} onMouseOver={e=>{if(!_mob&&canBuy)e.currentTarget.style.borderColor="#ff6622";}} onMouseOut={e=>{if(!_mob)e.currentTarget.style.borderColor=ohMaxed?"#88aadd33":canBuy?"#ff662244":"#22334422";}}>{ohMaxed&&<div className="platinum-shimmer"/>}
+<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:CC[up.cat],fontSize:_mv(_mf(10),11.5),fontWeight:"bold"}}>{up.name}</span><span style={{color:"#88aadd",fontSize:_mv(_mf(8),10)}}>Max Level: {up.max} <span style={{color:"#ff6622"}}>+{ohLvl}</span></span></div>
+<div style={{color:"#8899aa",fontSize:_mv(_mf(8),9),marginTop:1,lineHeight:1.3,...(_mob?{display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}:{})}}>{up.desc}</div>
+{!ohMaxed?<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}><span style={{color:canBuy?"#ff6622":"#554433",fontSize:_mv(_mf(9),12),fontWeight:_mv("normal","bold")}}>✹ {_curLvlCost.toLocaleString()}</span><span style={{color:"#556677",fontSize:_mf(8)}}>+{ohLvl}/{OH_COSTS.maxLvl}</span></div>:<div style={{color:"#88aadd",fontSize:_mf(8),marginTop:1}}>MAXED +{OH_COSTS.maxLvl}</div>}
 </button>;};
+if(_mob){const _ohCh=(()=>{const _l=meta.lab?.completed?.overheat_chance||0;return _l>0?[30,35,40,45,50][Math.min(_l-1,4)]:25;})();const _sel=_ohShop.find(u=>u.id===_ohSel);
+ return <div style={{flex:"1 1 0",minHeight:0,display:"flex",flexDirection:"column",padding:"6px 10px 10px",gap:6}}>
+  <div style={{color:"#c8cce6",fontSize:10.5,textAlign:"center",flexShrink:0}}>Push wave upgrades past their max · <span style={{color:"#ff8844"}}>{_ohCh}%</span> of flame kills drop ✹</div>
+  <div style={{flex:"1 1 0",minHeight:0,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gridAutoRows:"1fr",gap:6}}>
+   {_ohShop.map(up=>{const lv=ohUpgrades[up.id]||0;const un=!!ohItemUnlocked[up.id];const mx=un&&lv>=OH_COSTS.maxLvl;const can=un?(!mx&&ohPts>=OH_COSTS.lvlCost(up.id,lv)):(meta.echoes>=OH_COSTS.itemEc(up.id)&&ohPts>=OH_COSTS.itemOhCost(up.id));
+    return <button key={up.id} onClick={()=>_setOhSel(up.id)} style={{background:mx?"#12100a":"#0a0a14",border:`1px solid ${mx?"#ffcc4466":can?"#ff6622aa":"#ffffff18"}`,borderRadius:12,padding:"4px 5px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer",fontFamily:"inherit",minWidth:0,minHeight:0,overflow:"hidden",position:"relative"}}>
+     <div style={{color:un?CC[up.cat]:"#aab3c8",fontSize:10.5,fontWeight:"bold",textAlign:"center",lineHeight:1.15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>{up.name}</div>
+     <div style={{color:"#8f98ad",fontSize:8.5,textAlign:"center",lineHeight:1.25,height:21,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",padding:"0 2px"}}>{up.desc}</div>
+     <div style={{color:"#c8cce6",fontSize:9.5}}>Max {up.max}{un&&lv>0?<span style={{color:mx?"#ffcc44":"#ff8844"}}> +{lv}</span>:null}</div>
+     <div style={{display:"flex",alignItems:"center",gap:6,height:14}}>{un?<div style={{display:"flex",gap:3}}>{[0,1,2].map(i=><span key={i} style={{width:11,height:11,borderRadius:3,background:i<lv?(mx?"#ffcc44":"#ff6622"):"#00000055",border:`1px solid ${i<lv?(mx?"#ffcc44":"#ff6622"):"#ffffff2a"}`,boxSizing:"border-box"}}/>)}</div>:<span style={{color:can?"#ff8844":"#7a8399",fontSize:9,fontWeight:"bold",letterSpacing:1}}>LOCKED</span>}<span style={{color:mx?"#ffcc44":can?"#fff":"#7a8399",fontSize:9.5,whiteSpace:"nowrap"}}>{mx?"MAXED":un?"✹"+_ohFmt(OH_COSTS.lvlCost(up.id,lv)):"✹"+_ohFmt(OH_COSTS.itemOhCost(up.id))}</span></div>
+     {_dotsOn&&can&&<span style={_affDot}/>}
+    </button>;})}
+  </div>
+  {_sel&&(()=>{const up=_sel;const lv=ohUpgrades[up.id]||0;const un=!!ohItemUnlocked[up.id];const ec=OH_COSTS.itemEc(up.id),oc=OH_COSTS.itemOhCost(up.id);const canUn=!un&&meta.echoes>=ec&&ohPts>=oc;
+   return _mPop("#ff6622",()=>_setOhSel(null),<>
+    {_mPopHead(null,up.name,CC[up.cat],up.desc,<span style={{color:"#ff8844",fontSize:13,fontWeight:"bold",flexShrink:0}}>✹ {_ohFmt(ohPts)}</span>)}
+    <div style={{color:"#9aa3b8",fontSize:10.5}}>Normal max level <span style={{color:"#fff"}}>{up.max}</span> · overheated <span style={{color:"#ff8844"}}>+{lv}/{OH_COSTS.maxLvl}</span></div>
+    {_mRow("u","UNLOCK OVERHEATING",un?"#ffcc44":"#ff8844","One-time unlock so this upgrade can be pushed past its max.",un?_mAct("owned","OWNED"):_mAct(canUn?"buy":"no","UNLOCK","⬢"+_ohFmt(ec)+" + ✹"+_ohFmt(oc),()=>unlockOhItem(up.id),"#ff6622"),un)}
+    {[0,1,2].map(i=>{const c=OH_COSTS.lvlCost(up.id,i);const own=lv>i;const can=un&&lv===i&&ohPts>=c;const _lk=!un||lv<i;return _mRow("l"+i,"OVERHEAT +"+(i+1),own?"#ffcc44":"#ff8844",<>Max level {up.max+i} → <b style={{color:"#fff"}}>{up.max+i+1}</b>{!own&&_lk?<span style={{color:"#8a93a8"}}>{!un?" · unlock overheating first":" · buy +"+i+" first"}</span>:null}</>,own?_mAct("owned","OWNED"):_mAct(can?"buy":"no",_lk?"LOCKED":"BUY","✹ "+_ohFmt(c),()=>buyOhLevel(up.id),"#ff6622"),own);})}
+    {_mClose(()=>_setOhSel(null))}
+   </>);})()}
+ </div>;}
 const _ohRows=[];for(let _i=0;_i<_ohShop.length;_i+=2){_ohRows.push([_ohShop[_i],_ohShop[_i+1]].filter(Boolean));}
-return <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,padding:10,display:"flex",flexDirection:"column",gap:4,overflow:"auto",background:"#06060e"}}>
-<div style={{color:"#99aabb",fontSize:9,textAlign:"center",marginBottom:2,flexShrink:0}}>Increase the maximum level of wave upgrades. <span style={{color:"#44ddcc"}}>{(()=>{const _l=meta.lab?.completed?.overheat_chance||0;return _l>0?[30,35,40,45,50][Math.min(_l-1,4)]:25;})()}%</span> of flame kills earn ✹ overheat points.</div>
-{_ohRows.map((row,ri)=>(<div key={ri} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,flexShrink:0}}>{row.map(_renderItem)}{row.length<2&&<div/>}</div>))}
+return <div className="vs-scroll" style={_mob?{flex:"1 1 0",minHeight:0,padding:"6px 10px 8px",display:"grid",gridTemplateColumns:"1fr 1fr",gridAutoRows:"minmax(0,1fr)",gap:6,overflow:"hidden",background:"#06060e"}:{flex:"1 1 0",minHeight:0,padding:10,display:"flex",flexDirection:"column",gap:4,overflow:"auto",background:"#06060e"}}>
+{!_mob&&<div style={{color:"#99aabb",fontSize:_mf(9),textAlign:"center",marginBottom:2,flexShrink:0}}>Increase the maximum level of wave upgrades. <span style={{color:"#44ddcc"}}>{(()=>{const _l=meta.lab?.completed?.overheat_chance||0;return _l>0?[30,35,40,45,50][Math.min(_l-1,4)]:25;})()}%</span> of flame kills drop ✹ Overheat.</div>}
+{_mob?_ohShop.map(_renderItem):_ohRows.map((row,ri)=>(<div key={ri} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,flexShrink:0}}>{row.map(_renderItem)}{row.length<2&&<div/>}</div>))}
 </div>;
 })()}
  </div>
  <div style={{padding:10,borderTop:"1px solid #1a1a2e",display:"flex",justifyContent:"center",gap:8}}>
- {tutStep>=9&&tutStep<=11?<div style={{color:"#667788",fontSize:9}}>Complete the tutorial to continue</div>:<>
- <button onClick={()=>_startMainRun()} style={bs2("#00e5ff")} {...hv("#00e5ff")}>PLAY</button>
- <button onClick={()=>goTo("menu")} style={{...bs2("#44556644"),borderWidth:1,color:"#778899"}}>MENU</button></>}</div> {labConfirm&&labConfirm.startsWith("pick_")&&(()=>{
+ {tutStep>=9&&tutStep<=11?<div style={{color:"#667788",fontSize:_mf(9)}}>Complete the tutorial to continue</div>:<>
+ <button onClick={()=>_startMainRun()} style={{...bs2("#00e5ff"),...(_mob?{flex:1,padding:"16px",fontSize:17}:{})}} {...hv("#00e5ff")}>PLAY</button>
+ {!_mob&&<button onClick={()=>goTo("menu")} style={{...bs2("#44556644"),borderWidth:1,color:"#778899"}}>MENU</button>}</>}</div> {labConfirm&&labConfirm.startsWith("pick_")&&(()=>{
  const _pSlotIdx=parseInt(labConfirm.split("_")[1]);
  const _pLab=meta.lab||{};const _pCompleted=_pLab.completed||{};const _pActive=_pLab.active||[];const _pSaved=_pLab.saved||{};const _pHW=meta.highWave||0;
  const _pAssign=(labId,slotIdx)=>{setMeta(prev=>{const newActive=[...(prev.lab?.active||[])];const newSaved={...(prev.lab?.saved||{})};const lu=LAB_UPGRADES.find(l=>l.id===labId);const cl=prev.lab?.completed?.[labId]||0;if(!lu||cl>=lu.levels.length)return prev;const needed=lu.levels[cl].waves;if(newActive[slotIdx]){newSaved[newActive[slotIdx].id]=newActive[slotIdx].wavesProgress||0;}const existIdx=newActive.findIndex(a=>a&&a.id===labId);if(existIdx>=0&&existIdx!==slotIdx){newSaved[newActive[existIdx].id]=newActive[existIdx].wavesProgress||0;newActive[existIdx]=null;}newActive[slotIdx]={id:labId,wavesNeeded:needed,wavesProgress:newSaved[labId]||0};delete newSaved[labId];const nx={...prev,lab:{...(prev.lab||{}),active:newActive,saved:newSaved}};saveMeta(nx);return nx;});setLabConfirm(null);};
  return <div onClick={()=>setLabConfirm(null)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",zIndex:20,animation:_popupClosing?"popupBgExit 170ms ease-in forwards":"popupBgEnter 150ms ease-out both",display:"flex",alignItems:"center",justifyContent:"center"}}>
- <div onClick={e=>e.stopPropagation()} style={{background:"#0a0a16",border:"1px solid #ff884455",borderRadius:8,width:"92%",maxHeight:"80%",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.8)"}}>
+ <div onClick={e=>e.stopPropagation()} style={_mob?{background:"#08080f",border:"1px solid #ff884466",borderRadius:18,width:"96%",height:"94%",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 0 30px #00000099"}:{background:"#0a0a16",border:"1px solid #ff884455",borderRadius:8,width:"92%",maxHeight:"80%",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.8)"}}>
  <div style={{padding:"12px 12px 0",flexShrink:0}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
- <span style={{color:"#ff9966",fontSize:12,fontWeight:"bold",letterSpacing:2}}>SELECT RESEARCH</span>
- <button onClick={()=>setLabConfirm(null)} style={{background:"none",border:"1px solid #556677",color:"#99aabb",padding:"4px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:10,borderRadius:3}}>✕</button>
+ <span style={{color:_mv("#ff9966","#fff"),fontSize:_mv(_mf(12),15),fontWeight:"bold",letterSpacing:2}}>SELECT RESEARCH</span>
+ <button onClick={()=>setLabConfirm(null)} style={_mob?{background:"#ffffff18",border:"1px solid #ffffff33",borderRadius:16,padding:"7px 14px",color:"#fff",fontSize:11,fontWeight:"bold",fontFamily:"inherit",cursor:"pointer"}:{background:"none",border:"1px solid #556677",color:"#99aabb",padding:"4px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),borderRadius:3}}>{_mv("✕","CLOSE")}</button>
  </div>
  </div>
- <div className="vs-scroll" style={{flex:1,minHeight:0,overflow:"auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,padding:"8px 12px",alignContent:"start"}}>
- {[...LAB_UPGRADES].sort((a,b)=>(a.tier||1)-(b.tier||1)||(a.minWave-b.minWave)).map((lu2,li,arr)=>{const _prevTier=li>0?(arr[li-1].tier||1):0;const _curTier=lu2.tier||1;const _showTierHeader=_curTier!==_prevTier;return <>{_showTierHeader&&<div style={{gridColumn:"1/-1",color:_curTier===3?"#ff5577":_curTier===2?"#bb99ff":"#ff9966",fontSize:10,fontWeight:"bold",letterSpacing:1,marginTop:li>0?8:0,paddingBottom:4,borderBottom:`1px solid ${_curTier===3?"#ff557722":_curTier===2?"#bb99ff22":"#ff884422"}`}}>TIER {_curTier}</div>}{(()=>{
+ {_mob?<div style={{flex:1,minHeight:0,overflow:"hidden",display:"flex",flexDirection:"column",gap:6,padding:"6px 10px 10px"}}>
+ {[1,2,3].map(tier=>{const _labs=[...LAB_UPGRADES].filter(l=>(l.tier||1)===tier).sort((a,b)=>a.minWave-b.minWave);const _done=_labs.filter(l=>(_pCompleted[l.id]||0)>=l.levels.length).length;const _open=_pickTier===tier;const _tc=tier===3?"#ff5577":tier===2?"#bb99ff":"#ff9966";const _tierLocked=(meta.metaTier||1)<tier;
+  return <div key={tier} style={{flexShrink:0}}>
+   <div onClick={()=>_setPickTier(_open?0:tier)} style={{background:_open?"#12121f":"#0a0a14",border:`1px solid ${_open?_tc:_tc+"55"}`,borderRadius:12,height:60,boxSizing:"border-box",padding:"0 12px 0 14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}><div><div style={{color:"#fff",fontSize:14,fontWeight:"bold",letterSpacing:1.5}}>TIER {tier}{_tierLocked&&<span style={{fontSize:10,color:"#ffb0b0",marginLeft:8}}>🔒 needs Meta Tier {tier}</span>}</div><div style={{color:"#e6e6f2",fontSize:10.5,marginTop:2}}>{_done}/{_labs.length} fully researched</div></div><div style={{width:42,height:42,borderRadius:10,background:"#ffffff1a",border:"1px solid #ffffff33",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:20,fontWeight:"bold",flexShrink:0}}>{_open?"−":"+"}</div></div>
+   {_open&&<div style={{display:"flex",flexDirection:"column",gap:5,marginTop:6}}>{_labs.map(lu2=>{const cl=_pCompleted[lu2.id]||0;const maxed=cl>=lu2.levels.length;const locked=_pHW<lu2.minWave||_tierLocked;const _curSlotIdx=_pActive.findIndex(a2=>a2?.id===lu2.id);const isCurrentSlot=_curSlotIdx>=0;const saved=_pSaved[lu2.id]||0;const canPick=!maxed&&!locked&&!isCurrentSlot;
+    const _one={whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"};
+    return <button key={lu2.id} onClick={()=>canPick&&_pAssign(lu2.id,_pSlotIdx)} disabled={!canPick} style={{height:86,flexShrink:0,boxSizing:"border-box",padding:"0 12px",background:maxed?"#12100a":isCurrentSlot?"#0c1618":"#0a0a14",border:`1px solid ${maxed?"#ffcc4466":isCurrentSlot?"#44ddcc88":canPick?_tc+"aa":"#ffffff16"}`,borderRadius:12,cursor:canPick?"pointer":"default",fontFamily:"inherit",textAlign:"left",opacity:locked?0.5:1,display:"flex",flexDirection:"column",justifyContent:"center",gap:3,minWidth:0}}>
+     <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,minWidth:0}}><span style={{color:maxed?"#ffcc44":"#fff",fontSize:13,fontWeight:"bold",..._one}}>{lu2.name}</span><span style={{color:"#c8cce6",fontSize:10,flexShrink:0}}>Lv {cl}/{lu2.levels.length} · W{lu2.minWave}+</span></div>
+     <div style={{color:"#aab3c8",fontSize:10.5,..._one}}>{lu2.desc}</div>
+     <div style={{color:"#fff",fontSize:10.5,..._one}}>{maxed?<>Gives <b style={{color:"#ffcc44"}}>{labValue(lu2.id,cl)}</b></>:<>Now <b style={{color:"#ffd8b8"}}>{labValue(lu2.id,cl)}</b> → next <b style={{color:"#44ddcc"}}>{labValue(lu2.id,cl+1)}</b></>}</div>
+     <div style={{color:isCurrentSlot?"#aaf0e8":maxed?"#ffcc44":locked?"#ff9999":"#ffd8b8",fontSize:10,fontWeight:"bold",..._one}}>{isCurrentSlot?`Researching in lab slot ${_curSlotIdx+1}`:maxed?"MAXED":locked?(_pHW<lu2.minWave?`Reach wave ${lu2.minWave} to unlock`:`Needs Meta Tier ${lu2.tier}`):`Lv ${cl+1} needs ${lu2.levels[cl].waves} waves${saved>0?` · ${saved} saved`:""}`}</div>
+    </button>;})}</div>}
+  </div>;})}
+</div>:<div className="vs-scroll" style={{flex:1,minHeight:0,overflow:"auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,padding:"8px 12px",alignContent:"start"}}>
+ {[...LAB_UPGRADES].sort((a,b)=>(a.tier||1)-(b.tier||1)||(a.minWave-b.minWave)).map((lu2,li,arr)=>{const _prevTier=li>0?(arr[li-1].tier||1):0;const _curTier=lu2.tier||1;const _showTierHeader=_curTier!==_prevTier;return <Fragment key={lu2.id}>{_showTierHeader&&<div style={{gridColumn:"1/-1",color:_curTier===3?"#ff5577":_curTier===2?"#bb99ff":"#ff9966",fontSize:_mf(10),fontWeight:"bold",letterSpacing:1,marginTop:li>0?8:0,paddingBottom:4,borderBottom:`1px solid ${_curTier===3?"#ff557722":_curTier===2?"#bb99ff22":"#ff884422"}`}}>TIER {_curTier}</div>}{(()=>{
  const cl=_pCompleted[lu2.id]||0;
  const maxed=cl>=lu2.levels.length;
  const locked=_pHW<lu2.minWave||((meta.metaTier||1)<(lu2.tier||1));
- const isCurrentSlot=_pActive[_pSlotIdx]?.id===lu2.id;
+ const _curSlotIdx=_pActive.findIndex(a2=>a2?.id===lu2.id);const isCurrentSlot=_curSlotIdx>=0;
  const saved=_pSaved[lu2.id]||0;
  const canPick=!maxed&&!locked&&!isCurrentSlot;
  return <button key={lu2.id} onClick={()=>canPick&&_pAssign(lu2.id,_pSlotIdx)} disabled={!canPick}
- style={{padding:"12px",background:isCurrentSlot?"#0e1a1a":canPick?"#0c0c1a":"#08080f",border:`1px solid ${isCurrentSlot?"#44ddcc44":maxed?"#ffcc4444":canPick?"#ff884433":"#1a1a2e"}`,borderRadius:5,cursor:canPick?"pointer":"default",fontFamily:"inherit",textAlign:"left",opacity:locked?0.35:1,flexShrink:0,position:"relative",overflow:"visible"}}>
+ style={_mob?{padding:"10px 12px",...(isCurrentSlot?_gp("#44ddcc",12):maxed?_gpMax(12):canPick?_gpDim("#ff8844",12):_gpDim("#556677",12)),cursor:canPick?"pointer":"default",fontFamily:"inherit",textAlign:"left",opacity:locked?0.4:1,flexShrink:0,position:"relative",overflow:"hidden"}:{padding:"12px",background:isCurrentSlot?"#0e1a1a":canPick?"#0c0c1a":"#08080f",border:`1px solid ${isCurrentSlot?"#44ddcc44":maxed?"#ffcc4444":canPick?"#ff884433":"#1a1a2e"}`,borderRadius:5,cursor:canPick?"pointer":"default",fontFamily:"inherit",textAlign:"left",opacity:locked?0.35:1,flexShrink:0,position:"relative",overflow:"visible"}}>
  {maxed&&<div style={{position:"absolute",inset:0,overflow:"hidden",borderRadius:5}}><div className="gold-shimmer"/></div>}
- <div style={{color:maxed?"#ffcc44":isCurrentSlot?"#44ddcc":"#ccddee",fontSize:12,fontWeight:"bold"}}>{lu2.name} <span style={{color:(lu2.tier||1)===3?"#ff5577":(lu2.tier||1)===2?"#bb99ff":"#667788",fontSize:8}}>{(lu2.tier||1)>1?"T"+lu2.tier+" · ":""}Lv.{cl}/{lu2.levels.length} · Min wave {lu2.minWave}{locked&&(meta.metaTier||1)<(lu2.tier||1)?` · Needs Tier ${lu2.tier}`:""}{isCurrentSlot?" · Current":""}</span></div>
- <div style={{color:"#8899aa",fontSize:10,marginTop:3,lineHeight:1.4}}>{lu2.desc}</div>
- {!maxed&&!locked&&<div style={{color:"#778899",fontSize:8,marginTop:4}}>
+ <div style={{color:maxed?"#ffcc44":isCurrentSlot?"#fff":"#fff",fontSize:_mv(_mf(12),14),fontWeight:"bold"}}>{lu2.name} <span style={{color:(lu2.tier||1)===3?"#ff7799":(lu2.tier||1)===2?"#ccb0ff":"#aab",fontSize:_mv(_mf(8),10)}}>{(lu2.tier||1)>1?"T"+lu2.tier+" · ":""}Lv.{cl}/{lu2.levels.length} · Min wave {lu2.minWave}{locked&&(meta.metaTier||1)<(lu2.tier||1)?` · Needs Tier ${lu2.tier}`:""}{isCurrentSlot?` · Current (Lab slot ${_curSlotIdx+1})`:""}</span></div>
+ <div style={{color:_mv("#8899aa","#dde"),fontSize:_mv(_mf(10),11),marginTop:3,lineHeight:1.4,...(_mob?{display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}:{})}}>{lu2.desc}</div>
+ {!maxed&&!locked&&<div style={{color:_mv("#778899","#ffd8b8"),fontSize:_mv(_mf(8),10),marginTop:4}}>
  {`Next: Lv${cl+1} · ${lu2.levels[cl].waves} waves needed`}
  {saved>0&&!isCurrentSlot&&` · ${saved} waves saved`}
  </div>}
- {maxed&&<div style={{color:"#ffcc44",fontSize:9,marginTop:3}}>MAXED</div>}
+ {maxed&&<div style={{color:"#ffcc44",fontSize:_mf(9),marginTop:3}}>MAXED</div>}
  </button>;
- })()}</>;})}
- </div>
+ })()}</Fragment>;})}
+ </div>}
  </div>
  </div>;
  })()}
@@ -4053,25 +4630,25 @@ return <div className="vs-scroll" style={{flex:"1 1 0",minHeight:0,padding:10,di
  )}
  {_dupTabPopup&&<div style={{position:"absolute",inset:0,background:"rgba(2,2,8,0.96)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
  <div style={{background:"#0a0a18",border:"1px solid #ffcc4444",borderRadius:8,padding:"24px 20px",maxWidth:330,width:"100%",textAlign:"center"}}>
- <div style={{color:"#ffcc44",fontSize:13,fontWeight:"bold",letterSpacing:2,marginBottom:10}}>ALREADY OPEN</div>
- <div style={{color:"#99aabb",fontSize:10,lineHeight:1.7,marginBottom:8}}>This account is already open in another tab on this device.</div>
- <div style={{color:"#ff8844",fontSize:9,lineHeight:1.6,marginBottom:16}}>⚠ Any active run in the other tab will not be saved when it closes.</div>
- <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:10}}>
- <button onClick={()=>{if(_bcRef.current&&_otherTabIdRef.current)_bcRef.current.postMessage({type:"close_me",code:syncCode,tab:_otherTabIdRef.current});_setDupTabPopup(false);}} style={{padding:"8px 14px",background:"transparent",border:"1px solid #44ccaa66",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:9,color:"#88ccaa",letterSpacing:1}}>CONTINUE HERE</button>
+ <div style={{color:"#ffcc44",fontSize:_mf(13),fontWeight:"bold",letterSpacing:2,marginBottom:10}}>ALREADY OPEN</div>
+ <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.7,marginBottom:8}}>This account is already open in another tab on this device.</div>
+ <div style={{color:"#ff8844",fontSize:_mf(9),lineHeight:1.6,marginBottom:16}}>⚠ Any active run in the other tab will not be saved when it closes.</div>
+ <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:_mv("nowrap","wrap"),marginBottom:10}}>
+ <button onClick={()=>{if(_bcRef.current&&_otherTabIdRef.current)_bcRef.current.postMessage({type:"close_me",code:syncCode,tab:_otherTabIdRef.current});_setDupTabPopup(false);}} style={{padding:"8px 14px",background:"transparent",border:"1px solid #44ccaa66",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(9),color:"#88ccaa",letterSpacing:1}}>CONTINUE HERE</button>
  </div>
  </div>
  </div>}
  {sessionTakeover&&syncCode&&<div style={{position:"absolute",inset:0,background:"rgba(2,2,8,0.92)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
  <div style={{background:"#0a0a18",border:"1px solid #ff884444",borderRadius:8,padding:"24px 20px",maxWidth:340,width:"100%",textAlign:"center"}}>
- <div style={{color:"#ffcc44",fontSize:14,fontWeight:"bold",letterSpacing:2,marginBottom:12}}>SESSION TAKEN OVER</div>
- <div style={{color:"#99aabb",fontSize:10,lineHeight:1.7,marginBottom:16}}>
+ <div style={{color:"#ffcc44",fontSize:_mf(14),fontWeight:"bold",letterSpacing:2,marginBottom:12}}>SESSION TAKEN OVER</div>
+ <div style={{color:"#99aabb",fontSize:_mf(10),lineHeight:1.7,marginBottom:16}}>
  Another device has connected to save <span style={{color:"#44ccaa",fontFamily:"'DejaVu Sans Mono', 'Courier New', monospace",letterSpacing:2}}>{syncCode}</span>. Only one device can play at a time.
  </div>
- <div style={{display:"flex",gap:8,justifyContent:"center"}}>
- <button onClick={()=>{if(_takeoverLocked)return;const code=syncCodeRef.current;if(!code||!_SYNC_OK)return;fetch(SUPABASE_URL+"/rest/v1/saves?code=eq."+code+"&select=data",{headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY}}).then(r=>r.json()).then(rows=>{if(rows.length>0&&rows[0].data&&rows[0].data.meta){if(rows[0].data.meta.locked){_setTakeoverLocked(true);return;}const cd=rows[0].data;setMeta(cd.meta);try{localStorage.setItem("vs4-meta",JSON.stringify(cd.meta));}catch(e){}if(cd.history)try{localStorage.setItem("vs4-history",JSON.stringify(cd.history));}catch(e){}if(cd.tut)try{localStorage.setItem("vs4-tut",cd.tut);}catch(e){}const _tsTC=Date.now();const _msTC={...cd.meta,savedAt:_tsTC};try{const _hTC=JSON.stringify(cd.history||[]);const _tTC=cd.tut||"0";fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code,data:{meta:_msTC,history:cd.history||[],tut:_tTC,session_id:_sessionIdRef.current,devices:{[_sessionIdRef.current]:Date.now()}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(_e){}}setSessionTakeover(false);setPhase("menu");}).catch(()=>{setSessionTakeover(false);});}} style={{padding:"8px 18px",background:"transparent",border:"1px solid "+(_takeoverLocked?"#33445544":"#44ccaa66"),borderRadius:4,cursor:_takeoverLocked?"not-allowed":"pointer",fontFamily:"inherit",fontSize:10,color:_takeoverLocked?"#556677":"#88ccaa",letterSpacing:1,transition:"all 0.2s",opacity:_takeoverLocked?0.4:1}} onMouseOver={e=>{if(!_takeoverLocked){e.currentTarget.style.background="#44ccaa";e.currentTarget.style.color="#06060e";}}} onMouseOut={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=_takeoverLocked?"#556677":"#88ccaa";}}>TAKE CONTROL</button>
- <button onClick={()=>{setSyncCode(null);syncCodeRef.current=null;setSyncStatus("none");setSyncCodeInput("");setConfirmDisconnect(false);setSessionTakeover(false);try{localStorage.removeItem("vs4-sync-code");localStorage.removeItem("vs4-meta");localStorage.removeItem("vs4-history");localStorage.removeItem("vs4-tut");}catch(e){}const _def2={echoes:0,levels:{},shards:0,shardsBought:0,abUpgrades:{},shipColor:"cyan",bulletColor:"teal",bossShards:0,ownedDesigns:[],shipDesign:"none",designColor:undefined,showNewEnemy:true,showHitText:true,showMagnetRange:true,highWave:0,username:_genUsername()};setMeta(_def2);setShowTutPrompt(true);setPhase("menu");}} style={{padding:"8px 18px",background:"transparent",border:"1px solid #ff334466",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:10,color:"#cc6666",letterSpacing:1,transition:"all 0.2s"}} onMouseOver={e=>{e.currentTarget.style.background="#ff3344";e.currentTarget.style.color="#06060e";}} onMouseOut={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#cc6666";}}>LOG OUT</button>
+ <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:_mv("nowrap","wrap")}}>
+ <button onClick={()=>{if(_takeoverLocked)return;const code=syncCodeRef.current;if(!code||!_SYNC_OK)return;fetch(SUPABASE_URL+"/rest/v1/saves?code=eq."+code+"&select=data",{headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY}}).then(r=>r.json()).then(rows=>{if(rows.length>0&&rows[0].data&&rows[0].data.meta){if(rows[0].data.meta.locked){_setTakeoverLocked(true);return;}const cd=rows[0].data;setMeta(cd.meta);try{localStorage.setItem("vs4-meta",JSON.stringify(cd.meta));}catch(e){}if(cd.history)try{localStorage.setItem("vs4-history",JSON.stringify(cd.history));}catch(e){}if(cd.tut)try{localStorage.setItem("vs4-tut",cd.tut);}catch(e){}const _tsTC=Date.now();const _msTC={...cd.meta,savedAt:_tsTC};try{const _hTC=JSON.stringify(cd.history||[]);const _tTC=cd.tut||"0";fetch(SUPABASE_URL+"/rest/v1/saves",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({code,data:{meta:_msTC,history:cd.history||[],tut:_tTC,session_id:_sessionIdRef.current,devices:{[_sessionIdRef.current]:Date.now()}},updated_at:new Date().toISOString()})}).catch(()=>{});}catch(_e){}}setSessionTakeover(false);setPhase("menu");}).catch(()=>{setSessionTakeover(false);});}} style={{padding:"8px 18px",background:"transparent",border:"1px solid "+(_takeoverLocked?"#33445544":"#44ccaa66"),borderRadius:4,cursor:_takeoverLocked?"not-allowed":"pointer",fontFamily:"inherit",fontSize:_mf(10),color:_takeoverLocked?"#556677":"#88ccaa",letterSpacing:1,transition:"all 0.2s",opacity:_takeoverLocked?0.4:1}} onMouseOver={e=>{if(!_takeoverLocked){e.currentTarget.style.background="#44ccaa";e.currentTarget.style.color="#06060e";}}} onMouseOut={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=_takeoverLocked?"#556677":"#88ccaa";}}>TAKE CONTROL</button>
+ <button onClick={()=>{setSyncCode(null);syncCodeRef.current=null;setSyncStatus("none");setSyncCodeInput("");setConfirmDisconnect(false);setSessionTakeover(false);try{localStorage.removeItem("vs4-sync-code");localStorage.removeItem("vs4-meta");localStorage.removeItem("vs4-history");localStorage.removeItem("vs4-tut");}catch(e){}const _def2={echoes:0,levels:{},shards:0,shardsBought:0,abUpgrades:{},shipColor:"cyan",bulletColor:"teal",bossShards:0,ownedDesigns:[],shipDesign:"none",designColor:undefined,showNewEnemy:true,showHitText:true,showMagnetRange:true,highWave:0,username:_genUsername()};setMeta(_def2);setShowTutPrompt(true);setPhase("menu");}} style={{padding:"8px 18px",background:"transparent",border:"1px solid #ff334466",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:_mf(10),color:"#cc6666",letterSpacing:1,transition:"all 0.2s"}} onMouseOver={e=>{e.currentTarget.style.background="#ff3344";e.currentTarget.style.color="#06060e";}} onMouseOut={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#cc6666";}}>LOG OUT</button>
  </div>
- {_takeoverLocked&&<div style={{marginTop:12,color:"#cc6644",fontSize:9,lineHeight:1.6,textAlign:"center"}}>This account has been <b style={{color:"#ff8866"}}>locked</b> by the owner. You cannot take control while it is locked.</div>}
+ {_takeoverLocked&&<div style={{marginTop:12,color:"#cc6644",fontSize:_mf(9),lineHeight:1.6,textAlign:"center"}}>This account has been <b style={{color:"#ff8866"}}>locked</b> by the owner. You cannot take control while it is locked.</div>}
  </div>
  </div>}
  </div>
